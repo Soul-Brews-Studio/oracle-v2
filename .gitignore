@@ -30,3 +30,7 @@ tmp/
 
 # Test coverage
 coverage/
+
+# Test artifacts
+playwright-report/
+test-results/
