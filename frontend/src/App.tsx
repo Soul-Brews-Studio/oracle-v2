@@ -8,6 +8,7 @@ import { Search } from './pages/Search';
 import { Consult } from './pages/Consult';
 import { Graph } from './pages/Graph';
 import { Handoff } from './pages/Handoff';
+import { Activity } from './pages/Activity';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/consult" element={<Consult />} />
         <Route path="/graph" element={<Graph />} />
         <Route path="/handoff" element={<Handoff />} />
+        <Route path="/activity" element={<Activity />} />
       </Routes>
       <QuickLearn />
     </BrowserRouter>

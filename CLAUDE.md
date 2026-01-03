@@ -138,6 +138,14 @@ API_KEY=
 NEXT_PUBLIC_API_URL=
 ```
 
+### Development Ports
+| Service | Port | Command |
+|---------|------|---------|
+| Backend (HTTP) | `37778` | `pnpm run server` |
+| Frontend (Vite) | `3000` | `cd frontend && pnpm dev` |
+
+Note: Frontend proxies `/api/*` requests to backend on port 37778 (configured in `frontend/vite.config.ts`)
+
 ## Development Workflows
 
 ### Testing Discipline

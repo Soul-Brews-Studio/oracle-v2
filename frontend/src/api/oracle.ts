@@ -92,3 +92,44 @@ export async function getFile(path: string): Promise<{ path: string; content: st
   const res = await fetch(`${API_BASE}/file?${params}`);
   return res.json();
 }
+
+// Dashboard types
+export interface DashboardSummary {
+  documents: { total: number; by_type: Record<string, number> };
+  concepts: { total: number; top: Array<{ name: string; count: number }> };
+  activity: { consultations_7d: number; searches_7d: number; learnings_7d: number };
+  health: { fts_status: string; last_indexed: string | null };
+}
+
+export interface DashboardActivity {
+  consultations: Array<{ decision: string; principles_found: number; patterns_found: number; created_at: string }>;
+  searches: Array<{ query: string; type: string; results_count: number; search_time_ms: number; created_at: string }>;
+  learnings: Array<{ document_id: string; pattern_preview: string; source: string; concepts: string[]; created_at: string }>;
+  days: number;
+}
+
+export interface DashboardGrowth {
+  period: string;
+  days: number;
+  data: Array<{ date: string; documents: number; consultations: number; searches: number }>;
+}
+
+// Get dashboard summary
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const res = await fetch(`${API_BASE}/dashboard/summary`);
+  return res.json();
+}
+
+// Get dashboard activity
+export async function getDashboardActivity(days: number = 7): Promise<DashboardActivity> {
+  const params = new URLSearchParams({ days: String(days) });
+  const res = await fetch(`${API_BASE}/dashboard/activity?${params}`);
+  return res.json();
+}
+
+// Get dashboard growth
+export async function getDashboardGrowth(period: 'week' | 'month' | 'quarter' = 'week'): Promise<DashboardGrowth> {
+  const params = new URLSearchParams({ period });
+  const res = await fetch(`${API_BASE}/dashboard/growth?${params}`);
+  return res.json();
+}
