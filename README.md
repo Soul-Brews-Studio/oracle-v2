@@ -2,91 +2,145 @@
 
 > "The Oracle Keeps the Human Human" - now queryable via MCP
 
-TypeScript prototype implementing semantic search over Oracle philosophy using Model Context Protocol (MCP).
+TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
 
 ## Architecture
 
 ```
-Claude Code → MCP Server → SQLite + Chroma
-                          ↓
-                    ψ/memory files
+Claude Code → MCP Server → SQLite + Chroma + Drizzle ORM
+                ↓
+           HTTP Server → React Dashboard
+                ↓
+          ψ/memory files
 ```
 
-Following [claude-mem](https://github.com/zackees/claude-mem) patterns:
-- Granular vector documents (split principles into sub-chunks)
-- Hybrid search (vector + FTS5)
-- Local embeddings via ChromaDB
-- SQLite as source of truth
+**Stack:**
+- **SQLite** + FTS5 for full-text search
+- **ChromaDB** for vector/semantic search
+- **Drizzle ORM** for type-safe queries
+- **React** dashboard for visualization
+- **MCP** protocol for Claude integration
 
 ## Quick Start
 
-### 1. Install Dependencies
-
 ```bash
-cd ψ/lab/oracle-v2
-npm install
+# Install dependencies
+pnpm install
+
+# Index Oracle knowledge
+pnpm run index
+
+# Start services
+pnpm run server      # HTTP API on :37778
+cd frontend && pnpm dev  # React dashboard on :3000
 ```
 
-### 2. Index Oracle Knowledge
+## Services
 
-```bash
-npm run index
-```
+| Service | Port | Command |
+|---------|------|---------|
+| HTTP API | 37778 | `pnpm run server` |
+| React Dashboard | 3000 | `cd frontend && pnpm dev` |
+| MCP Server | stdio | `pnpm run dev` |
+| Drizzle Studio | local.drizzle.studio | `pnpm db:studio` |
 
-This will:
-- Parse `ψ/memory/resonance/*.md` (principles)
-- Parse `ψ/memory/learnings/*.md` (patterns)
-- Parse `ψ/memory/retrospectives/**/*.md` (history)
-- Create SQLite index at `oracle.db`
-- Create Chroma vectors at `chroma/`
+## API Endpoints
 
-### 3. Run MCP Server
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /search?q=...` | Full-text search |
+| `GET /consult?q=...` | Get guidance on decision |
+| `GET /reflect` | Random wisdom |
+| `GET /list` | Browse documents |
+| `GET /stats` | Database statistics |
+| `GET /graph` | Knowledge graph data |
+| `GET /context` | Project context (ghq format) |
+| `POST /learn` | Add new pattern |
+| `GET /dashboard/*` | Dashboard API |
 
-```bash
-npm run dev
-```
+See [docs/API.md](./docs/API.md) for full documentation.
 
 ## MCP Tools
 
-### oracle_search
+| Tool | Description |
+|------|-------------|
+| `oracle_search` | Search knowledge base |
+| `oracle_consult` | Get guidance on decisions |
+| `oracle_reflect` | Random wisdom |
+| `oracle_learn` | Add new patterns |
+| `oracle_list` | Browse documents |
+| `oracle_stats` | Database statistics |
+| `oracle_concepts` | List concept tags |
 
-Search Oracle knowledge base semantically.
+## Database
 
-```json
-{
-  "query": "how should I handle file deletion?",
-  "type": "principle",
-  "limit": 5
-}
+### Schema (Drizzle ORM)
+
+```
+src/db/
+├── schema.ts     # Table definitions
+├── index.ts      # Drizzle client
+└── migrations/   # SQL migrations
 ```
 
-Returns relevant principles, patterns, learnings, or retrospectives.
+**Tables:**
+- `oracle_documents` - Main document index (5.5K+ docs)
+- `oracle_fts` - FTS5 virtual table for search
+- `search_log` - Search query logging
+- `consult_log` - Consultation logging
+- `learn_log` - Learning/pattern logging
+- `document_access` - Access logging
+- `indexing_status` - Indexer progress
 
-### oracle_consult
+### Drizzle Commands
 
-Get guidance on a decision based on Oracle philosophy.
-
-```json
-{
-  "decision": "Should I amend this commit or create a new one?",
-  "context": "I just made a commit but forgot to add a file"
-}
+```bash
+pnpm db:generate   # Generate migrations
+pnpm db:migrate    # Apply migrations
+pnpm db:push       # Push schema directly
+pnpm db:pull       # Introspect existing DB
+pnpm db:studio     # Open Drizzle Studio GUI
 ```
 
-Returns:
-- Relevant principles
-- Relevant patterns
-- Synthesized guidance
+## Project Structure
 
-### oracle_reflect
-
-Get random wisdom for reflection.
-
-```json
-{}
+```
+oracle-v2/
+├── src/
+│   ├── index.ts          # MCP server
+│   ├── server.ts         # HTTP server (routing)
+│   ├── indexer.ts        # Knowledge indexer
+│   ├── server/           # Server modules
+│   │   ├── types.ts      # TypeScript interfaces
+│   │   ├── db.ts         # Database config
+│   │   ├── logging.ts    # Query logging
+│   │   ├── handlers.ts   # Request handlers
+│   │   ├── dashboard.ts  # Dashboard API
+│   │   └── context.ts    # Project context
+│   └── db/               # Drizzle ORM
+│       ├── schema.ts     # Table definitions
+│       └── index.ts      # Client export
+├── frontend/             # React dashboard
+├── docs/                 # Documentation
+├── e2e/                  # E2E tests
+└── drizzle.config.ts     # Drizzle configuration
 ```
 
-Returns a random principle or pattern.
+## Testing
+
+```bash
+pnpm test              # Run 45 unit tests
+pnpm test:watch        # Watch mode
+pnpm test:coverage     # With coverage
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ORACLE_PORT` | 37778 | HTTP server port |
+| `ORACLE_REPO_ROOT` | `/Users/nat/.../Nat-s-Agents` | Knowledge base root |
 
 ## Data Model
 
@@ -94,102 +148,40 @@ Returns a random principle or pattern.
 
 ```
 ψ/memory/
-├── resonance/        → IDENTITY (who am I)
-│   ├── oracle.md     → Core principles
-│   └── patterns.md   → Behavioral patterns
-│
+├── resonance/        → IDENTITY (principles)
 ├── learnings/        → PATTERNS (what I've learned)
-│   └── *.md
-│
-└── retrospectives/   → HISTORY (what happened)
-    └── **/*.md
+└── retrospectives/   → HISTORY (session records)
 ```
 
-### Vector Documents
+### Search
 
-Following granular pattern from claude-mem:
-
-```typescript
-{
-  id: "resonance_oracle_principle_1",
-  type: "principle",
-  source_file: "ψ/memory/resonance/oracle.md",
-  content: "Nothing is Deleted: Append only...",
-  concepts: ["append-only", "history", "context"],
-  created_at: 1735489287,
-  updated_at: 1735489287
-}
-```
-
-Each principle is split into:
-1. Main document (full principle)
-2. Sub-documents (bullet points)
-
-This enables finding specific guidance even within larger principles.
-
-## Configuration
-
-Set `ORACLE_REPO_ROOT` environment variable to override default path:
-
-```bash
-export ORACLE_REPO_ROOT=/path/to/Nat-s-Agents
-npm run index
-npm run dev
-```
+**Hybrid search** combining:
+1. **FTS5** - SQLite full-text search (keywords)
+2. **ChromaDB** - Vector similarity (semantic)
+3. **Query-aware weights** - Short queries favor FTS, long favor vectors
 
 ## Development
 
 ```bash
-# Index knowledge base
-npm run index
+# Full dev setup
+pnpm install
+pnpm run index        # Index knowledge base
+pnpm run server &     # Start HTTP API
+cd frontend && pnpm dev  # Start React dashboard
 
-# Run MCP server (development)
-npm run dev
-
-# Build TypeScript
-npm run build
-
-# Run compiled server
-npm start
+# Build
+pnpm build            # TypeScript compilation
 ```
-
-## How It Works
-
-### Indexing (indexer.ts)
-
-1. **Parse markdown files** from ψ/memory/
-2. **Split into granular chunks**:
-   - Principles → sections → bullet points
-   - Learnings → sections
-   - Retrospectives → sections
-3. **Extract concepts** (keywords for filtering)
-4. **Store in SQLite** (metadata + FTS5)
-5. **Store in Chroma** (vector embeddings)
-
-### Querying (index.ts)
-
-1. **Vector search** via Chroma (semantic similarity)
-2. **FTS search** via SQLite (keyword matching)
-3. **Merge results** (hybrid scoring)
-4. **Enrich with metadata** from SQLite
-5. **Return ranked results**
-
-## Future Enhancements
-
-- [ ] Add `oracle_learn` tool (write new patterns)
-- [ ] Auto-update on file changes (fswatch)
-- [ ] Skill wrapper for progressive disclosure
-- [ ] Track which principles influence decisions
-- [ ] Pattern detection from retrospectives
 
 ## References
 
-- [SPEC.md](./SPEC.md) - Full specification
-- [claude-mem](https://github.com/zackees/claude-mem) - Inspiration
+- [docs/API.md](./docs/API.md) - API documentation
+- [docs/architecture.md](./docs/architecture.md) - Architecture details
+- [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
 - [MCP SDK](https://github.com/anthropics/anthropic-sdk-typescript) - Protocol docs
 
 ---
 
-**Status**: Prototype / Exploration
+**Status**: Production
 **Created**: 2025-12-29
-**Model**: Following claude-mem architecture
+**Updated**: 2026-01-03
