@@ -16,12 +16,12 @@
 
 import fs from 'fs';
 import path from 'path';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import { ChromaMcpClient } from './chroma-mcp.js';
 import type { OracleDocument, OracleMetadata, IndexerConfig } from './types.js';
 
 export class OracleIndexer {
-  private db: Database.Database;
+  private db: Database;
   private chromaClient: ChromaMcpClient | null = null;
   private config: IndexerConfig;
 

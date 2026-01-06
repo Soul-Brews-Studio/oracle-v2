@@ -2,7 +2,7 @@
  * Oracle v2 Database Configuration
  */
 
-import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,7 +19,7 @@ export const ARTHUR_UI_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-jarvis/index.h
 export const DASHBOARD_PATH = path.join(__dirname, '..', 'dashboard.html');
 
 // Initialize database connection
-export const db: DatabaseType = new Database(DB_PATH);
+export const db = new Database(DB_PATH);
 
 /**
  * Initialize logging tables

@@ -2,8 +2,8 @@
  * Oracle v2 Drizzle Database Client
  */
 
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { Database } from 'bun:sqlite';
 import path from 'path';
 import * as schema from './schema.js';
 
@@ -11,8 +11,8 @@ import * as schema from './schema.js';
 const REPO_ROOT = process.env.ORACLE_REPO_ROOT || '/Users/nat/Code/github.com/laris-co/Nat-s-Agents';
 export const DB_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-v2/oracle.db');
 
-// Create better-sqlite3 connection
-const sqlite: DatabaseType = new Database(DB_PATH);
+// Create bun:sqlite connection
+const sqlite = new Database(DB_PATH);
 
 // Create Drizzle ORM instance
 export const db = drizzle(sqlite, { schema });

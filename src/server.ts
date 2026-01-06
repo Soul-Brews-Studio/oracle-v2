@@ -19,6 +19,13 @@
 import http from 'http';
 import url from 'url';
 import fs from 'fs';
+import {
+  configure,
+  writePidFile,
+  removePidFile,
+  registerSignalHandlers,
+  performGracefulShutdown,
+} from './process-manager/index.js';
 
 // Import from modular components
 import {
@@ -76,6 +83,25 @@ try {
 } catch (e) {
   console.error('Failed to initialize logging tables:', e);
 }
+
+// Configure process lifecycle management
+const dataDir = path.join(import.meta.dirname || __dirname, '..');
+configure({ dataDir });
+
+// Write PID file for process tracking
+writePidFile({ port: Number(PORT), name: 'oracle-http' });
+
+// Register graceful shutdown handlers
+registerSignalHandlers(async () => {
+  console.log('\n🔮 Shutting down gracefully...');
+  await performGracefulShutdown({
+    closeables: [
+      { name: 'database', close: () => { closeDb(); return Promise.resolve(); } }
+    ]
+  });
+  removePidFile();
+  console.log('👋 Oracle v2 HTTP Server stopped.');
+});
 
 /**
  * HTTP request handler
@@ -619,8 +645,4 @@ server.listen(PORT, () => {
 `);
 });
 
-// Cleanup on exit
-process.on('SIGINT', () => {
-  closeDb();
-  process.exit(0);
-});
+// Note: Graceful shutdown is handled by bun-process-manager's registerSignalHandlers()

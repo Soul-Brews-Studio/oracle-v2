@@ -16,7 +16,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import { ChromaClient, Collection } from 'chromadb';
 import path from 'path';
 import fs from 'fs';
