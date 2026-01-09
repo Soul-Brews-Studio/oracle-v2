@@ -1,9 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
 import path from 'path';
 
-// Default to the main oracle.db location
-const REPO_ROOT = process.env.ORACLE_REPO_ROOT || '/Users/nat/Code/github.com/laris-co/Nat-s-Agents';
-const DB_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-v2/oracle.db');
+// Default to oracle.db in same directory as this config
+const DB_PATH = process.env.ORACLE_DB_PATH || path.join(__dirname, 'oracle.db');
 
 export default defineConfig({
   dialect: 'sqlite',
