@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.oracle.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nat/.bun/bin/bun</string>
+        <string>/Users/nat/Code/github.com/laris-co/oracle-v2/src/server.ts</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nat/.oracle-v2/oracle-server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nat/.oracle-v2/oracle-server.error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nat/Code/github.com/laris-co/oracle-v2</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nat</string>
+        <key>PATH</key>
+        <string>/Users/nat/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>
