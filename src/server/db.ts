@@ -13,8 +13,8 @@ const __dirname = path.dirname(__filename);
 // Configuration
 export const PORT = process.env.ORACLE_PORT || 37778;
 export const REPO_ROOT = process.env.ORACLE_REPO_ROOT || '/Users/nat/Code/github.com/laris-co/Nat-s-Agents';
-export const DB_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-v2/oracle.db');
-export const UI_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-v2/src/ui.html');
+export const DB_PATH = path.join(REPO_ROOT, 'ψ/data/oracle-v2/oracle.db');
+export const UI_PATH = path.join(__dirname, '..', 'ui.html');
 export const ARTHUR_UI_PATH = path.join(REPO_ROOT, 'ψ/lab/oracle-jarvis/index.html');
 export const DASHBOARD_PATH = path.join(__dirname, '..', 'dashboard.html');
 
