@@ -237,6 +237,39 @@ class OracleMCPServer {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
+        // Meta-documentation tool (not callable, just instructions)
+        {
+          name: '____IMPORTANT',
+          description: `ORACLE WORKFLOW GUIDE:
+
+1. SEARCH & DISCOVER
+   oracle_search(query) → Find knowledge by keywords/vectors
+   oracle_list() → Browse all documents
+   oracle_concepts() → See topic coverage
+
+2. CONSULT & REFLECT
+   oracle_consult(decision) → Get guidance for decisions
+   oracle_reflect() → Random wisdom for alignment
+
+3. LEARN & REMEMBER
+   oracle_learn(pattern) → Add new patterns/learnings
+   oracle_thread(message) → Multi-turn discussions
+
+4. TRACE & DISTILL (Issue #17)
+   oracle_trace(query) → Log discovery sessions with dig points
+   oracle_trace_list() → Find past traces
+   oracle_trace_get(id) → Explore dig points (files, commits, issues)
+
+5. DECIDE & TRACK
+   oracle_decisions_create() → Track important decisions
+   oracle_decisions_list() → Review pending decisions
+
+Philosophy: "Nothing is Deleted" — All interactions logged.`,
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
         {
           name: 'oracle_search',
           description: 'Search Oracle knowledge base using hybrid search (FTS5 keywords + ChromaDB vectors). Finds relevant principles, patterns, learnings, or retrospectives. Falls back to FTS5-only if ChromaDB unavailable.',
