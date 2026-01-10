@@ -77,6 +77,41 @@ import {
 
 import path from 'path';
 
+// Frontend static file serving
+const FRONTEND_DIST = path.join(import.meta.dirname || __dirname, '..', 'frontend', 'dist');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
+
+function serveStatic(res: http.ServerResponse, filePath: string): boolean {
+  const fullPath = path.join(FRONTEND_DIST, filePath);
+
+  // Security: prevent path traversal
+  const realPath = path.resolve(fullPath);
+  if (!realPath.startsWith(path.resolve(FRONTEND_DIST))) {
+    return false;
+  }
+
+  if (fs.existsSync(realPath) && fs.statSync(realPath).isFile()) {
+    const ext = path.extname(realPath);
+    const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
+    res.end(fs.readFileSync(realPath));
+    return true;
+  }
+  return false;
+}
+
 // Initialize logging tables on startup
 try {
   initLoggingTables();
@@ -257,7 +292,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/ask' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk.toString(); });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const data = JSON.parse(body);
           if (!data.question) {
@@ -265,7 +300,7 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Missing required field: question' }));
             return;
           }
-          const consultResult = handleConsult(data.question, data.context || '');
+          const consultResult = await handleConsult(data.question, data.context || '');
           res.end(JSON.stringify({
             response: consultResult.guidance || 'I found some relevant information but couldn\'t formulate a specific response.',
             principles: consultResult.principles?.length || 0,
@@ -455,25 +490,29 @@ const server = http.createServer(async (req, res) => {
 
     switch (pathname) {
       case '/':
-        // Serve Arthur chat UI at root (per Spec 050)
+        // Serve React SPA at root
+        res.setHeader('Content-Type', 'text/html');
+        const rootIndex = path.join(FRONTEND_DIST, 'index.html');
+        if (fs.existsSync(rootIndex)) {
+          res.end(fs.readFileSync(rootIndex));
+        } else {
+          // Fallback to old Arthur UI if no build exists
+          res.end(fs.readFileSync(ARTHUR_UI_PATH, 'utf-8'));
+        }
+        return;
+
+      // Legacy HTML UIs
+      case '/legacy/arthur':
         res.setHeader('Content-Type', 'text/html');
         res.end(fs.readFileSync(ARTHUR_UI_PATH, 'utf-8'));
         return;
 
-      case '/oracle':
-        // Serve Oracle Knowledge Base UI
+      case '/legacy/oracle':
         res.setHeader('Content-Type', 'text/html');
         res.end(fs.readFileSync(UI_PATH, 'utf-8'));
         return;
 
-      case '/arthur':
-        // Serve Arthur chat UI
-        res.setHeader('Content-Type', 'text/html');
-        res.end(fs.readFileSync(ARTHUR_UI_PATH, 'utf-8'));
-        return;
-
-      case '/dashboard/ui':
-        // Serve Dashboard UI
+      case '/legacy/dashboard':
         res.setHeader('Content-Type', 'text/html');
         res.end(fs.readFileSync(DASHBOARD_PATH, 'utf-8'));
         return;
@@ -628,6 +667,20 @@ const server = http.createServer(async (req, res) => {
         break;
 
       default:
+        // Try to serve static files from frontend/dist
+        if (pathname && serveStatic(res, pathname)) {
+          return;
+        }
+
+        // For SPA: serve index.html for non-API routes (client-side routing)
+        const indexPath = path.join(FRONTEND_DIST, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          res.setHeader('Content-Type', 'text/html');
+          res.end(fs.readFileSync(indexPath));
+          return;
+        }
+
+        // Fallback: API 404
         res.statusCode = 404;
         result = {
           error: 'Not found',

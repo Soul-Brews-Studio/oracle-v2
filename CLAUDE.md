@@ -141,10 +141,32 @@ NEXT_PUBLIC_API_URL=
 ### Development Ports
 | Service | Port | Command |
 |---------|------|---------|
-| Backend (HTTP) | `37778` | `pnpm run server` |
+| Backend (HTTP) | `47778` | `pnpm run server` |
 | Frontend (Vite) | `3000` | `cd frontend && pnpm dev` |
 
-Note: Frontend proxies `/api/*` requests to backend on port 37778 (configured in `frontend/vite.config.ts`)
+Note: Frontend proxies `/api/*` requests to backend on port 47778 (configured in `frontend/vite.config.ts`)
+
+### Development vs Production
+
+**Development mode** (two processes):
+```bash
+# Terminal 1: Backend API
+pnpm run server              # http://localhost:47778
+
+# Terminal 2: Frontend with HMR
+cd frontend && pnpm dev      # http://localhost:3000
+```
+
+**Production mode** (single process):
+```bash
+# Build frontend
+cd frontend && pnpm build
+
+# Serve everything from backend
+pnpm run server              # http://localhost:47778
+```
+
+In production, the backend serves both API endpoints and the built React app from `frontend/dist/`.
 
 ## Development Workflows
 
