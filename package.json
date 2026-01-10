@@ -4,6 +4,9 @@
   "description": "Oracle v2 - MCP Memory Layer for querying Oracle philosophy",
   "type": "module",
   "main": "src/index.ts",
+  "engines": {
+    "bun": ">=1.2.0"
+  },
   "scripts": {
     "dev": "bun src/index.ts",
     "server": "bun src/server.ts",
