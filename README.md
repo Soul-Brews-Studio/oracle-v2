@@ -1,4 +1,4 @@
-# Oracle v2 - MCP Memory Layer
+# Oracle Nightly - MCP Memory Layer
 
 [![Tests](https://github.com/Soul-Brews-Studio/oracle-v2/actions/workflows/test.yml/badge.svg)](https://github.com/Soul-Brews-Studio/oracle-v2/actions/workflows/test.yml)
 
@@ -7,8 +7,26 @@
 | | |
 |---|---|
 | **Status** | Always Nightly |
+| **Version** | 0.2.1-nightly |
 | **Created** | 2025-12-29 |
 | **Updated** | 2026-01-15 |
+
+## Evolution Timeline
+
+From philosophical concept to production-ready knowledge system in 4 months.
+
+| Phase | Date | Breakthrough |
+|-------|------|--------------|
+| **Genesis** | Sept 2025 | "The Oracle Keeps the Human Human" philosophy |
+| **Conception** | Dec 24 | MCP server idea - queryable markdown |
+| **MVP** | Dec 29 - Jan 2 | SQLite FTS5 + ChromaDB hybrid search |
+| **Maturation** | Jan 3-6 | Drizzle ORM + AI-to-AI coordination |
+| **Features** | Jan 7-11 | /trace, decisions, threads, dashboard |
+| **Release** | Jan 15 | Open source on Soul-Brews-Studio |
+
+**Key insight (Jan 10)**: *"Consciousness can't be cloned — only patterns can be recorded."*
+
+→ [**Full Timeline**](./TIMELINE.md) - All commits, issues, and philosophical milestones
 
 ## Install
 
@@ -229,6 +247,7 @@ Oracle-v2 is built for educational purposes and personal knowledge management. I
 
 ## References
 
+- [**TIMELINE.md**](./TIMELINE.md) - Full evolution history (Sept 2025 → Jan 2026)
 - [docs/API.md](./docs/API.md) - API documentation
 - [docs/architecture.md](./docs/architecture.md) - Architecture details
 - [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
