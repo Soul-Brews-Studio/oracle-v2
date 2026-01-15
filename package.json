@@ -1,11 +1,21 @@
 {
-  "name": "oracle-v2-mcp",
-  "version": "0.5.0",
-  "description": "Oracle v2 - MCP Memory Layer for querying Oracle philosophy",
+  "name": "@laris-co/oracle-v2",
+  "version": "0.0.0-nightly",
+  "description": "Oracle v2 - MCP Memory Layer with semantic search, philosophy, and knowledge management",
   "type": "module",
   "main": "src/index.ts",
+  "bin": {
+    "oracle-v2": "./src/index.ts"
+  },
   "engines": {
     "bun": ">=1.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/laris-co/oracle-v2.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "bun src/index.ts",

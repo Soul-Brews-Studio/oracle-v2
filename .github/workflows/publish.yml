@@ -1,0 +1,33 @@
+name: Publish to npm
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Setup npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Set nightly version
+        run: |
+          VERSION="0.$(date +%Y%m%d).$(date +%H%M)"
+          npm version $VERSION --no-git-tag-version
+          echo "Publishing version: $VERSION"
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
