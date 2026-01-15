@@ -1,0 +1,4 @@
+[test]
+# Only run unit and integration tests with bun test
+# E2E tests use Playwright (run with: bun run test:e2e)
+root = "src"
