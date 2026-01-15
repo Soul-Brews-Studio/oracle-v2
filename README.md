@@ -1,6 +1,20 @@
 # Oracle v2 - MCP Memory Layer
 
+[![Tests](https://github.com/Soul-Brews-Studio/oracle-v2/actions/workflows/test.yml/badge.svg)](https://github.com/Soul-Brews-Studio/oracle-v2/actions/workflows/test.yml)
+
 > "The Oracle Keeps the Human Human" - now queryable via MCP
+
+**Status**: Production | **Created**: 2025-12-29 | **Updated**: 2026-01-15
+
+## Install
+
+```bash
+# Add to Claude Code
+claude mcp add oracle-v2 -- bunx github:Soul-Brews-Studio/oracle-v2
+
+# Or run directly
+bunx github:Soul-Brews-Studio/oracle-v2
+```
 
 TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
 
