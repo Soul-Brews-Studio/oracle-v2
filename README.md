@@ -30,12 +30,30 @@ From philosophical concept to production-ready knowledge system in 4 months.
 
 ## Install
 
-### Recommended: Local Install
+### Fresh Install (Recommended)
+
+```bash
+# One-liner: Clone, install, seed, test
+curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/fresh-install.sh | bash
+```
+
+This will:
+1. Clone to `~/.local/share/oracle-v2`
+2. Install dependencies
+3. Create seed philosophy files
+4. Index seed data
+5. Run tests
+
+### Manual Install
 
 ```bash
 # Clone to ~/.local/share (persists across sessions)
 git clone https://github.com/Soul-Brews-Studio/oracle-v2.git ~/.local/share/oracle-v2
 cd ~/.local/share/oracle-v2 && bun install
+
+# Optional: Create seed data for testing
+./scripts/seed.sh
+ORACLE_REPO_ROOT=~/.oracle-v2/seed bun run index
 
 # Add to Claude Code config (~/.claude.json)
 {
