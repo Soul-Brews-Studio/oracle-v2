@@ -98,12 +98,24 @@ cd frontend && bun dev    # React dashboard on :3000
 
 ## Services
 
-| Service | Port | Command |
-|---------|------|---------|
-| HTTP API | 47778 | `bun run server` |
-| React Dashboard | 3000 | `cd frontend && bun dev` |
-| MCP Server | stdio | `bun run dev` |
-| Drizzle Studio | local.drizzle.studio | `bun db:studio` |
+```bash
+# Start all services (in separate terminals)
+bun run server              # HTTP API
+cd frontend && bun dev      # Dashboard
+```
+
+| Service | Port | Command | Description |
+|---------|------|---------|-------------|
+| **HTTP API** | `:47778` | `bun run server` | REST endpoints for search, consult, learn |
+| **Dashboard** | `:3000` | `cd frontend && bun dev` | React UI with knowledge graph |
+| **MCP Server** | stdio | `bun run dev` | Claude Code integration (19 tools) |
+| **Drizzle Studio** | browser | `bun db:studio` | Database GUI at local.drizzle.studio |
+
+**Quick test:**
+```bash
+curl http://localhost:47778/health
+curl "http://localhost:47778/search?q=nothing+deleted"
+```
 
 ## API Endpoints
 
