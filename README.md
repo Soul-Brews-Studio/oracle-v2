@@ -113,24 +113,28 @@ cd frontend && bun dev      # Dashboard
 
 **Quick test:**
 ```bash
-curl http://localhost:47778/health
-curl "http://localhost:47778/search?q=nothing+deleted"
+curl http://localhost:47778/api/health
+curl "http://localhost:47778/api/search?q=nothing+deleted"
 ```
 
 ## API Endpoints
 
+All endpoints are under `/api/` prefix:
+
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Health check |
-| `GET /search?q=...` | Full-text search |
-| `GET /consult?q=...` | Get guidance on decision |
-| `GET /reflect` | Random wisdom |
-| `GET /list` | Browse documents |
-| `GET /stats` | Database statistics |
-| `GET /graph` | Knowledge graph data |
-| `GET /context` | Project context (ghq format) |
-| `POST /learn` | Add new pattern |
-| `GET /dashboard/*` | Dashboard API |
+| `GET /api/health` | Health check |
+| `GET /api/search?q=...` | Full-text search |
+| `GET /api/consult?q=...` | Get guidance on decision |
+| `GET /api/reflect` | Random wisdom |
+| `GET /api/list` | Browse documents |
+| `GET /api/stats` | Database statistics |
+| `GET /api/graph` | Knowledge graph data |
+| `GET /api/context` | Project context (ghq format) |
+| `POST /api/learn` | Add new pattern |
+| `GET /api/dashboard/*` | Dashboard API |
+| `GET /api/threads` | List threads |
+| `GET /api/decisions` | List decisions |
 
 See [docs/API.md](./docs/API.md) for full documentation.
 
