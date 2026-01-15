@@ -111,11 +111,11 @@ src/db/
 ### Drizzle Commands
 
 ```bash
-pnpm db:generate   # Generate migrations
-pnpm db:migrate    # Apply migrations
-pnpm db:push       # Push schema directly
-pnpm db:pull       # Introspect existing DB
-pnpm db:studio     # Open Drizzle Studio GUI
+bun db:generate   # Generate migrations
+bun db:migrate    # Apply migrations
+bun db:push       # Push schema directly
+bun db:pull       # Introspect existing DB
+bun db:studio     # Open Drizzle Studio GUI
 ```
 
 ## Project Structure
@@ -145,9 +145,9 @@ oracle-v2/
 ## Testing
 
 ```bash
-pnpm test              # Run 45 unit tests
-pnpm test:watch        # Watch mode
-pnpm test:coverage     # With coverage
+bun test              # Run 45 unit tests
+bun test:watch        # Watch mode
+bun test:coverage     # With coverage
 ```
 
 ## Configuration
@@ -179,13 +179,13 @@ pnpm test:coverage     # With coverage
 
 ```bash
 # Full dev setup
-pnpm install
-pnpm run index        # Index knowledge base
-pnpm run server &     # Start HTTP API
-cd frontend && pnpm dev  # Start React dashboard
+bun install
+bun run index        # Index knowledge base
+bun run server &     # Start HTTP API
+cd frontend && bun dev  # Start React dashboard
 
 # Build
-pnpm build            # TypeScript compilation
+bun build            # TypeScript compilation
 ```
 
 ## References
