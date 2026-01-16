@@ -37,9 +37,10 @@ From philosophical concept to production-ready knowledge system in 4 months.
 curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
 
 # 2. Restart Claude Code
-```
 
-The script handles everything: clone, bun install, mkdir, and `claude mcp add`.
+# If script failed, run manually:
+claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
+```
 
 ### For AI Assistants
 
