@@ -46,18 +46,10 @@ The script handles everything: clone, bun install, mkdir, and `claude mcp add`.
 Copy this prompt to your AI:
 
 ```
-Install oracle-v2 MCP server:
+# 1. Install (clones, deps, and adds to Claude Code)
+curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
 
-1. curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
-2. Restart Claude Code
-
-Script handles: clone, bun install, mkdir, claude mcp add
-
-Common issues (if install fails):
-- "bun not found" → export PATH="$HOME/.bun/bin:$PATH"
-- "directory does not exist" → mkdir -p ~/.oracle-v2
-- ChromaDB hangs → ignore it, SQLite works fine without vectors
-- MCP not loading → config goes in .mcp.json (project) or ~/.claude.json (global)
+# 2. Restart Claude Code
 ```
 
 <details>
