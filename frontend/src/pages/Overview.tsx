@@ -22,7 +22,10 @@ export function Overview() {
         reflect()
       ]);
       setStats(statsData);
-      setWisdom(wisdomData);
+      // Only set wisdom if it has content (not an error response)
+      if (wisdomData && 'content' in wisdomData) {
+        setWisdom(wisdomData);
+      }
     } catch (e) {
       console.error('Failed to load stats:', e);
     } finally {
@@ -32,7 +35,10 @@ export function Overview() {
 
   async function refreshWisdom() {
     const data = await reflect();
-    setWisdom(data);
+    // Only set wisdom if it has content (not an error response)
+    if (data && 'content' in data) {
+      setWisdom(data);
+    }
   }
 
   if (loading) {
