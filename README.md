@@ -70,19 +70,13 @@ Edit `~/.claude.json`:
 ```
 </details>
 
-### Why not bunx?
+<details>
+<summary>Why not bunx?</summary>
 
-> **Warning**: `bunx github:owner/repo` does NOT install `node_modules`.
-> It downloads the repo but skips dependency installation, causing silent failures.
+> `bunx github:owner/repo` does NOT install `node_modules` — silent failure!
 
-If you want to use bunx anyway, you must install dependencies first:
-```bash
-# This won't work out of the box:
-bunx github:Soul-Brews-Studio/oracle-v2  # Silent failure!
-
-# Do this instead:
-git clone ... && bun install  # Then use local path
-```
+Always clone first: `git clone ... && bun install`
+</details>
 
 TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
 
