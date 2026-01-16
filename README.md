@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Status** | Always Nightly |
-| **Version** | 0.2.1-nightly |
+| **Version** | 0.2.2-nightly |
 | **Created** | 2025-12-29 |
 | **Updated** | 2026-01-15 |
 
@@ -50,6 +50,14 @@ Copy this prompt to your AI:
 curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
 
 # 2. Restart Claude Code
+
+# If script failed, run manually:
+claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
+
+# Common issues:
+# - "bun not found" → export PATH="$HOME/.bun/bin:$PATH"
+# - "directory does not exist" → mkdir -p ~/.oracle-v2
+# - ChromaDB hangs → ignore it, SQLite works without vectors
 ```
 
 <details>

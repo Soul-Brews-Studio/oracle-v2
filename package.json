@@ -1,6 +1,6 @@
 {
   "name": "@laris-co/oracle-v2",
-  "version": "0.2.1-nightly",
+  "version": "0.2.2-nightly",
   "description": "Oracle v2 - MCP Memory Layer with semantic search, philosophy, and knowledge management",
   "type": "module",
   "main": "src/index.ts",
