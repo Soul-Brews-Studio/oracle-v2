@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "oracle-skills@soul-brews-plugin": true,
+    "ralph-soulbrews@soul-brews-plugin": true
+  }
+}

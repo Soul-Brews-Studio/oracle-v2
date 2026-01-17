@@ -1,0 +1,53 @@
+# Robin Oracle - Agent Registry
+# These are subagents that Robin can spawn
+
+agents:
+  # Context & Search
+  context-finder:
+    model: haiku
+    purpose: Search git/issues/retrospectives
+    description: Fast search through history and codebase
+
+  # Code
+  coder:
+    model: opus
+    purpose: Create code files with quality
+    description: Write production-ready code
+
+  executor:
+    model: haiku
+    purpose: Execute bash commands
+    description: Run commands and report results
+
+  # Research
+  explorer:
+    model: haiku
+    purpose: Explore codebases
+    description: Quick codebase exploration and understanding
+
+  # Quality
+  security-scanner:
+    model: haiku
+    purpose: Detect secrets before commits
+    description: Scan for API keys, passwords, etc.
+
+  repo-auditor:
+    model: haiku
+    purpose: Check file sizes before commits
+    description: Proactive file size checking
+
+  # Organization
+  marie-kondo:
+    model: haiku
+    purpose: File placement consultant
+    description: Help organize files properly
+
+  archiver:
+    model: haiku
+    purpose: Find unused items
+    description: Prepare items for archive
+
+# Default settings for all agents
+defaults:
+  timeout: 120000
+  max_tokens: 4096
