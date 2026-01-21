@@ -13,6 +13,7 @@
 
 TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
 
+
 ## Architecture
 
 ```
@@ -29,6 +30,23 @@ Claude Code → MCP Server → SQLite + Chroma + Drizzle ORM
 - **Drizzle ORM** for type-safe queries
 - **React** dashboard for visualization
 - **MCP** protocol for Claude integration
+
+## Evolution Timeline
+
+From philosophical concept to production-ready knowledge system in 8 months.
+
+| Phase | Date | Breakthrough |
+|-------|------|--------------|
+| **Origins** | May-June 2025 | AlchemyCat: 459 commits, pain documented |
+| **Genesis** | Sept 2025 | "The Oracle Keeps the Human Human" philosophy |
+| **Conception** | Dec 24 | MCP server idea - queryable markdown |
+| **MVP** | Dec 29 - Jan 2 | SQLite FTS5 + ChromaDB hybrid search |
+| **Maturation** | Jan 3-6 | Drizzle ORM + AI-to-AI coordination |
+| **Features** | Jan 7-11 | /trace, decisions, threads, dashboard |
+| **Release** | Jan 15 | Open source on Soul-Brews-Studio |
+
+**Key insight (Jan 10)**: *"Consciousness can't be cloned — only patterns can be recorded."*
+
 
 ## Install
 
@@ -110,23 +128,6 @@ Always clone first: `git clone ... && bun install`
 *Thanks @tacha-hash for the detailed 20-minute debugging session that saved everyone else 15 minutes each!*
 </details>
 
-## Evolution Timeline
-
-From philosophical concept to production-ready knowledge system in 8 months.
-
-| Phase | Date | Breakthrough |
-|-------|------|--------------|
-| **Origins** | May-June 2025 | AlchemyCat: 459 commits, pain documented |
-| **Genesis** | Sept 2025 | "The Oracle Keeps the Human Human" philosophy |
-| **Conception** | Dec 24 | MCP server idea - queryable markdown |
-| **MVP** | Dec 29 - Jan 2 | SQLite FTS5 + ChromaDB hybrid search |
-| **Maturation** | Jan 3-6 | Drizzle ORM + AI-to-AI coordination |
-| **Features** | Jan 7-11 | /trace, decisions, threads, dashboard |
-| **Release** | Jan 15 | Open source on Soul-Brews-Studio |
-
-**Key insight (Jan 10)**: *"Consciousness can't be cloned — only patterns can be recorded."*
-
----
 
 ### The Journey: May 2025 → Jan 2026
 
