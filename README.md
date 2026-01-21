@@ -11,6 +11,105 @@
 | **Created** | 2025-12-29 |
 | **Updated** | 2026-01-15 |
 
+TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
+
+## Architecture
+
+```
+Claude Code → MCP Server → SQLite + Chroma + Drizzle ORM
+                ↓
+           HTTP Server → React Dashboard
+                ↓
+          ψ/memory files
+```
+
+**Stack:**
+- **SQLite** + FTS5 for full-text search
+- **ChromaDB** for vector/semantic search
+- **Drizzle ORM** for type-safe queries
+- **React** dashboard for visualization
+- **MCP** protocol for Claude integration
+
+## Install
+
+### Quick Install
+
+```bash
+# 1. Install (clones, deps, and adds to Claude Code)
+curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
+
+# 2. Restart Claude Code
+
+# If script failed, run manually:
+claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
+```
+
+### For AI Assistants
+
+Copy this prompt to your AI:
+
+```
+# 1. Install (clones, deps, and adds to Claude Code)
+curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
+
+# 2. Restart Claude Code
+
+# If script failed, run manually:
+claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
+
+# Common issues:
+# - "bun not found" → export PATH="$HOME/.bun/bin:$PATH"
+# - "directory does not exist" → mkdir -p ~/.oracle-v2
+# - ChromaDB hangs → ignore it, SQLite works without vectors
+```
+
+<details>
+<summary>Manual Install</summary>
+
+```bash
+git clone https://github.com/Soul-Brews-Studio/oracle-v2.git ~/.local/share/oracle-v2
+cd ~/.local/share/oracle-v2 && bun install
+```
+
+Config (`~/.claude.json`):
+```json
+{
+  "mcpServers": {
+    "oracle-v2": {
+      "command": "bun",
+      "args": ["run", "~/.local/share/oracle-v2/src/index.ts"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary>Why not bunx?</summary>
+
+> `bunx github:owner/repo` does NOT install `node_modules` — silent failure!
+
+Always clone first: `git clone ... && bun install`
+</details>
+
+<details>
+<summary>Troubleshooting (7 Issues Found by @tacha-hash)</summary>
+
+| # | Problem | Cause | Fix |
+|---|---------|-------|-----|
+| 1 | `bun: command not found` | PATH not updated after install | `export PATH="$HOME/.bun/bin:$PATH"` |
+| 2 | `bunx: command not found` | Same PATH issue | Use full path: `~/.bun/bin/bunx` |
+| 3 | `directory does not exist` | Missing data dir | `mkdir -p ~/.oracle-v2` |
+| 4 | ChromaDB hangs/timeout | uv not installed | Skip it — SQLite FTS5 works fine without vectors |
+| 5 | `uv: command not found` | Not in prerequisites | Optional: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| 6 | MCP config not loading | Wrong file location | Use `.mcp.json` (project) or `~/.claude.json` (global) |
+| 7 | Server crashes on empty DB | No documents indexed | Run indexer first, or PR #2 fixes this |
+
+**Prevention**: Use the install script which handles all of this automatically.
+
+*Thanks @tacha-hash for the detailed 20-minute debugging session that saved everyone else 15 minutes each!*
+</details>
+
 ## Evolution Timeline
 
 > From pain to philosophy to production-ready knowledge system
@@ -232,105 +331,6 @@
 | v0.5.0 | Dec 27 | React frontend |
 | v0.2.1-nightly | Jan 15 | Public release, auto-bootstrap |
 
-## Install
-
-### Quick Install
-
-```bash
-# 1. Install (clones, deps, and adds to Claude Code)
-curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
-
-# 2. Restart Claude Code
-
-# If script failed, run manually:
-claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
-```
-
-### For AI Assistants
-
-Copy this prompt to your AI:
-
-```
-# 1. Install (clones, deps, and adds to Claude Code)
-curl -sSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
-
-# 2. Restart Claude Code
-
-# If script failed, run manually:
-claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
-
-# Common issues:
-# - "bun not found" → export PATH="$HOME/.bun/bin:$PATH"
-# - "directory does not exist" → mkdir -p ~/.oracle-v2
-# - ChromaDB hangs → ignore it, SQLite works without vectors
-```
-
-<details>
-<summary>Manual Install</summary>
-
-```bash
-git clone https://github.com/Soul-Brews-Studio/oracle-v2.git ~/.local/share/oracle-v2
-cd ~/.local/share/oracle-v2 && bun install
-```
-
-Config (`~/.claude.json`):
-```json
-{
-  "mcpServers": {
-    "oracle-v2": {
-      "command": "bun",
-      "args": ["run", "~/.local/share/oracle-v2/src/index.ts"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary>Why not bunx?</summary>
-
-> `bunx github:owner/repo` does NOT install `node_modules` — silent failure!
-
-Always clone first: `git clone ... && bun install`
-</details>
-
-<details>
-<summary>Troubleshooting (7 Issues Found by @tacha-hash)</summary>
-
-| # | Problem | Cause | Fix |
-|---|---------|-------|-----|
-| 1 | `bun: command not found` | PATH not updated after install | `export PATH="$HOME/.bun/bin:$PATH"` |
-| 2 | `bunx: command not found` | Same PATH issue | Use full path: `~/.bun/bin/bunx` |
-| 3 | `directory does not exist` | Missing data dir | `mkdir -p ~/.oracle-v2` |
-| 4 | ChromaDB hangs/timeout | uv not installed | Skip it — SQLite FTS5 works fine without vectors |
-| 5 | `uv: command not found` | Not in prerequisites | Optional: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| 6 | MCP config not loading | Wrong file location | Use `.mcp.json` (project) or `~/.claude.json` (global) |
-| 7 | Server crashes on empty DB | No documents indexed | Run indexer first, or PR #2 fixes this |
-
-**Prevention**: Use the install script which handles all of this automatically.
-
-*Thanks @tacha-hash for the detailed 20-minute debugging session that saved everyone else 15 minutes each!*
-</details>
-
-TypeScript implementation of semantic search over Oracle philosophy using Model Context Protocol (MCP), with HTTP API and React dashboard.
-
-## Architecture
-
-```
-Claude Code → MCP Server → SQLite + Chroma + Drizzle ORM
-                ↓
-           HTTP Server → React Dashboard
-                ↓
-          ψ/memory files
-```
-
-**Stack:**
-- **SQLite** + FTS5 for full-text search
-- **ChromaDB** for vector/semantic search
-- **Drizzle ORM** for type-safe queries
-- **React** dashboard for visualization
-- **MCP** protocol for Claude integration
-
 ## Quick Start
 
 ```bash
@@ -527,4 +527,3 @@ Oracle-v2 is built for educational purposes and personal knowledge management. I
 - [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
 - [MCP SDK](https://github.com/anthropics/anthropic-sdk-typescript) - Protocol docs
 - [claude-mem](https://github.com/thedotmack/claude-mem) - Inspiration for memory & process management
-
