@@ -125,6 +125,22 @@ export class OracleIndexer {
   }
 
   /**
+   * Backup database before destructive operations
+   * Philosophy: "Nothing is Deleted" - always preserve data
+   */
+  private backupDatabase(): void {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = `${this.config.dbPath}.backup-${timestamp}`;
+
+    try {
+      fs.copyFileSync(this.config.dbPath, backupPath);
+      console.log(`📦 Backup created: ${backupPath}`);
+    } catch (e) {
+      console.warn(`⚠️ Backup failed: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
+  /**
    * Main indexing workflow
    */
   async index(): Promise<void> {
@@ -132,6 +148,9 @@ export class OracleIndexer {
 
     // Set indexing status for tray app
     this.setIndexingStatus(true, 0, 100);
+
+    // SAFETY: Backup before clearing (Nothing is Deleted)
+    this.backupDatabase();
 
     // Clear existing data to prevent duplicates
     console.log('Clearing existing index data...');
@@ -174,6 +193,10 @@ export class OracleIndexer {
    */
   private async indexResonance(): Promise<OracleDocument[]> {
     const resonancePath = path.join(this.config.repoRoot, this.config.sourcePaths.resonance);
+    if (!fs.existsSync(resonancePath)) {
+      console.log(`Skipping resonance: ${resonancePath} not found`);
+      return [];
+    }
     const files = fs.readdirSync(resonancePath).filter(f => f.endsWith('.md'));
     const documents: OracleDocument[] = [];
 
