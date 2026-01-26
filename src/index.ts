@@ -27,6 +27,7 @@ import {
   getMessages,
   updateThreadStatus,
 } from './forum/handler.js';
+import { detectProject } from './server/project-detect.js';
 
 import {
   createDecision,
@@ -1311,7 +1312,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
       now.getTime(),
       now.getTime(),
       null,           // origin: null = universal/mother
-      null,           // project: null = universal
+      detectProject(this.repoRoot),  // project: auto-detect from repoRoot
       'oracle_learn'  // created_by
     );
 
