@@ -232,6 +232,20 @@
   border-top: 1px solid var(--border);
 }
 
+.fileNotFound {
+  font-size: 12px;
+  color: #f59e0b;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.footerLinks {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .sourcePath {
   font-size: 12px;
   color: var(--text-muted);
@@ -245,31 +259,26 @@
   text-decoration: underline;
 }
 
-.fileNotFound {
-  font-size: 12px;
-  color: #f59e0b;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.githubLink {
-  font-size: 13px;
-  color: var(--accent);
-  text-decoration: none;
-  display: inline-block;
-  margin-bottom: 8px;
-}
-
-.githubLink:hover {
-  text-decoration: underline;
-}
-
 .sourcePathMuted {
   font-size: 12px;
   color: var(--text-muted);
   font-family: monospace;
-  display: block;
   opacity: 0.7;
+}
+
+.githubLink {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 4px 10px;
+  background: rgba(167, 139, 250, 0.1);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.githubLink:hover {
+  background: rgba(167, 139, 250, 0.2);
+  text-decoration: none;
 }
 
 .loading,

@@ -110,8 +110,11 @@ export function DocDetail() {
     // Check if document was passed via router state
     const state = location.state as LocationState;
     if (state?.doc) {
+      // Use cached doc for instant display
       setDoc(state.doc);
       setLoading(false);
+      // But always fetch fresh to get latest data (e.g., project field for GitHub link)
+      loadDoc();
       return;
     }
 
@@ -303,31 +306,36 @@ export function DocDetail() {
       )}
 
       <footer className={styles.footer}>
-        {fileNotFound ? (
-          <>
-            <span className={styles.fileNotFound}>⚠️ local file not found</span>
-            {doc.project && (
-              <a
-                href={`https://${doc.project}/blob/main/${doc.source_file}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.githubLink}
-              >
-                View on GitHub ↗️
-              </a>
-            )}
-            <span className={styles.sourcePathMuted}>{doc.source_file}</span>
-          </>
-        ) : (
-          <a
-            href={`/api/file?path=${encodeURIComponent(doc.source_file)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.sourcePath}
-          >
-            {doc.source_file}
-          </a>
+        {fileNotFound && (
+          <span className={styles.fileNotFound}>⚠️ local file not found</span>
         )}
+        <div className={styles.footerLinks}>
+          {!fileNotFound && (
+            <a
+              href={`/api/file?path=${encodeURIComponent(doc.source_file)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.sourcePath}
+              title="Open local file"
+            >
+              📁 {doc.source_file}
+            </a>
+          )}
+          {fileNotFound && (
+            <span className={styles.sourcePathMuted}>📁 {doc.source_file}</span>
+          )}
+          {doc.project && (
+            <a
+              href={`https://${doc.project}/blob/main/${doc.source_file}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.githubLink}
+              title={`https://${doc.project}/blob/main/${doc.source_file}`}
+            >
+               {doc.project.replace('github.com/', '')}/{doc.source_file} ↗
+            </a>
+          )}
+        </div>
       </footer>
     </article>
     </SidebarLayout>
