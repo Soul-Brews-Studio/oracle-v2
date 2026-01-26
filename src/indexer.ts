@@ -127,16 +127,45 @@ export class OracleIndexer {
   /**
    * Backup database before destructive operations
    * Philosophy: "Nothing is Deleted" - always preserve data
+   *
+   * Creates both:
+   * 1. SQLite file backup (.backup-TIMESTAMP)
+   * 2. JSON export (.export-TIMESTAMP.json) for portability
    */
   private backupDatabase(): void {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupPath = `${this.config.dbPath}.backup-${timestamp}`;
+    const exportPath = `${this.config.dbPath}.export-${timestamp}.json`;
 
+    // 1. Copy SQLite file
     try {
       fs.copyFileSync(this.config.dbPath, backupPath);
-      console.log(`📦 Backup created: ${backupPath}`);
+      console.log(`📦 DB backup: ${backupPath}`);
     } catch (e) {
-      console.warn(`⚠️ Backup failed: ${e instanceof Error ? e.message : e}`);
+      console.warn(`⚠️ DB backup failed: ${e instanceof Error ? e.message : e}`);
+    }
+
+    // 2. Export to JSON (portable, human-readable)
+    try {
+      const docs = this.db.prepare(`
+        SELECT d.id, d.type, d.source_file, d.concepts, d.project, f.content
+        FROM oracle_documents d
+        JOIN oracle_fts f ON d.id = f.id
+      `).all() as any[];
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        count: docs.length,
+        documents: docs.map(d => ({
+          ...d,
+          concepts: JSON.parse(d.concepts || '[]')
+        }))
+      };
+
+      fs.writeFileSync(exportPath, JSON.stringify(exportData, null, 2));
+      console.log(`📄 JSON export: ${exportPath} (${docs.length} docs)`);
+    } catch (e) {
+      console.warn(`⚠️ JSON export failed: ${e instanceof Error ? e.message : e}`);
     }
   }
 
