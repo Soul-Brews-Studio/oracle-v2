@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { search, list, getFile, getDoc } from '../api/oracle';
+import { list, getFile, getDoc } from '../api/oracle';
 import type { Document } from '../api/oracle';
 import { SidebarLayout } from '../components/SidebarLayout';
 import styles from './DocDetail.module.css';

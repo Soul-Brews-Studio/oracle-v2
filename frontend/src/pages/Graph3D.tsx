@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { getGraph, getFile } from '../api/oracle';
 import { useHandTracking } from '../hooks/useHandTracking';
@@ -127,6 +127,8 @@ function clusterNodes(nodes: Node[], links: Link[]): Map<string, number> {
   return clusters;
 }
 
+const STORAGE_KEY_VIEW = 'oracle-graph-view-mode';
+
 export function Graph3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -135,6 +137,7 @@ export function Graph3D() {
   const [hoveredNode, setHoveredNode] = useState<Node | null>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);  // Clicked/locked node
   const [showHud, setShowHud] = useState(true);
+  const navigate = useNavigate();
 
   // File viewer state
   const [fileContent, setFileContent] = useState<string | null>(null);
@@ -312,8 +315,8 @@ export function Graph3D() {
     try {
       const data = await getGraph();
 
-      // No auto-redirect from 3D - user explicitly chose this view
-      // (Auto-redirect only happens from 2D → 3D for large graphs)
+      // Save 3D preference - user chose this view
+      localStorage.setItem(STORAGE_KEY_VIEW, '3d');
 
       const clusters = clusterNodes(data.nodes, data.links || []);
 
@@ -792,9 +795,24 @@ export function Graph3D() {
         <h1 className={styles.title}>Knowledge Graph 3D</h1>
         <div className={styles.stats}>
           {nodes.length} nodes · {links.length} links
-          <Link to="/graph?force=2d" style={{ marginLeft: '15px', color: '#a78bfa', textDecoration: 'none', fontSize: '12px' }}>
+          <button
+            onClick={() => {
+              localStorage.setItem(STORAGE_KEY_VIEW, '2d');
+              navigate('/graph');
+            }}
+            style={{
+              marginLeft: '10px',
+              background: 'rgba(167, 139, 250, 0.2)',
+              border: '1px solid #a78bfa',
+              borderRadius: '4px',
+              color: '#a78bfa',
+              padding: '2px 8px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
             ← 2D View
-          </Link>
+          </button>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getGraph } from '../api/oracle';
 import styles from './Graph.module.css';
 
@@ -24,12 +24,19 @@ const TYPE_COLORS: Record<string, string> = {
   retro: '#60a5fa',
 };
 
+const STORAGE_KEY_VIEW = 'oracle-graph-view-mode';
+const STORAGE_KEY_FULL = 'oracle-graph-show-full';
+const DEFAULT_NODE_LIMIT = 200;
+
 export function Graph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
+  const [allNodes, setAllNodes] = useState<Node[]>([]);
+  const [allLinks, setAllLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [showFull, setShowFull] = useState(() => localStorage.getItem(STORAGE_KEY_FULL) === 'true');
   const animationRef = useRef<number>(0);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -48,12 +55,22 @@ export function Graph() {
     try {
       const data = await getGraph();
 
-      // Auto-switch to 3D view for large graphs (>= 1000 nodes)
-      // unless ?force=2d is set
-      if (!force2d && data.nodes && data.nodes.length >= 1000) {
+      // Check saved view preference - redirect to 3D if preferred
+      const savedView = localStorage.getItem(STORAGE_KEY_VIEW);
+      if (savedView === '3d' && !force2d) {
         navigate('/graph3d', { replace: true });
         return;
       }
+
+      // Auto-switch to 3D view for large graphs (>= 1000 nodes)
+      // unless ?force=2d is set or user previously chose 2D
+      if (!force2d && savedView !== '2d' && data.nodes && data.nodes.length >= 1000) {
+        navigate('/graph3d', { replace: true });
+        return;
+      }
+
+      // Save 2D preference
+      localStorage.setItem(STORAGE_KEY_VIEW, '2d');
 
       // Initialize node positions around center
       const width = 800;
@@ -68,13 +85,61 @@ export function Graph() {
         vy: 0,
       }));
 
-      setNodes(initializedNodes);
-      setLinks(data.links || []);
+      // Store all nodes/links
+      setAllNodes(initializedNodes);
+      setAllLinks(data.links || []);
+
+      // Apply limit unless showing full
+      const savedFull = localStorage.getItem(STORAGE_KEY_FULL) === 'true';
+      applyNodeLimit(initializedNodes, data.links || [], savedFull);
     } catch (e) {
       console.error('Failed to load graph:', e);
     } finally {
       setLoading(false);
     }
+  }
+
+  function applyNodeLimit(nodeList: Node[], linkList: Link[], full: boolean) {
+    if (full || nodeList.length <= DEFAULT_NODE_LIMIT) {
+      setNodes(nodeList);
+      setLinks(linkList);
+    } else {
+      // Take balanced mix of all node types
+      const byType: Record<string, Node[]> = {};
+      nodeList.forEach(n => {
+        if (!byType[n.type]) byType[n.type] = [];
+        byType[n.type].push(n);
+      });
+
+      const types = Object.keys(byType);
+      const perType = Math.floor(DEFAULT_NODE_LIMIT / types.length);
+      const limitedNodes: Node[] = [];
+
+      // Take equal amount from each type
+      types.forEach(type => {
+        limitedNodes.push(...byType[type].slice(0, perType));
+      });
+
+      // Fill remaining slots with any leftover nodes
+      const remaining = DEFAULT_NODE_LIMIT - limitedNodes.length;
+      if (remaining > 0) {
+        const usedIds = new Set(limitedNodes.map(n => n.id));
+        const extras = nodeList.filter(n => !usedIds.has(n.id)).slice(0, remaining);
+        limitedNodes.push(...extras);
+      }
+
+      const nodeIds = new Set(limitedNodes.map(n => n.id));
+      const limitedLinks = linkList.filter(l => nodeIds.has(l.source) && nodeIds.has(l.target));
+      setNodes(limitedNodes);
+      setLinks(limitedLinks);
+    }
+  }
+
+  function toggleFullGraph() {
+    const newFull = !showFull;
+    setShowFull(newFull);
+    localStorage.setItem(STORAGE_KEY_FULL, String(newFull));
+    applyNodeLimit(allNodes, allLinks, newFull);
   }
 
   // Force-directed simulation
@@ -287,10 +352,42 @@ export function Graph() {
       <div className={styles.header}>
         <h1 className={styles.title}>Knowledge Graph</h1>
         <div className={styles.stats}>
-          {nodes.length} nodes · {links.length} links
-          <Link to="/graph3d" style={{ marginLeft: '15px', color: '#a78bfa', textDecoration: 'none', fontSize: '12px' }}>
+          {nodes.length}{allNodes.length > nodes.length ? `/${allNodes.length}` : ''} nodes · {links.length} links
+          {allNodes.length > DEFAULT_NODE_LIMIT && (
+            <button
+              onClick={toggleFullGraph}
+              style={{
+                marginLeft: '10px',
+                background: showFull ? 'rgba(239, 68, 68, 0.2)' : 'rgba(74, 222, 128, 0.2)',
+                border: `1px solid ${showFull ? '#ef4444' : '#4ade80'}`,
+                borderRadius: '4px',
+                color: showFull ? '#ef4444' : '#4ade80',
+                padding: '2px 8px',
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              {showFull ? '⚡ Trim' : '📊 Show All'}
+            </button>
+          )}
+          <button
+            onClick={() => {
+              localStorage.setItem(STORAGE_KEY_VIEW, '3d');
+              navigate('/graph3d');
+            }}
+            style={{
+              marginLeft: '10px',
+              background: 'rgba(167, 139, 250, 0.2)',
+              border: '1px solid #a78bfa',
+              borderRadius: '4px',
+              color: '#a78bfa',
+              padding: '2px 8px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
             → 3D View
-          </Link>
+          </button>
         </div>
       </div>
 

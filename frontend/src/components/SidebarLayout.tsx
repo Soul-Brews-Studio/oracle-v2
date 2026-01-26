@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styles from './SidebarLayout.module.css';
 
 const TYPES = [
@@ -15,8 +15,6 @@ interface SidebarLayoutProps {
 }
 
 export function SidebarLayout({ children, activeType = 'all', onTypeChange }: SidebarLayoutProps) {
-  const location = useLocation();
-
   return (
     <div className={styles.container}>
       <aside className={styles.sidebar}>

@@ -8,6 +8,7 @@ export interface Document {
   content: string;
   source_file: string;
   concepts: string[];
+  project?: string;                       // ghq-style path (github.com/owner/repo)
   source?: 'fts' | 'vector' | 'hybrid';  // search source type
   score?: number;                         // relevance score 0-1
   created_at?: string;
