@@ -88,7 +88,7 @@ export function Header() {
   return (
     <header className={styles.header}>
       <Link to="/" className={styles.logo}>
-        Oracle
+        🔮 Oracle
       </Link>
 
       <nav className={styles.nav}>
