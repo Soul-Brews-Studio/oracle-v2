@@ -88,6 +88,7 @@ export function useHandTracking({
   const cameraRef = useRef<MediaPipeCamera | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const onHandMoveRef = useRef(onHandMove);
+  const smoothedPosRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     onHandMoveRef.current = onHandMove;
@@ -173,14 +174,42 @@ export function useHandTracking({
           // Index finger tip = landmark 8
           const indexTip = landmarks[8];
 
+          const rawX = 1 - indexTip.x; // Mirror
+          const rawY = indexTip.y;
+
+          // Detect gesture first (needed for smoothing decision)
+          const detectedGesture = detectGesture(landmarks);
+
+          // Apply smoothing - nearly frozen when pointing for precision selection
+          const smoothing = detectedGesture === 'point' ? 0.02 : 0.3; // Point = almost locked, others = responsive
+          const deadZone = detectedGesture === 'point' ? 0.02 : 0; // Ignore tiny movements when pointing
+          let smoothedX: number, smoothedY: number;
+
+          if (smoothedPosRef.current) {
+            const deltaX = rawX - smoothedPosRef.current.x;
+            const deltaY = rawY - smoothedPosRef.current.y;
+
+            // Dead zone: ignore small movements when pointing
+            if (Math.abs(deltaX) < deadZone && Math.abs(deltaY) < deadZone && detectedGesture === 'point') {
+              smoothedX = smoothedPosRef.current.x;
+              smoothedY = smoothedPosRef.current.y;
+            } else {
+              smoothedX = smoothedPosRef.current.x + deltaX * smoothing;
+              smoothedY = smoothedPosRef.current.y + deltaY * smoothing;
+            }
+          } else {
+            smoothedX = rawX;
+            smoothedY = rawY;
+          }
+
+          smoothedPosRef.current = { x: smoothedX, y: smoothedY };
+
           const pos: HandPosition = {
-            x: 1 - indexTip.x, // Mirror
-            y: indexTip.y,
+            x: smoothedX,
+            y: smoothedY,
             confidence: 1,
           };
 
-          // Detect gesture
-          const detectedGesture = detectGesture(landmarks);
           setGesture(detectedGesture);
 
           const gestureEmoji = detectedGesture === 'fist' ? '✊' : detectedGesture === 'open' ? '🖐️' : detectedGesture === 'point' ? '👆' : detectedGesture === 'peace' ? '✌️' : '🤚';
@@ -191,6 +220,7 @@ export function useHandTracking({
         } else {
           setHandPosition(null);
           setGesture(null);
+          smoothedPosRef.current = null;
         }
       });
 
