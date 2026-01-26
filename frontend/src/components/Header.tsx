@@ -18,6 +18,7 @@ const navItems = [
 const toolsItems = [
   { path: '/consult', label: 'Consult' },
   { path: '/decisions', label: 'Decisions' },
+  { path: '/evolution', label: 'Evolution' },
   { path: '/handoff', label: 'Handoff' },
 ] as const;
 
