@@ -18,16 +18,20 @@ import fs from 'fs';
 import path from 'path';
 import { Database } from 'bun:sqlite';
 import { ChromaMcpClient } from './chroma-mcp.js';
+import { detectProject } from './server/project-detect.js';
 import type { OracleDocument, OracleMetadata, IndexerConfig } from './types.js';
 
 export class OracleIndexer {
   private db: Database;
   private chromaClient: ChromaMcpClient | null = null;
   private config: IndexerConfig;
+  private project: string | null;
 
   constructor(config: IndexerConfig) {
     this.config = config;
     this.db = new Database(config.dbPath);
+    this.project = detectProject(config.repoRoot);
+    console.log(`[Indexer] Detected project: ${this.project || '(universal)'}`);
     this.initDatabase();
   }
 
@@ -464,8 +468,8 @@ export class OracleIndexer {
     // Prepare statements
     const insertMeta = this.db.prepare(`
       INSERT OR REPLACE INTO oracle_documents
-      (id, type, source_file, concepts, created_at, updated_at, indexed_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      (id, type, source_file, concepts, created_at, updated_at, indexed_at, project)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertFts = this.db.prepare(`
@@ -487,7 +491,8 @@ export class OracleIndexer {
         JSON.stringify(doc.concepts),
         doc.created_at,
         doc.updated_at,
-        now
+        now,
+        this.project
       );
 
       // SQLite FTS

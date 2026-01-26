@@ -248,6 +248,28 @@
 .fileNotFound {
   font-size: 12px;
   color: #f59e0b;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.githubLink {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.githubLink:hover {
+  text-decoration: underline;
+}
+
+.sourcePathMuted {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+  display: block;
+  opacity: 0.7;
 }
 
 .loading,

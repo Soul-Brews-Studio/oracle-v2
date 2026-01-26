@@ -303,15 +303,31 @@ export function DocDetail() {
       )}
 
       <footer className={styles.footer}>
-        <a
-          href={`/api/file?path=${encodeURIComponent(doc.source_file)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.sourcePath}
-        >
-          {doc.source_file}
-        </a>
-        {fileNotFound && <span className={styles.fileNotFound}> ⚠️ file not found</span>}
+        {fileNotFound ? (
+          <>
+            <span className={styles.fileNotFound}>⚠️ local file not found</span>
+            {doc.project && (
+              <a
+                href={`https://${doc.project}/blob/main/${doc.source_file}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.githubLink}
+              >
+                View on GitHub ↗️
+              </a>
+            )}
+            <span className={styles.sourcePathMuted}>{doc.source_file}</span>
+          </>
+        ) : (
+          <a
+            href={`/api/file?path=${encodeURIComponent(doc.source_file)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.sourcePath}
+          >
+            {doc.source_file}
+          </a>
+        )}
       </footer>
     </article>
     </SidebarLayout>
