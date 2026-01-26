@@ -365,6 +365,7 @@ Closes #[issue-number]
 -   **Trying to implement everything at once** - Start with minimum viable implementation, test, then expand
 -   **Skipping AI Diary and Honest Feedback in retrospectives** - These sections provide crucial context and self-reflection that technical documentation alone cannot capture
 -   **Inline SQL for new tables** - Use Drizzle schema (`src/db/schema.ts`) + `bun db:push` instead of `db.exec(CREATE TABLE...)` in code
+-   **Committing directly to main** - Always use GitHub flow: create feature branch → push → PR → wait for review/merge approval
 
 ### Useful Tricks Discovered
 -   **Parallel agents for analysis** - Using multiple agents to analyze different aspects speeds up planning significantly
