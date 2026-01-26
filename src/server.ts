@@ -575,6 +575,119 @@ app.post('/api/decisions/:id/transition', async (c) => {
 });
 
 // ============================================================================
+// Supersede Log Routes (Issue #18, #19)
+// ============================================================================
+
+// List supersessions with optional filters
+app.get('/api/supersede', (c) => {
+  const project = c.req.query('project');
+  const limit = parseInt(c.req.query('limit') || '50');
+  const offset = parseInt(c.req.query('offset') || '0');
+
+  let query = `
+    SELECT * FROM supersede_log
+    WHERE 1=1
+    ${project ? 'AND project = ?' : ''}
+    ORDER BY superseded_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const params = project ? [project, limit, offset] : [limit, offset];
+  const logs = db.prepare(query).all(...params) as any[];
+
+  // Get total count
+  let countQuery = `SELECT COUNT(*) as total FROM supersede_log WHERE 1=1 ${project ? 'AND project = ?' : ''}`;
+  const countParams = project ? [project] : [];
+  const { total } = db.prepare(countQuery).get(...countParams) as { total: number };
+
+  return c.json({
+    supersessions: logs.map(log => ({
+      id: log.id,
+      old_path: log.old_path,
+      old_id: log.old_id,
+      old_title: log.old_title,
+      old_type: log.old_type,
+      new_path: log.new_path,
+      new_id: log.new_id,
+      new_title: log.new_title,
+      reason: log.reason,
+      superseded_at: new Date(log.superseded_at).toISOString(),
+      superseded_by: log.superseded_by,
+      project: log.project
+    })),
+    total,
+    limit,
+    offset
+  });
+});
+
+// Get supersede chain for a document (what superseded what)
+app.get('/api/supersede/chain/:path', (c) => {
+  const docPath = decodeURIComponent(c.req.param('path'));
+
+  // Find all supersessions where this doc was old or new
+  const asOld = db.prepare(`
+    SELECT * FROM supersede_log WHERE old_path = ? ORDER BY superseded_at
+  `).all(docPath) as any[];
+
+  const asNew = db.prepare(`
+    SELECT * FROM supersede_log WHERE new_path = ? ORDER BY superseded_at
+  `).all(docPath) as any[];
+
+  return c.json({
+    superseded_by: asOld.map(log => ({
+      new_path: log.new_path,
+      reason: log.reason,
+      superseded_at: new Date(log.superseded_at).toISOString()
+    })),
+    supersedes: asNew.map(log => ({
+      old_path: log.old_path,
+      reason: log.reason,
+      superseded_at: new Date(log.superseded_at).toISOString()
+    }))
+  });
+});
+
+// Log a new supersession
+app.post('/api/supersede', async (c) => {
+  try {
+    const data = await c.req.json();
+    if (!data.old_path) {
+      return c.json({ error: 'Missing required field: old_path' }, 400);
+    }
+
+    const result = db.prepare(`
+      INSERT INTO supersede_log (
+        old_path, old_id, old_title, old_type,
+        new_path, new_id, new_title,
+        reason, superseded_at, superseded_by, project
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      data.old_path,
+      data.old_id || null,
+      data.old_title || null,
+      data.old_type || null,
+      data.new_path || null,
+      data.new_id || null,
+      data.new_title || null,
+      data.reason || null,
+      Date.now(),
+      data.superseded_by || 'user',
+      data.project || null
+    );
+
+    return c.json({
+      id: result.lastInsertRowid,
+      message: 'Supersession logged'
+    }, 201);
+  } catch (error) {
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ============================================================================
 // Learn Route
 // ============================================================================
 
@@ -689,6 +802,11 @@ console.log(`
    - GET  /api/decisions/:id   Get decision
    - POST /api/decisions       Create decision
    - PATCH /api/decisions/:id  Update decision
+
+   Supersede Log:
+   - GET  /api/supersede       List supersessions
+   - GET  /api/supersede/chain/:path  Document lineage
+   - POST /api/supersede       Log supersession
 `);
 
 export default {

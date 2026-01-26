@@ -11,6 +11,7 @@ import { Handoff } from './pages/Handoff';
 import { Activity } from './pages/Activity';
 import { Forum } from './pages/Forum';
 import { Decisions } from './pages/Decisions';
+import { Evolution } from './pages/Evolution';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/activity" element={<Activity />} />
         <Route path="/forum" element={<Forum />} />
         <Route path="/decisions" element={<Decisions />} />
+        <Route path="/evolution" element={<Evolution />} />
       </Routes>
       <QuickLearn />
     </BrowserRouter>
