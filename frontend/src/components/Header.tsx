@@ -5,9 +5,9 @@ import styles from './Header.module.css';
 // Main nav items
 const navItems = [
   { path: '/', label: 'Overview' },
+  { path: '/feed', label: 'Feed' },
   { path: '/graph', label: 'Graph' },
   { divider: true },
-  { path: '/feed', label: 'Feed' },
   { path: '/search', label: 'Search' },
   { path: '/activity', label: 'Activity' },
   { divider: true },

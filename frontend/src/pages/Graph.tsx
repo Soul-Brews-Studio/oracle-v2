@@ -322,6 +322,13 @@ export function Graph() {
     }
 
     simulate();
+
+    // Cleanup: cancel animation frame when effect re-runs or unmounts
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
   }, [nodes, links]);
 
   // Handle canvas click
