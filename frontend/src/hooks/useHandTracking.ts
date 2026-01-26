@@ -26,6 +26,48 @@ interface HandPosition {
   confidence: number;
 }
 
+type Gesture = 'open' | 'fist' | 'point' | 'peace' | null;
+
+// Detect gesture from landmarks
+function detectGesture(landmarks: { x: number; y: number; z: number }[]): Gesture {
+  // Landmark indices:
+  // Thumb: 1-4 (tip=4), Index: 5-8 (tip=8), Middle: 9-12 (tip=12)
+  // Ring: 13-16 (tip=16), Pinky: 17-20 (tip=20)
+  // MCP (knuckle) = base+1: Index MCP=5, Middle MCP=9, Ring MCP=13, Pinky MCP=17
+
+  const indexTip = landmarks[8];
+  const indexMcp = landmarks[5];
+  const middleTip = landmarks[12];
+  const middleMcp = landmarks[9];
+  const ringTip = landmarks[16];
+  const ringMcp = landmarks[13];
+  const pinkyTip = landmarks[20];
+  const pinkyMcp = landmarks[17];
+
+  // Finger is extended if tip is above (lower Y) than MCP
+  const indexUp = indexTip.y < indexMcp.y;
+  const middleUp = middleTip.y < middleMcp.y;
+  const ringUp = ringTip.y < ringMcp.y;
+  const pinkyUp = pinkyTip.y < pinkyMcp.y;
+
+  // Count extended fingers
+  const fingersUp = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+
+  // Fist: no fingers extended
+  if (fingersUp === 0) return 'fist';
+
+  // Point: only index extended
+  if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point';
+
+  // Peace: index and middle extended
+  if (indexUp && middleUp && !ringUp && !pinkyUp) return 'peace';
+
+  // Open: 3+ fingers extended
+  if (fingersUp >= 3) return 'open';
+
+  return null;
+}
+
 interface UseHandTrackingOptions {
   enabled?: boolean;
   onHandMove?: (pos: HandPosition) => void;
@@ -39,6 +81,7 @@ export function useHandTracking({
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [handPosition, setHandPosition] = useState<HandPosition | null>(null);
+  const [gesture, setGesture] = useState<Gesture>(null);
   const [debug, setDebug] = useState<string>('Initializing...');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -136,11 +179,18 @@ export function useHandTracking({
             confidence: 1,
           };
 
+          // Detect gesture
+          const detectedGesture = detectGesture(landmarks);
+          setGesture(detectedGesture);
+
+          const gestureEmoji = detectedGesture === 'fist' ? '✊' : detectedGesture === 'open' ? '🖐️' : detectedGesture === 'point' ? '👆' : detectedGesture === 'peace' ? '✌️' : '🤚';
+
           setHandPosition(pos);
-          setDebug(`X:${(pos.x * 100).toFixed(0)}% Y:${(pos.y * 100).toFixed(0)}%`);
+          setDebug(`${gestureEmoji} X:${(pos.x * 100).toFixed(0)}% Y:${(pos.y * 100).toFixed(0)}%`);
           onHandMoveRef.current?.(pos);
         } else {
           setHandPosition(null);
+          setGesture(null);
         }
       });
 
@@ -191,6 +241,7 @@ export function useHandTracking({
     isTracking,
     error,
     handPosition,
+    gesture,
     debug,
     startTracking,
     stopTracking,

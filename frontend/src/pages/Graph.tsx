@@ -474,12 +474,125 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
   const [handMode, setHandMode] = useState(false);
   const [lightningEnabled, setLightningEnabled] = useState(true);
   const [thunderEnabled, setThunderEnabled] = useState(false);
+  const [laserTrail, setLaserTrail] = useState<{ x: number; y: number }[]>([]);
+
+  const gestureRef = useRef<string | null>(null);
 
   const handleHandMove = useCallback((pos: { x: number; y: number }) => {
+    // Disable rotation when pointing (for precise node selection)
+    if (gestureRef.current === 'point') return;
     targetAngleRef.current = { x: (pos.x - 0.5) * Math.PI * 2, y: (pos.y - 0.5) * -1 };
   }, []);
 
-  const { isReady: handReady, isTracking: handTracking, error: handError, handPosition, debug: handDebug, startTracking, stopTracking } = useHandTracking({ enabled: handMode, onHandMove: handleHandMove });
+  const { isReady: handReady, isTracking: handTracking, error: handError, handPosition, gesture, debug: handDebug, startTracking, stopTracking } = useHandTracking({ enabled: handMode, onHandMove: handleHandMove });
+
+  // Keep gestureRef in sync
+  useEffect(() => { gestureRef.current = gesture; }, [gesture]);
+
+  // Track laser trail when pointing
+  useEffect(() => {
+    if (!handPosition) {
+      setLaserTrail([]);
+      return;
+    }
+    if (gesture === 'point') {
+      setLaserTrail(prev => {
+        const newTrail = [...prev, { x: handPosition.x, y: handPosition.y }];
+        // Keep last 12 positions for the tail
+        return newTrail.slice(-12);
+      });
+    } else {
+      // Clear trail when not pointing
+      setLaserTrail([]);
+    }
+  }, [handPosition, gesture]);
+
+  // Laser pointer hover detection - use screen-space distance (works better when zoomed)
+  useEffect(() => {
+    if (!handMode || gesture !== 'point' || !handPosition) return;
+    if (!cameraRef.current || meshesRef.current.length === 0 || !containerRef.current) return;
+
+    const camera = cameraRef.current;
+    const meshes = meshesRef.current;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+
+    // Ensure camera matrices are up to date
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+
+    // Convert hand position to screen pixels
+    const laserX = handPosition.x * rect.width;
+    const laserY = handPosition.y * rect.height;
+
+    // Find closest node in screen space
+    let closestNode: Node | null = null;
+    let closestDist = Infinity;
+    let closestMesh: THREE.Mesh | null = null;
+    const threshold = 40; // pixels - how close laser needs to be
+
+    meshes.forEach(mesh => {
+      // Project 3D position to 2D screen
+      const pos = mesh.position.clone();
+      pos.project(camera);
+
+      // Convert from NDC (-1 to 1) to screen pixels
+      const screenX = (pos.x + 1) / 2 * rect.width;
+      const screenY = (-pos.y + 1) / 2 * rect.height;
+
+      // Calculate distance to laser
+      const dist = Math.sqrt((screenX - laserX) ** 2 + (screenY - laserY) ** 2);
+
+      if (dist < threshold && dist < closestDist) {
+        closestDist = dist;
+        closestNode = mesh.userData.node as Node;
+        closestMesh = mesh;
+      }
+    });
+
+    if (closestNode && closestMesh) {
+      setHoveredNode(closestNode);
+      meshes.forEach(m => {
+        (m.material as THREE.MeshStandardMaterial).emissiveIntensity = m === closestMesh ? 0.8 : 0.5;
+      });
+    } else {
+      setHoveredNode(null);
+      meshes.forEach(m => {
+        (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5;
+      });
+    }
+  }, [handMode, gesture, handPosition, camDistance]);
+
+  // Gesture-based zoom: fist = zoom in, point = hold, other = back to original
+  const originalDistanceRef = useRef(15);
+  const zoomedDistanceRef = useRef(8); // How close to zoom when fist
+
+  useEffect(() => {
+    if (!handMode) return;
+
+    const zoomSpeed = 0.15; // Slower, smoother
+    const interval = setInterval(() => {
+      if (gesture === 'fist') {
+        // Zoom in toward target
+        setCamDistance(d => {
+          const target = zoomedDistanceRef.current;
+          if (d > target + 0.1) return d - zoomSpeed;
+          return target;
+        });
+      } else if (gesture === 'point') {
+        // Hold current zoom level - do nothing
+      } else {
+        // Return to original
+        setCamDistance(d => {
+          const target = originalDistanceRef.current;
+          if (d < target - 0.1) return d + zoomSpeed;
+          return target;
+        });
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [handMode, gesture]);
 
   const toggleHandMode = useCallback(() => {
     if (handMode) { stopTracking(); setHandMode(false); } else { setHandMode(true); }
@@ -498,6 +611,8 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
   const targetAngleRef = useRef({ x: 0, y: 0 });
   const animationRef = useRef<number>(0);
   const meshesRef = useRef<THREE.Mesh[]>([]);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const raycasterRef = useRef<THREE.Raycaster | null>(null);
   const hudHoveredRef = useRef(false);
 
   // Lightning/thunder state refs
@@ -556,6 +671,7 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05050a); // Dark blue-black canvas
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    cameraRef.current = camera;
     camera.position.z = 15;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
@@ -896,6 +1012,8 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
     animate();
 
     const raycaster = new THREE.Raycaster();
+    raycaster.params.Points = { threshold: 0.5 };  // Easier to hit points
+    raycasterRef.current = raycaster;
     let isDragging = false, dragStart = { x: 0, y: 0 };
 
     function onMouseDown(e: MouseEvent) { if (hudHoveredRef.current) return; isDragging = true; dragStart = { x: e.clientX, y: e.clientY }; container.style.cursor = 'grabbing'; }
@@ -1034,12 +1152,54 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
         )}
       </div>
 
-      {(hoveredNode || selectedNode) && !showFilePanel && (
+      {(hoveredNode || selectedNode) && !showFilePanel && (() => {
+        // For laser hover: use absolute positioning within container (same as laser dot)
+        const useLaserPosition = handMode && gesture === 'point' && handPosition && !selectedNode;
+
+        if (useLaserPosition) {
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${handPosition.x * 100}%`,
+                top: `${handPosition.y * 100}%`,
+                transform: 'translate(15px, -50%)',  // Offset to the right of laser
+                background: 'rgba(20, 20, 30, 0.95)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                pointerEvents: 'none',
+                zIndex: 1000,
+                maxWidth: '200px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{
+                background: TYPE_COLORS_HEX[hoveredNode?.type || ''] || '#888',
+                color: '#fff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+              }}>{hoveredNode?.type}</span>
+              <p style={{ color: '#e0e0e0', fontSize: '12px', margin: '6px 0 0 0', lineHeight: '1.3' }}>
+                {hoveredNode?.label || hoveredNode?.source_file?.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ') || 'Untitled'}
+              </p>
+            </div>
+          );
+        }
+
+        // For mouse hover / selected node: use fixed positioning
+        const tooltipX = selectedNode ? clickedPos.x + 20 : mousePos.x + 20;
+        const tooltipY = selectedNode ? clickedPos.y - 10 : mousePos.y - 10;
+
+        return (
         <div
           style={{
             position: 'fixed',
-            left: (selectedNode ? clickedPos.x : mousePos.x) + 20,
-            top: (selectedNode ? clickedPos.y : mousePos.y) - 10,
+            left: tooltipX,
+            top: tooltipY,
             background: 'rgba(20, 20, 30, 0.95)',
             borderRadius: '8px',
             padding: '8px 12px',
@@ -1065,7 +1225,8 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
             <a href="#" onClick={(e) => { e.preventDefault(); loadFileContent(selectedNode); }} style={{ color: '#60a5fa', fontSize: '10px', textDecoration: 'underline' }}>View file</a>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {showFilePanel && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => { setShowFilePanel(false); setFileContent(null); }}>
@@ -1097,45 +1258,90 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
 
       {handMode && (
         <>
-          {/* Hand position dot indicator - bright orange like Gesture Globe */}
-          {handPosition && (
+          {/* Laser trail dots when pointing */}
+          {gesture === 'point' && laserTrail.map((p, i) => {
+            const opacity = (i + 1) / laserTrail.length; // Fade from start to end
+            const size = 4 + (opacity * 8); // Grow from 4px to 12px
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  left: `${p.x * 100}%`,
+                  top: `${p.y * 100}%`,
+                  width: `${size}px`,
+                  height: `${size}px`,
+                  marginLeft: `${-size / 2}px`,
+                  marginTop: `${-size / 2}px`,
+                  borderRadius: '50%',
+                  background: `radial-gradient(circle, rgba(255, 100, 100, ${opacity}) 0%, rgba(255, 50, 50, ${opacity * 0.6}) 50%, transparent 80%)`,
+                  boxShadow: `0 0 ${6 * opacity}px rgba(255, 80, 80, ${opacity}), 0 0 ${12 * opacity}px rgba(255, 50, 50, ${opacity * 0.5})`,
+                  pointerEvents: 'none',
+                  zIndex: 199,
+                }}
+              />
+            );
+          })}
+          {/* Hand position indicator - laser pointer when pointing, orb otherwise */}
+          {/* Laser turns GREEN when hovering a node */}
+          {handPosition && (() => {
+            const isLaserHovering = gesture === 'point' && hoveredNode;
+            const laserColor = isLaserHovering ? { r: 80, g: 255, b: 80 } : { r: 255, g: 80, b: 80 };
+            return (
             <div
               style={{
                 position: 'absolute',
                 left: `${handPosition.x * 100}%`,
                 top: `${handPosition.y * 100}%`,
-                width: '36px',
-                height: '36px',
-                marginLeft: '-18px',
-                marginTop: '-18px',
+                width: gesture === 'point' ? '16px' : '36px',
+                height: gesture === 'point' ? '16px' : '36px',
+                marginLeft: gesture === 'point' ? '-8px' : '-18px',
+                marginTop: gesture === 'point' ? '-8px' : '-18px',
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(255, 180, 50, 1) 0%, rgba(255, 150, 30, 0.8) 30%, rgba(255, 120, 0, 0.3) 60%, transparent 80%)',
-                boxShadow: '0 0 20px rgba(255, 150, 30, 1), 0 0 40px rgba(255, 120, 0, 0.6), 0 0 60px rgba(255, 100, 0, 0.3)',
+                background: gesture === 'point'
+                  ? `radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(${laserColor.r}, ${laserColor.g}, ${laserColor.b}, 1) 30%, rgba(${laserColor.r}, ${laserColor.g}, ${laserColor.b}, 0.8) 60%, transparent 80%)`
+                  : 'radial-gradient(circle, rgba(255, 180, 50, 1) 0%, rgba(255, 150, 30, 0.8) 30%, rgba(255, 120, 0, 0.3) 60%, transparent 80%)',
+                boxShadow: gesture === 'point'
+                  ? `0 0 10px rgba(${laserColor.r}, ${laserColor.g}, ${laserColor.b}, 1), 0 0 20px rgba(${laserColor.r}, ${laserColor.g}, ${laserColor.b}, 0.9), 0 0 30px rgba(${laserColor.r}, ${laserColor.g}, ${laserColor.b}, 0.6)`
+                  : '0 0 20px rgba(255, 150, 30, 1), 0 0 40px rgba(255, 120, 0, 0.6), 0 0 60px rgba(255, 100, 0, 0.3)',
                 pointerEvents: 'none',
                 zIndex: 200,
-                transition: 'left 0.05s ease-out, top 0.05s ease-out',
+                transition: 'left 0.08s ease-out, top 0.08s ease-out, width 0.15s, height 0.15s, margin 0.15s, background 0.15s, box-shadow 0.15s',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  width: '14px',
-                  height: '14px',
-                  marginLeft: '-7px',
-                  marginTop: '-7px',
-                  borderRadius: '50%',
-                  background: '#ffb830',
-                  boxShadow: '0 0 8px #ff9500',
-                }}
-              />
+              {gesture !== 'point' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: '14px',
+                    height: '14px',
+                    marginLeft: '-7px',
+                    marginTop: '-7px',
+                    borderRadius: '50%',
+                    background: '#ffb830',
+                    boxShadow: '0 0 8px #ff9500',
+                  }}
+                />
+              )}
             </div>
-          )}
+            );
+          })()}
+          {/* Hand tracking info panel */}
           <div style={{ position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(15, 15, 25, 0.9)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(74, 222, 128, 0.3)', zIndex: 100 }}>
             <div style={{ color: '#4ade80', fontSize: '12px', marginBottom: '8px' }}>✋ Hand Tracking</div>
             <div style={{ color: '#888', fontSize: '10px' }}>{handDebug}</div>
-            {handError ? <div style={{ color: '#f87171', fontSize: '11px' }}>{handError}</div> : handPosition ? <div style={{ color: '#e0e0e0', fontSize: '11px' }}>X: {(handPosition.x * 100).toFixed(0)}% | Y: {(handPosition.y * 100).toFixed(0)}%</div> : <div style={{ color: '#888', fontSize: '11px' }}>Show hand to camera</div>}
+            {handError ? (
+              <div style={{ color: '#f87171', fontSize: '11px' }}>{handError}</div>
+            ) : handPosition ? (
+              <>
+                <div style={{ color: '#e0e0e0', fontSize: '11px' }}>X: {(handPosition.x * 100).toFixed(0)}% | Y: {(handPosition.y * 100).toFixed(0)}%</div>
+                {gesture && <div style={{ color: '#fbbf24', fontSize: '10px', marginTop: '4px' }}>{gesture === 'fist' ? '✊ Zoom In' : gesture === 'point' ? '👆 Hold' : gesture === 'peace' ? '✌️ Peace' : gesture === 'open' ? '🖐️ Release' : ''}</div>}
+              </>
+            ) : (
+              <div style={{ color: '#888', fontSize: '11px' }}>Show hand to camera</div>
+            )}
           </div>
         </>
       )}
