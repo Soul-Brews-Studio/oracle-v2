@@ -163,7 +163,7 @@ export function Graph() {
 
     let time = 0;
     let revealProgress = 0; // 0 to 1, controls how many links are visible
-    const revealDuration = 5; // seconds to fully reveal all links
+    const revealDuration = 1.5; // seconds to fully reveal all links (faster start)
 
     function simulate() {
       time += 0.02;
