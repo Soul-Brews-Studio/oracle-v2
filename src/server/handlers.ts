@@ -76,7 +76,7 @@ export async function handleSearch(
       ftsResults = stmt.all(safeQuery, ...projectParams, limit * 2).map((row: any) => ({
         id: row.id,
         type: row.type,
-        content: row.content.substring(0, 500),
+        content: row.content,
         source_file: row.source_file,
         concepts: JSON.parse(row.concepts || '[]'),
         project: row.project,
@@ -103,7 +103,7 @@ export async function handleSearch(
       ftsResults = stmt.all(safeQuery, type, ...projectParams, limit * 2).map((row: any) => ({
         id: row.id,
         type: row.type,
-        content: row.content.substring(0, 500),
+        content: row.content,
         source_file: row.source_file,
         concepts: JSON.parse(row.concepts || '[]'),
         project: row.project,
@@ -146,7 +146,7 @@ export async function handleSearch(
             return {
               id,
               type: chromaResults.metadatas?.[i]?.type || 'unknown',
-              content: (chromaResults.documents?.[i] || '').substring(0, 500),
+              content: chromaResults.documents?.[i] || '',
               source_file: chromaResults.metadatas?.[i]?.source_file || '',
               concepts: [],
               project: docProject,
@@ -460,7 +460,7 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
       const results = stmt.all(limit, offset).map((row: any) => ({
         id: row.id,
         type: row.type,
-        content: (row.content || '').substring(0, 500),
+        content: row.content || '',
         source_file: row.source_file,
         concepts: row.concepts ? JSON.parse(row.concepts) : [],
         indexed_at: row.indexed_at
@@ -483,7 +483,7 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
       const results = stmt.all(type, limit, offset).map((row: any) => ({
         id: row.id,
         type: row.type,
-        content: (row.content || '').substring(0, 500),
+        content: row.content || '',
         source_file: row.source_file,
         concepts: JSON.parse(row.concepts || '[]'),
         indexed_at: row.indexed_at
@@ -508,7 +508,7 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
     const results = stmt.all(limit, offset).map((row: any) => ({
       id: row.id,
       type: row.type,
-      content: (row.content || '').substring(0, 500),
+      content: row.content || '',
       source_file: row.source_file,
       concepts: row.concepts ? JSON.parse(row.concepts) : [],
       indexed_at: row.indexed_at
@@ -530,7 +530,7 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
     const results = stmt.all(type, limit, offset).map((row: any) => ({
       id: row.id,
       type: row.type,
-      content: row.content.substring(0, 500),
+      content: row.content,
       source_file: row.source_file,
       concepts: JSON.parse(row.concepts || '[]'),
       indexed_at: row.indexed_at

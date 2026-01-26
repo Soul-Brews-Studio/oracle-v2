@@ -90,6 +90,13 @@ export class OracleIndexer {
    * Update indexing status for tray app
    */
   private setIndexingStatus(isIndexing: boolean, current: number = 0, total: number = 0, error?: string): void {
+    // Ensure repo_root column exists (migration)
+    try {
+      this.db.exec('ALTER TABLE indexing_status ADD COLUMN repo_root TEXT');
+    } catch {
+      // Column already exists
+    }
+
     this.db.prepare(`
       UPDATE indexing_status SET
         is_indexing = ?,
@@ -97,7 +104,8 @@ export class OracleIndexer {
         progress_total = ?,
         started_at = CASE WHEN ? = 1 AND started_at IS NULL THEN ? ELSE started_at END,
         completed_at = CASE WHEN ? = 0 THEN ? ELSE NULL END,
-        error = ?
+        error = ?,
+        repo_root = ?
       WHERE id = 1
     `).run(
       isIndexing ? 1 : 0,
@@ -107,7 +115,8 @@ export class OracleIndexer {
       Date.now(),
       isIndexing ? 1 : 0,
       Date.now(),
-      error || null
+      error || null,
+      this.config.repoRoot
     );
   }
 

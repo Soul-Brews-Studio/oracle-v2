@@ -21,8 +21,12 @@ export const DASHBOARD_PATH = path.join(__dirname, '..', 'dashboard.html');
 export const ARTHUR_UI_PATH = path.join(__dirname, '..', 'arthur.html');
 
 // REPO_ROOT for features that need knowledge base context
-// Defaults to ~/.oracle-v2 for bunx installs, or set via ORACLE_REPO_ROOT
-export const REPO_ROOT = process.env.ORACLE_REPO_ROOT || ORACLE_DATA_DIR;
+// When running from source: defaults to project root (where ψ/ lives)
+// When running via bunx: set ORACLE_REPO_ROOT explicitly
+// Fallback: ~/.oracle-v2 for bunx installs
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+export const REPO_ROOT = process.env.ORACLE_REPO_ROOT ||
+  (fs.existsSync(path.join(PROJECT_ROOT, 'ψ')) ? PROJECT_ROOT : ORACLE_DATA_DIR);
 
 // Ensure data directory exists (for fresh installs via bunx)
 if (!fs.existsSync(ORACLE_DATA_DIR)) {
@@ -81,7 +85,8 @@ export function bootstrapCoreTables() {
         progress_total INTEGER DEFAULT 0,
         started_at INTEGER,
         completed_at INTEGER,
-        error TEXT
+        error TEXT,
+        repo_root TEXT
       )
     `);
 

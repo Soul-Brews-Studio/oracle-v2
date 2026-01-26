@@ -173,6 +173,34 @@ app.get('/api/logs', (c) => {
   }
 });
 
+// Get document by ID
+app.get('/api/doc/:id', (c) => {
+  const docId = c.req.param('id');
+  try {
+    const row = db.prepare(`
+      SELECT d.id, d.type, d.source_file, d.concepts, d.project, f.content
+      FROM oracle_documents d
+      JOIN oracle_fts f ON d.id = f.id
+      WHERE d.id = ?
+    `).get(docId) as any;
+
+    if (!row) {
+      return c.json({ error: 'Document not found' }, 404);
+    }
+
+    return c.json({
+      id: row.id,
+      type: row.type,
+      content: row.content,
+      source_file: row.source_file,
+      concepts: JSON.parse(row.concepts || '[]'),
+      project: row.project
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 // List documents
 app.get('/api/list', (c) => {
   const type = c.req.query('type') || 'all';

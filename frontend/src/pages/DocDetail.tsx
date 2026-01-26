@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { search, list, getFile } from '../api/oracle';
+import { search, list, getFile, getDoc } from '../api/oracle';
 import type { Document } from '../api/oracle';
 import styles from './DocDetail.module.css';
 
@@ -18,6 +18,7 @@ export function DocDetail() {
   const location = useLocation();
   const [doc, setDoc] = useState<Document | null>(null);
   const [fullContent, setFullContent] = useState<string | null>(null);
+  const [fileNotFound, setFileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [neighbors, setNeighbors] = useState<{ prev: Document | null; next: Document | null }>({ prev: null, next: null });
@@ -53,15 +54,20 @@ export function DocDetail() {
 
       try {
         const fileData = await getFile(doc.source_file);
-        if (fileData.content) {
+        if (fileData.error) {
+          setFileNotFound(true);
+        } else if (fileData.content) {
           setFullContent(fileData.content);
+          setFileNotFound(false);
         }
       } catch (e) {
         console.error('Failed to load full content:', e);
+        setFileNotFound(true);
       }
     }
 
     setFullContent(null); // Reset when doc changes
+    setFileNotFound(false);
     loadFullContent();
   }, [doc]);
 
@@ -119,52 +125,12 @@ export function DocDetail() {
 
     try {
       const decodedId = decodeURIComponent(id);
+      const docData = await getDoc(decodedId);
 
-      // Extract meaningful search terms from the ID
-      // ID format: type_date_slug (e.g., learning_2026-01-03_the-oracle-keeps...)
-      const parts = decodedId.split('_');
-      const slugPart = parts.slice(2).join(' ').replace(/-/g, ' ');
-
-      // Try multiple search strategies
-      const searchTerms = [
-        slugPart,                           // "oracle v2 dashboard urls..."
-        parts.slice(2).join('-'),           // "oracle-v2-dashboard-urls..."
-        decodedId,                          // full ID
-        slugPart.split(' ').slice(0, 4).join(' ') // first 4 words
-      ].filter(Boolean);
-
-      let foundDoc = null;
-
-      for (const searchTerm of searchTerms) {
-        if (foundDoc) break;
-
-        const data = await search(searchTerm, 'all', 50);
-
-        // Find exact match first
-        foundDoc = data.results.find(r => r.id === decodedId);
-
-        // Fallback: find by partial ID match
-        if (!foundDoc) {
-          foundDoc = data.results.find(r =>
-            r.id.includes(decodedId) ||
-            decodedId.includes(r.id)
-          );
-        }
-
-        // Fallback: find by slug similarity
-        if (!foundDoc && slugPart) {
-          foundDoc = data.results.find(r => {
-            const rSlug = r.id.split('_').slice(2).join('-');
-            return rSlug === parts.slice(2).join('-') ||
-                   r.id.includes(parts.slice(2).join('-'));
-          });
-        }
-      }
-
-      if (foundDoc) {
-        setDoc(foundDoc);
-      } else {
+      if (docData.error) {
         setError('Document not found');
+      } else {
+        setDoc(docData);
       }
     } catch (e) {
       setError('Failed to load document');

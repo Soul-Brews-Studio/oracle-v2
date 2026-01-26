@@ -94,6 +94,12 @@ export async function getFile(path: string): Promise<{ path: string; content: st
   return res.json();
 }
 
+// Get document by ID
+export async function getDoc(id: string): Promise<Document & { error?: string }> {
+  const res = await fetch(`${API_BASE}/doc/${encodeURIComponent(id)}`);
+  return res.json();
+}
+
 // Dashboard types
 export interface DashboardSummary {
   documents: { total: number; by_type: Record<string, number> };
