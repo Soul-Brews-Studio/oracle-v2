@@ -13,6 +13,7 @@ interface Node {
   cluster?: number;
   position?: THREE.Vector3;
   source_file?: string;
+  project?: string;  // ghq-style path for cross-repo access
 }
 
 interface Link {
@@ -235,7 +236,7 @@ export function Graph3D() {
     setFileLoading(true);
     setShowFilePanel(true);
     try {
-      const data = await getFile(node.source_file);
+      const data = await getFile(node.source_file, node.project);
       setFileContent(data.content || data.error || 'No content');
     } catch (e) {
       setFileContent('Error loading file');

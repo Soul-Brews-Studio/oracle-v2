@@ -610,18 +610,18 @@ export function handleGraph() {
   // Only get principles (always) + sample learnings (limited)
   // This keeps graph manageable: ~163 principles + ~100 learnings = ~263 nodes max
   const principles = db.prepare(`
-    SELECT id, type, source_file, concepts
+    SELECT id, type, source_file, concepts, project
     FROM oracle_documents
     WHERE type = 'principle'
-  `).all() as { id: string; type: string; source_file: string; concepts: string }[];
+  `).all() as { id: string; type: string; source_file: string; concepts: string; project: string | null }[];
 
   const learnings = db.prepare(`
-    SELECT id, type, source_file, concepts
+    SELECT id, type, source_file, concepts, project
     FROM oracle_documents
     WHERE type = 'learning'
     ORDER BY RANDOM()
     LIMIT 100
-  `).all() as { id: string; type: string; source_file: string; concepts: string }[];
+  `).all() as { id: string; type: string; source_file: string; concepts: string; project: string | null }[];
 
   const docs = [...principles, ...learnings];
 
@@ -630,6 +630,7 @@ export function handleGraph() {
     id: doc.id,
     type: doc.type,
     source_file: doc.source_file,
+    project: doc.project,  // ghq-style path for cross-repo file access
     concepts: JSON.parse(doc.concepts || '[]')
   }));
 

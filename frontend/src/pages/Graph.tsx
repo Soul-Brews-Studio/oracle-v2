@@ -16,6 +16,7 @@ interface Node {
   cluster?: number;
   position?: THREE.Vector3;
   source_file?: string;
+  project?: string;  // ghq-style path for cross-repo access
 }
 
 interface Link {
@@ -34,18 +35,6 @@ const TYPE_COLORS_NUM: Record<string, number> = {
   learning: 0xfbbf24,    // yellow
   retro: 0x4ade80,       // green
 };
-
-// Colorful palette like Gesture Globe (blue, pink, yellow, green, purple, cyan)
-const COLORFUL_PALETTE = [
-  0x60a5fa, // blue
-  0xf472b6, // pink
-  0xfbbf24, // yellow
-  0x4ade80, // green
-  0xa78bfa, // purple
-  0x22d3d8, // cyan
-  0xfb7185, // rose
-  0x34d399, // emerald
-];
 
 const STORAGE_KEY_VIEW = 'oracle-graph-view-mode';
 const STORAGE_KEY_FULL = 'oracle-graph-show-full';
@@ -526,7 +515,7 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
     if (!node.source_file) return;
     setFileLoading(true); setShowFilePanel(true);
     try {
-      const data = await getFile(node.source_file);
+      const data = await getFile(node.source_file, node.project);
       setFileContent(data.content || data.error || 'No content');
     } catch { setFileContent('Error loading file'); }
     finally { setFileLoading(false); }

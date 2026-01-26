@@ -54,7 +54,7 @@ export function DocDetail() {
       if (!doc?.source_file) return;
 
       try {
-        const fileData = await getFile(doc.source_file);
+        const fileData = await getFile(doc.source_file, doc.project);
         if (fileData.error) {
           setFileNotFound(true);
         } else if (fileData.content) {

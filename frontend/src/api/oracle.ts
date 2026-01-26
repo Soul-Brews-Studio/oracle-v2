@@ -89,8 +89,12 @@ export async function getGraph(): Promise<{ nodes: any[]; links: any[] }> {
 }
 
 // Get full file content by source_file path
-export async function getFile(filePath: string): Promise<{ content: string; error?: string }> {
+// project: ghq-style path (github.com/owner/repo) for cross-repo access
+export async function getFile(filePath: string, project?: string): Promise<{ content: string; error?: string }> {
   const params = new URLSearchParams({ path: filePath });
+  if (project) {
+    params.append('project', project);
+  }
   const res = await fetch(`${API_BASE}/file?${params}`);
   const content = await res.text();
   if (!res.ok) {

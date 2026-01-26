@@ -222,17 +222,44 @@ app.get('/api/context', (c) => {
   return c.json(handleContext(cwd));
 });
 
-// File
-app.get('/api/file', (c) => {
+// File - supports cross-repo access via ghq project paths
+app.get('/api/file', async (c) => {
   const filePath = c.req.query('path');
+  const project = c.req.query('project'); // ghq-style path: github.com/owner/repo
+
   if (!filePath) {
     return c.json({ error: 'Missing path parameter' }, 400);
   }
 
   try {
-    const fullPath = path.join(REPO_ROOT, filePath);
+    // Determine base path: ghq root + project, or local REPO_ROOT
+    // Detect GHQ_ROOT dynamically (no hardcoding)
+    let GHQ_ROOT = process.env.GHQ_ROOT;
+    if (!GHQ_ROOT) {
+      try {
+        const proc = Bun.spawnSync(['ghq', 'root']);
+        GHQ_ROOT = proc.stdout.toString().trim();
+      } catch {
+        // Fallback: derive from REPO_ROOT (assume ghq structure)
+        // REPO_ROOT is like /path/to/github.com/owner/repo
+        // GHQ_ROOT would be /path/to
+        const match = REPO_ROOT.match(/^(.+?)\/github\.com\//);
+        GHQ_ROOT = match ? match[1] : path.dirname(path.dirname(path.dirname(REPO_ROOT)));
+      }
+    }
+    let basePath: string;
 
-    // Security: resolve symlinks and verify path is within REPO_ROOT
+    if (project) {
+      // Cross-repo: use ghq path
+      basePath = path.join(GHQ_ROOT, project);
+    } else {
+      // Local: use current repo
+      basePath = REPO_ROOT;
+    }
+
+    const fullPath = path.join(basePath, filePath);
+
+    // Security: resolve symlinks and verify path is within allowed bounds
     let realPath: string;
     try {
       realPath = fs.realpathSync(fullPath);
@@ -240,10 +267,12 @@ app.get('/api/file', (c) => {
       realPath = path.resolve(fullPath);
     }
 
+    // Allow paths within GHQ_ROOT (for cross-repo) or REPO_ROOT (for local)
+    const realGhqRoot = fs.realpathSync(GHQ_ROOT);
     const realRepoRoot = fs.realpathSync(REPO_ROOT);
 
-    if (!realPath.startsWith(realRepoRoot)) {
-      return c.json({ error: 'Invalid path: outside repository bounds' }, 400);
+    if (!realPath.startsWith(realGhqRoot) && !realPath.startsWith(realRepoRoot)) {
+      return c.json({ error: 'Invalid path: outside allowed bounds' }, 400);
     }
 
     if (fs.existsSync(fullPath)) {
