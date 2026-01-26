@@ -47,7 +47,8 @@ export class OracleIndexer {
         concepts TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
-        indexed_at INTEGER NOT NULL
+        indexed_at INTEGER NOT NULL,
+        project TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_type ON oracle_documents(type);
