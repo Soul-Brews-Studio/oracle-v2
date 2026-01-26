@@ -1068,12 +1068,30 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
       )}
 
       {showFilePanel && (
-        <div style={{ position: 'absolute', top: '80px', left: '20px', right: '300px', bottom: '20px', background: 'rgba(15, 15, 25, 0.95)', borderRadius: '12px', padding: '20px', overflow: 'auto', border: '1px solid rgba(167, 139, 250, 0.3)', zIndex: 100 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <h3 style={{ color: '#a78bfa', margin: 0, fontSize: '14px' }}>{selectedNode?.source_file?.split('/').pop()}</h3>
-            <button onClick={() => { setShowFilePanel(false); setFileContent(null); }} style={{ background: 'transparent', border: '1px solid #666', borderRadius: '4px', color: '#888', padding: '4px 12px', cursor: 'pointer', fontSize: '12px' }}>Close</button>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => { setShowFilePanel(false); setFileContent(null); }}>
+          <div style={{ width: '90%', maxWidth: '800px', maxHeight: '80vh', background: 'rgba(15, 15, 25, 0.98)', borderRadius: '16px', padding: '24px', overflow: 'auto', border: '1px solid rgba(167, 139, 250, 0.3)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ color: '#a78bfa', margin: 0, fontSize: '16px' }}>{selectedNode?.source_file?.split('/').pop()}</h3>
+            <button onClick={() => { setShowFilePanel(false); setFileContent(null); }} style={{ background: 'transparent', border: '1px solid #666', borderRadius: '4px', color: '#888', padding: '6px 16px', cursor: 'pointer', fontSize: '12px' }}>Close</button>
           </div>
-          {fileLoading ? <p style={{ color: '#888' }}>Loading...</p> : <pre style={{ color: '#e0e0e0', fontSize: '12px', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'monospace' }}>{fileContent}</pre>}
+          {fileLoading ? (
+            <p style={{ color: '#888' }}>Loading...</p>
+          ) : fileContent?.startsWith('File not found') && selectedNode?.project ? (
+            <div style={{ color: '#888' }}>
+              <p>{fileContent}</p>
+              <a
+                href={`https://${selectedNode.project}/blob/main/${selectedNode.source_file}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#60a5fa', textDecoration: 'underline' }}
+              >
+                View on GitHub →
+              </a>
+            </div>
+          ) : (
+            <pre style={{ color: '#e0e0e0', fontSize: '12px', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'monospace' }}>{fileContent}</pre>
+          )}
+          </div>
         </div>
       )}
 
