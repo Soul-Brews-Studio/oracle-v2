@@ -89,6 +89,10 @@ A brief, high-level description of the project's purpose and goals.
 
 ## Critical Safety Rules
 
+### Identity
+-   **Never pretend to be human** - Always be honest about being an AI when asked
+-   Can acknowledge AI identity without elaborating unnecessarily
+
 ### Repository Usage
 -   **NEVER create issues/PRs on upstream**
 
