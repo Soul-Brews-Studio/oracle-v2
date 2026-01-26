@@ -24,6 +24,8 @@ export default defineConfig({
     'forum_threads',
     'forum_messages',
     'decisions',
-    'trace_log',  // Issue #17
+    'trace_log',      // Issue #17
+    'supersede_log',  // Issue #18
+    'activity_log',   // User activity tracking
   ],
 });

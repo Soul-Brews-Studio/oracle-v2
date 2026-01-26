@@ -41,6 +41,7 @@ export const indexingStatus = sqliteTable('indexing_status', {
   startedAt: integer('started_at'),
   completedAt: integer('completed_at'),
   error: text('error'),
+  repoRoot: text('repo_root'),  // Root directory being indexed
 });
 
 // Search query logging
@@ -219,4 +220,59 @@ export const traceLog = sqliteTable('trace_log', {
   index('idx_trace_status').on(table.status),
   index('idx_trace_parent').on(table.parentTraceId),
   index('idx_trace_created').on(table.createdAt),
+]);
+
+// ============================================================================
+// Supersede Log (Issue #18) - Audit trail for "Nothing is Deleted"
+// ============================================================================
+
+// Tracks document supersessions even when original file is deleted
+// This is separate from oracle_documents.superseded_by to preserve history
+export const supersedeLog = sqliteTable('supersede_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+
+  // What was superseded
+  oldPath: text('old_path').notNull(),        // Original file path (may no longer exist)
+  oldId: text('old_id'),                       // Document ID if it was indexed
+  oldTitle: text('old_title'),                 // Preserved title for display
+  oldType: text('old_type'),                   // learning, principle, retro, etc.
+
+  // What replaced it (null if just deleted/archived)
+  newPath: text('new_path'),                   // Replacement file path
+  newId: text('new_id'),                       // Document ID of replacement
+  newTitle: text('new_title'),                 // Title of replacement
+
+  // Why and when
+  reason: text('reason'),                      // Why superseded (duplicate, outdated, merged)
+  supersededAt: integer('superseded_at').notNull(),
+  supersededBy: text('superseded_by'),         // Who made the decision (user, claude, indexer)
+
+  // Context
+  project: text('project'),                    // ghq format project path
+
+}, (table) => [
+  index('idx_supersede_old_path').on(table.oldPath),
+  index('idx_supersede_new_path').on(table.newPath),
+  index('idx_supersede_created').on(table.supersededAt),
+  index('idx_supersede_project').on(table.project),
+]);
+
+// ============================================================================
+// Activity Log - User activity tracking
+// ============================================================================
+
+export const activityLog = sqliteTable('activity_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),             // YYYY-MM-DD
+  timestamp: text('timestamp').notNull(),   // ISO timestamp
+  type: text('type').notNull(),             // file_created, file_modified, etc.
+  path: text('path'),                        // File path if applicable
+  sizeBytes: integer('size_bytes'),
+  project: text('project'),                  // ghq format project path
+  metadata: text('metadata', { mode: 'json' }), // Additional data as JSON
+  createdAt: text('created_at'),             // Auto timestamp
+}, (table) => [
+  index('idx_activity_date').on(table.date),
+  index('idx_activity_type').on(table.type),
+  index('idx_activity_project').on(table.project),
 ]);
