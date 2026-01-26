@@ -278,7 +278,7 @@ export function Graph() {
         <h1 className={styles.title}>Knowledge Graph</h1>
         <div className={styles.stats}>
           {nodes.length} nodes · {links.length} links
-          <Link to="/graph" style={{ marginLeft: '15px', color: '#a78bfa', textDecoration: 'none', fontSize: '12px' }}>
+          <Link to="/graph3d" style={{ marginLeft: '15px', color: '#a78bfa', textDecoration: 'none', fontSize: '12px' }}>
             → 3D View
           </Link>
         </div>
