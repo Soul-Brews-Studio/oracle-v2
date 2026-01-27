@@ -400,6 +400,14 @@
   gap: 12px;
 }
 
+.commitRepo,
+.issueRepo {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  font-family: monospace;
+}
+
 .commitHash {
   font-family: monospace;
   font-size: 12px;
@@ -408,6 +416,13 @@
   border-radius: 4px;
   color: var(--accent);
   flex-shrink: 0;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+a.commitHash:hover {
+  background: rgba(167, 139, 250, 0.3);
+  color: #fff;
 }
 
 .commitMessage {

@@ -253,14 +253,29 @@ export function Traces() {
           {t.foundCommits.length > 0 && (
             <section className={styles.section}>
               <h3>Commits ({t.foundCommits.length})</h3>
+              {t.project && (
+                <div className={styles.commitRepo}>
+                  {t.project}
+                </div>
+              )}
               <ul className={styles.commitList}>
-                {t.foundCommits.map((c, i) => (
+                {t.foundCommits.map((c, i) => {
+                  const commitUrl = t.project ? `https://${t.project}/commit/${c.hash}` : null;
+                  const displayHash = c.shortHash || c.hash.slice(0, 7);
+                  return (
                   <li key={i} className={styles.commitItem}>
-                    <code className={styles.commitHash}>{c.shortHash || c.hash.slice(0, 7)}</code>
+                    {commitUrl ? (
+                      <a href={commitUrl} target="_blank" rel="noopener noreferrer" className={styles.commitHash}>
+                        {displayHash}
+                      </a>
+                    ) : (
+                      <code className={styles.commitHash}>{displayHash}</code>
+                    )}
                     <span className={styles.commitMessage}>{c.message}</span>
                     {c.date && <span className={styles.commitDate}>{c.date}</span>}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </section>
           )}
@@ -268,21 +283,29 @@ export function Traces() {
           {t.foundIssues.length > 0 && (
             <section className={styles.section}>
               <h3>Issues ({t.foundIssues.length})</h3>
+              {t.project && (
+                <div className={styles.issueRepo}>
+                  {t.project}
+                </div>
+              )}
               <ul className={styles.issueList}>
-                {t.foundIssues.map((issue, i) => (
+                {t.foundIssues.map((issue, i) => {
+                  const issueUrl = issue.url || (t.project ? `https://${t.project}/issues/${issue.number}` : null);
+                  return (
                   <li key={i} className={styles.issueItem}>
                     <span className={`${styles.issueState} ${issue.state === 'open' ? styles.open : styles.closed}`}>
                       #{issue.number}
                     </span>
-                    {issue.url ? (
-                      <a href={issue.url} target="_blank" rel="noopener noreferrer" className={styles.issueTitle}>
+                    {issueUrl ? (
+                      <a href={issueUrl} target="_blank" rel="noopener noreferrer" className={styles.issueTitle}>
                         {issue.title}
                       </a>
                     ) : (
                       <span className={styles.issueTitle}>{issue.title}</span>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </section>
           )}
