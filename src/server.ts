@@ -67,6 +67,12 @@ import {
   getDecisionCounts
 } from './decisions/handler.js';
 
+import {
+  listTraces,
+  getTrace,
+  getTraceChain
+} from './trace/handler.js';
+
 // Frontend static file serving
 const FRONTEND_DIST = path.join(import.meta.dirname || __dirname, '..', 'frontend', 'dist');
 
@@ -685,6 +691,47 @@ app.post('/api/supersede', async (c) => {
       error: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
+});
+
+// ============================================================================
+// Trace Routes - Discovery journey visualization
+// ============================================================================
+
+app.get('/api/traces', (c) => {
+  const query = c.req.query('query');
+  const status = c.req.query('status');
+  const project = c.req.query('project');
+  const limit = parseInt(c.req.query('limit') || '50');
+  const offset = parseInt(c.req.query('offset') || '0');
+
+  const result = listTraces(db, {
+    query: query || undefined,
+    status: status as 'raw' | 'reviewed' | 'distilled' | undefined,
+    project: project || undefined,
+    limit,
+    offset
+  });
+
+  return c.json(result);
+});
+
+app.get('/api/traces/:id', (c) => {
+  const traceId = c.req.param('id');
+  const trace = getTrace(db, traceId);
+
+  if (!trace) {
+    return c.json({ error: 'Trace not found' }, 404);
+  }
+
+  return c.json(trace);
+});
+
+app.get('/api/traces/:id/chain', (c) => {
+  const traceId = c.req.param('id');
+  const direction = c.req.query('direction') as 'up' | 'down' | 'both' || 'both';
+
+  const chain = getTraceChain(db, traceId, direction);
+  return c.json(chain);
 });
 
 // ============================================================================

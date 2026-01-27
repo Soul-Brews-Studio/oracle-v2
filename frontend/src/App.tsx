@@ -12,6 +12,7 @@ import { Activity } from './pages/Activity';
 import { Forum } from './pages/Forum';
 import { Decisions } from './pages/Decisions';
 import { Evolution } from './pages/Evolution';
+import { Traces } from './pages/Traces';
 
 function App() {
   return (
@@ -30,6 +31,8 @@ function App() {
         <Route path="/forum" element={<Forum />} />
         <Route path="/decisions" element={<Decisions />} />
         <Route path="/evolution" element={<Evolution />} />
+        <Route path="/traces" element={<Traces />} />
+        <Route path="/traces/:id" element={<Traces />} />
       </Routes>
       <QuickLearn />
     </BrowserRouter>

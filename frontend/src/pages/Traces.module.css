@@ -1,0 +1,422 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+.philosophy {
+  display: block;
+  margin-top: 8px;
+  font-style: italic;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.stats {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.loading,
+.empty {
+  text-align: center;
+  padding: 80px 24px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.hint code {
+  background: rgba(167, 139, 250, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+/* Timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.dateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.date {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.item:hover {
+  border-color: var(--accent);
+  background: rgba(167, 139, 250, 0.05);
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.queryText {
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.itemDigPoints {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.depth {
+  background: rgba(167, 139, 250, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.time {
+  color: var(--text-muted);
+}
+
+/* Status Badges */
+.badgeRaw,
+.badgeReviewed,
+.badgeDistilled,
+.badgeAwakening {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.badgeRaw {
+  background: rgba(100, 100, 100, 0.2);
+  color: var(--text-muted);
+}
+
+.badgeReviewed {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.badgeDistilled {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.badgeAwakening {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+/* Detail View */
+.backLink {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 32px;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: var(--accent);
+}
+
+.detailHeader {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.query {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.detailMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.queryType {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.timestamp {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.awakening {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.awakening h3 {
+  font-size: 14px;
+  color: #fbbf24;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.awakening p {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.digPointsSummary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.digPoints {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.section h3 {
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fileList,
+.commitList,
+.issueList,
+.pathList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filePath {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.confidence {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.matchReason {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.commitItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.commitHash {
+  font-family: monospace;
+  font-size: 12px;
+  background: rgba(167, 139, 250, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.commitMessage {
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.commitDate {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.issueItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.issueState {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.issueState.open {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.issueState.closed {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+.issueTitle {
+  font-size: 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.issueTitle:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.pathList li {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.noDigPoints {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.traceChain {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.traceChain h3 {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chainLink {
+  display: inline-block;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-right: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+}
+
+.chainLink:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
