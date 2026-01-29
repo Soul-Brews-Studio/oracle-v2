@@ -144,7 +144,7 @@ export function listTraces(db: Database, input: ListTracesInput): ListTracesResu
   const rows = db
     .query(
       `
-    SELECT trace_id, query, depth, file_count, commit_count, issue_count, status, awakening, created_at
+    SELECT trace_id, query, depth, file_count, commit_count, issue_count, status, awakening, parent_trace_id, prev_trace_id, next_trace_id, created_at
     FROM trace_log WHERE ${where}
     ORDER BY created_at DESC
     LIMIT ? OFFSET ?
@@ -155,6 +155,9 @@ export function listTraces(db: Database, input: ListTracesInput): ListTracesResu
   return {
     traces: rows.map((r) => ({
       traceId: r.trace_id,
+      parentTraceId: r.parent_trace_id,
+      prevTraceId: r.prev_trace_id,
+      nextTraceId: r.next_trace_id,
       query: r.query,
       depth: r.depth,
       fileCount: r.file_count,
@@ -233,6 +236,119 @@ export function getTraceChain(
 }
 
 /**
+ * Link two traces as a chain (prev ← → next)
+ * "Nothing is Deleted" - just creates bidirectional links
+ */
+export function linkTraces(
+  db: Database,
+  prevTraceId: string,
+  nextTraceId: string
+): { success: boolean; message: string; prevTrace?: TraceRecord; nextTrace?: TraceRecord } {
+  const prevTrace = getTrace(db, prevTraceId);
+  const nextTrace = getTrace(db, nextTraceId);
+
+  if (!prevTrace) return { success: false, message: `Previous trace not found: ${prevTraceId}` };
+  if (!nextTrace) return { success: false, message: `Next trace not found: ${nextTraceId}` };
+
+  // Check if either already has a link in that direction
+  if (prevTrace.nextTraceId) {
+    return { success: false, message: `Trace ${prevTraceId} already has a next link` };
+  }
+  if (nextTrace.prevTraceId) {
+    return { success: false, message: `Trace ${nextTraceId} already has a prev link` };
+  }
+
+  const now = Date.now();
+
+  // Update prev trace to point to next
+  db.run(
+    'UPDATE trace_log SET next_trace_id = ?, updated_at = ? WHERE trace_id = ?',
+    [nextTraceId, now, prevTraceId]
+  );
+
+  // Update next trace to point to prev
+  db.run(
+    'UPDATE trace_log SET prev_trace_id = ?, updated_at = ? WHERE trace_id = ?',
+    [prevTraceId, now, nextTraceId]
+  );
+
+  return {
+    success: true,
+    message: `Linked: ${prevTraceId} → ${nextTraceId}`,
+    prevTrace: getTrace(db, prevTraceId) || undefined,
+    nextTrace: getTrace(db, nextTraceId) || undefined,
+  };
+}
+
+/**
+ * Unlink two traces (remove the chain connection)
+ */
+export function unlinkTraces(
+  db: Database,
+  traceId: string,
+  direction: 'prev' | 'next'
+): { success: boolean; message: string } {
+  const trace = getTrace(db, traceId);
+  if (!trace) return { success: false, message: `Trace not found: ${traceId}` };
+
+  const now = Date.now();
+
+  if (direction === 'next' && trace.nextTraceId) {
+    // Remove link from this trace
+    db.run('UPDATE trace_log SET next_trace_id = NULL, updated_at = ? WHERE trace_id = ?', [now, traceId]);
+    // Remove back-link from next trace
+    db.run('UPDATE trace_log SET prev_trace_id = NULL, updated_at = ? WHERE trace_id = ?', [now, trace.nextTraceId]);
+    return { success: true, message: `Unlinked next: ${traceId} -/-> ${trace.nextTraceId}` };
+  }
+
+  if (direction === 'prev' && trace.prevTraceId) {
+    // Remove link from this trace
+    db.run('UPDATE trace_log SET prev_trace_id = NULL, updated_at = ? WHERE trace_id = ?', [now, traceId]);
+    // Remove back-link from prev trace
+    db.run('UPDATE trace_log SET next_trace_id = NULL, updated_at = ? WHERE trace_id = ?', [now, trace.prevTraceId]);
+    return { success: true, message: `Unlinked prev: ${trace.prevTraceId} -/-> ${traceId}` };
+  }
+
+  return { success: false, message: `No ${direction} link to remove` };
+}
+
+/**
+ * Get the full linked chain for a trace
+ */
+export function getTraceLinkedChain(
+  db: Database,
+  traceId: string
+): { chain: TraceRecord[]; position: number } {
+  const chain: TraceRecord[] = [];
+  let position = 0;
+
+  // Walk backwards to find the start
+  let current = getTrace(db, traceId);
+  const visited = new Set<string>();
+
+  while (current?.prevTraceId && !visited.has(current.prevTraceId)) {
+    visited.add(current.traceId);
+    current = getTrace(db, current.prevTraceId);
+  }
+
+  // Now walk forward from start
+  while (current && !visited.has(current.traceId)) {
+    if (current.traceId === traceId) {
+      position = chain.length;
+    }
+    chain.push(current);
+    visited.add(current.traceId);
+    if (current.nextTraceId) {
+      current = getTrace(db, current.nextTraceId);
+    } else {
+      break;
+    }
+  }
+
+  return { chain, position };
+}
+
+/**
  * Distill awakening from a trace
  */
 export function distillTrace(
@@ -299,6 +415,8 @@ function parseTraceRow(row: any): TraceRecord {
     depth: row.depth,
     parentTraceId: row.parent_trace_id,
     childTraceIds: JSON.parse(row.child_trace_ids || '[]'),
+    prevTraceId: row.prev_trace_id,
+    nextTraceId: row.next_trace_id,
     project: row.project,
     sessionId: row.session_id,
     agentCount: row.agent_count,

@@ -13,6 +13,9 @@ interface TraceSummary {
   status: 'raw' | 'reviewed' | 'distilled';
   hasAwakening: boolean;
   createdAt: number;
+  parentTraceId?: string | null;
+  prevTraceId?: string | null;
+  nextTraceId?: string | null;
 }
 
 interface TraceDetail {
@@ -31,6 +34,8 @@ interface TraceDetail {
   depth: number;
   parentTraceId: string | null;
   childTraceIds: string[];
+  prevTraceId: string | null;
+  nextTraceId: string | null;
   status: string;
   awakening: string | null;
   createdAt: number;
@@ -52,12 +57,35 @@ export function Traces() {
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [linkedChain, setLinkedChain] = useState<TraceDetail[]>([]);
+  const [chainPosition, setChainPosition] = useState(0);
+  const [familyChain, setFamilyChain] = useState<TraceDetail[]>([]);
+  const [familyPosition, setFamilyPosition] = useState(0);
 
   useEffect(() => {
     if (id) {
       loadTraceDetail(id);
+      // Only reload linked chain if this trace isn't already in current chain
+      const inCurrentChain = linkedChain.some(t => t.traceId === id);
+      if (!inCurrentChain) {
+        loadLinkedChain(id);
+      } else {
+        // Update position within existing chain
+        const newPosition = linkedChain.findIndex(t => t.traceId === id);
+        if (newPosition !== -1) setChainPosition(newPosition);
+      }
+      // Check family chain too
+      const inFamilyChain = familyChain.some(t => t.traceId === id);
+      if (!inFamilyChain) {
+        loadFamilyChain(id);
+      } else {
+        const newFamilyPos = familyChain.findIndex(t => t.traceId === id);
+        if (newFamilyPos !== -1) setFamilyPosition(newFamilyPos);
+      }
     } else {
       loadTraces();
+      setLinkedChain([]);
+      setFamilyChain([]);
     }
   }, [id]);
 
@@ -91,6 +119,84 @@ export function Traces() {
       navigate('/traces');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadLinkedChain(traceId: string) {
+    try {
+      const res = await fetch(`/api/traces/${traceId}/linked-chain`);
+      if (res.ok) {
+        const data = await res.json();
+        setLinkedChain(data.chain || []);
+        setChainPosition(data.position || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load linked chain:', err);
+      setLinkedChain([]);
+    }
+  }
+
+  async function loadFamilyChain(traceId: string) {
+    try {
+      // Fetch current trace to get parent/children info
+      const res = await fetch(`/api/traces/${traceId}`);
+      if (!res.ok) return;
+      const current: TraceDetail = await res.json();
+
+      const family: TraceDetail[] = [];
+      let position = 0;
+
+      // Fetch parent if exists
+      if (current.parentTraceId) {
+        const parentRes = await fetch(`/api/traces/${current.parentTraceId}`);
+        if (parentRes.ok) {
+          const parent: TraceDetail = await parentRes.json();
+          family.push(parent);
+          position = 1; // Current will be after parent
+        }
+      }
+
+      // Add current
+      family.push(current);
+
+      // Fetch children
+      if (current.childTraceIds && current.childTraceIds.length > 0) {
+        for (const childId of current.childTraceIds) {
+          const childRes = await fetch(`/api/traces/${childId}`);
+          if (childRes.ok) {
+            const child: TraceDetail = await childRes.json();
+            family.push(child);
+          }
+        }
+      }
+
+      // Also check if current is a child and has siblings
+      if (current.parentTraceId) {
+        const parentRes = await fetch(`/api/traces/${current.parentTraceId}`);
+        if (parentRes.ok) {
+          const parent: TraceDetail = await parentRes.json();
+          // Add siblings (other children of parent)
+          for (const siblingId of parent.childTraceIds || []) {
+            if (siblingId !== traceId && !family.some(f => f.traceId === siblingId)) {
+              const sibRes = await fetch(`/api/traces/${siblingId}`);
+              if (sibRes.ok) {
+                const sibling: TraceDetail = await sibRes.json();
+                family.push(sibling);
+              }
+            }
+          }
+        }
+      }
+
+      // Sort by createdAt
+      family.sort((a, b) => a.createdAt - b.createdAt);
+      const finalPosition = family.findIndex(f => f.traceId === traceId);
+
+      setFamilyChain(family);
+      setFamilyPosition(finalPosition >= 0 ? finalPosition : 0);
+    } catch (err) {
+      console.error('Failed to load family chain:', err);
+      setFamilyChain([]);
     }
   }
 
@@ -180,9 +286,81 @@ export function Traces() {
 
     return (
       <SidebarLayout>
-        <button onClick={() => navigate('/traces')} className={styles.backLink}>
-          ← Back to Traces
-        </button>
+        <div className={styles.navBar}>
+          <button onClick={() => navigate('/traces')} className={styles.backLink}>
+            ← Back to Traces
+          </button>
+          <div className={styles.chainNav}>
+            {/* Use linked chain if available, otherwise use family chain */}
+            {(() => {
+              const chain = linkedChain.length > 1 ? linkedChain : familyChain;
+              const position = linkedChain.length > 1 ? chainPosition : familyPosition;
+
+              if (chain.length <= 1) return null;
+
+              return (
+                <>
+                  {position > 0 ? (
+                    <button
+                      onClick={() => navigate(`/traces/${chain[0].traceId}`)}
+                      className={styles.navButton}
+                      title="First"
+                    >
+                      ⏮
+                    </button>
+                  ) : (
+                    <span className={styles.navDisabled}>⏮</span>
+                  )}
+                  {position > 0 ? (
+                    <button
+                      onClick={() => navigate(`/traces/${chain[position - 1].traceId}`)}
+                      className={styles.navButton}
+                      title="Previous"
+                    >
+                      ←
+                    </button>
+                  ) : (
+                    <span className={styles.navDisabled}>←</span>
+                  )}
+                  <div className={styles.chainNumbers}>
+                    {chain.map((trace, i) => (
+                      <button
+                        key={trace.traceId}
+                        onClick={() => navigate(`/traces/${trace.traceId}`)}
+                        className={`${styles.chainNumber} ${i === position ? styles.currentNumber : ''}`}
+                        title={trace.query}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  {position < chain.length - 1 ? (
+                    <button
+                      onClick={() => navigate(`/traces/${chain[position + 1].traceId}`)}
+                      className={styles.navButton}
+                      title="Next"
+                    >
+                      →
+                    </button>
+                  ) : (
+                    <span className={styles.navDisabled}>→</span>
+                  )}
+                  {position < chain.length - 1 ? (
+                    <button
+                      onClick={() => navigate(`/traces/${chain[chain.length - 1].traceId}`)}
+                      className={styles.navButton}
+                      title="Last"
+                    >
+                      ⏭
+                    </button>
+                  ) : (
+                    <span className={styles.navDisabled}>⏭</span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
 
         <div className={styles.detailHeader}>
           <h1 className={styles.query}>"{t.query}"</h1>
@@ -339,28 +517,99 @@ export function Traces() {
           )}
         </div>
 
-        {(t.parentTraceId || t.childTraceIds.length > 0) && (
-          <div className={styles.traceChain}>
-            <h3>Trace Chain</h3>
-            {t.parentTraceId && (
+        {/* Linked Traces - Full Content */}
+        {linkedChain.filter(trace => trace.traceId !== t.traceId).map((trace) => (
+          <div key={trace.traceId} className={styles.linkedTrace}>
+            <div className={styles.linkedTraceHeader}>
               <button
-                onClick={() => navigate(`/traces/${t.parentTraceId}`)}
-                className={styles.chainLink}
+                className={styles.linkedTraceLabel}
+                onClick={() => navigate(`/traces/${trace.traceId}`)}
               >
-                ↑ Parent trace
+                {trace.traceId === t.prevTraceId ? '← Previous' : 'Next →'}
               </button>
-            )}
-            {t.childTraceIds.map(childId => (
-              <button
-                key={childId}
-                onClick={() => navigate(`/traces/${childId}`)}
-                className={styles.chainLink}
-              >
-                ↓ Child: {childId.slice(0, 8)}...
-              </button>
-            ))}
+              <h2 className={styles.linkedTraceQuery}>"{trace.query}"</h2>
+              <div className={styles.linkedTraceMeta}>
+                <span className={styles.queryType}>{trace.queryType}</span>
+                {trace.project && <span className={styles.project}>{trace.project}</span>}
+                <span className={styles.timestamp}>
+                  {new Date(trace.createdAt).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.digPoints}>
+              {trace.foundFiles?.length > 0 && (
+                <section className={styles.section}>
+                  <h3>Files ({trace.foundFiles.length})</h3>
+                  <ul className={styles.fileList}>
+                    {trace.foundFiles.map((f, i) => (
+                      <li key={i} className={styles.fileEntry}>
+                        <div className={styles.fileItem}>
+                          <span className={styles.filePath}>{f.path}</span>
+                          {f.confidence && <span className={styles.confidence}>{f.confidence}</span>}
+                          {f.matchReason && <span className={styles.matchReason}>{f.matchReason}</span>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {trace.foundCommits?.length > 0 && (
+                <section className={styles.section}>
+                  <h3>Commits ({trace.foundCommits.length})</h3>
+                  {trace.project && <div className={styles.commitRepo}>{trace.project}</div>}
+                  <ul className={styles.commitList}>
+                    {trace.foundCommits.map((c, i) => {
+                      const commitUrl = trace.project ? `https://${trace.project}/commit/${c.hash}` : null;
+                      const displayHash = c.shortHash || c.hash?.slice(0, 7);
+                      return (
+                        <li key={i} className={styles.commitItem}>
+                          {commitUrl ? (
+                            <a href={commitUrl} target="_blank" rel="noopener noreferrer" className={styles.commitHash}>
+                              {displayHash}
+                            </a>
+                          ) : (
+                            <code className={styles.commitHash}>{displayHash}</code>
+                          )}
+                          <span className={styles.commitMessage}>{c.message}</span>
+                          {c.date && <span className={styles.commitDate}>{c.date}</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
+
+              {trace.foundIssues?.length > 0 && (
+                <section className={styles.section}>
+                  <h3>Issues ({trace.foundIssues.length})</h3>
+                  {trace.project && <div className={styles.issueRepo}>{trace.project}</div>}
+                  <ul className={styles.issueList}>
+                    {trace.foundIssues.map((issue, i) => {
+                      const issueUrl = issue.url || (trace.project ? `https://${trace.project}/issues/${issue.number}` : null);
+                      return (
+                        <li key={i} className={styles.issueItem}>
+                          <span className={`${styles.issueState} ${issue.state === 'open' ? styles.open : styles.closed}`}>
+                            #{issue.number}
+                          </span>
+                          {issueUrl ? (
+                            <a href={issueUrl} target="_blank" rel="noopener noreferrer" className={styles.issueTitle}>
+                              {issue.title}
+                            </a>
+                          ) : (
+                            <span className={styles.issueTitle}>{issue.title}</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
+            </div>
           </div>
-        )}
+        ))}
+
       </SidebarLayout>
     );
   }
@@ -390,39 +639,127 @@ export function Traces() {
           </div>
 
           <div className={styles.timeline}>
-            {Object.entries(grouped).map(([date, items]) => (
-              <div key={date} className={styles.dateGroup}>
-                <h2 className={styles.date}>{date}</h2>
-                <div className={styles.items}>
-                  {items.map(t => (
-                    <div
-                      key={t.traceId}
-                      className={styles.item}
-                      onClick={() => navigate(`/traces/${t.traceId}`)}
-                    >
-                      <div className={styles.itemHeader}>
-                        <span className={styles.queryText}>"{t.query}"</span>
-                        {getStatusBadge(t.status, t.hasAwakening)}
-                      </div>
-                      <div className={styles.itemDigPoints}>
-                        {getDigPointsPreview(t)}
-                      </div>
-                      <div className={styles.itemMeta}>
-                        {t.depth > 0 && (
-                          <span className={styles.depth}>depth {t.depth}</span>
+            {Object.entries(grouped).map(([date, items]) => {
+              // Separate root traces and children
+              const roots = items.filter(t => t.depth === 0 || !t.parentTraceId);
+              const children = items.filter(t => t.depth > 0 && t.parentTraceId);
+
+              // Build tree: each root with its children
+              const tree = roots.map(root => ({
+                root,
+                children: children.filter(c => c.parentTraceId === root.traceId)
+              }));
+
+              // Add orphan children (parent not in this date group)
+              const assignedChildren = new Set(tree.flatMap(t => t.children.map(c => c.traceId)));
+              const orphans = children.filter(c => !assignedChildren.has(c.traceId));
+
+              return (
+                <div key={date} className={styles.dateGroup}>
+                  <h2 className={styles.date}>{date}</h2>
+                  <div className={styles.items}>
+                    {tree.map(({ root, children }) => (
+                      <div key={root.traceId} className={styles.traceFamily}>
+                        {/* Parent trace */}
+                        <div
+                          className={styles.item}
+                          onClick={() => navigate(`/traces/${root.traceId}`)}
+                        >
+                          <div className={styles.itemHeader}>
+                            <span className={styles.queryText}>"{root.query}"</span>
+                            {getStatusBadge(root.status, root.hasAwakening)}
+                          </div>
+                          <div className={styles.itemDigPoints}>
+                            {getDigPointsPreview(root)}
+                          </div>
+                          <div className={styles.itemMeta}>
+                            <code className={styles.traceId}>{root.traceId.slice(0, 8)}</code>
+                            {(root.prevTraceId || root.nextTraceId) && (
+                              <span className={styles.linkStatus}>
+                                {root.prevTraceId && '←'}
+                                {root.prevTraceId && root.nextTraceId ? ' linked ' : root.prevTraceId ? ' first' : ''}
+                                {root.nextTraceId && '→'}
+                                {!root.nextTraceId && root.prevTraceId && ' last'}
+                              </span>
+                            )}
+                            <span className={styles.time}>
+                              {new Date(root.createdAt).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Children traces */}
+                        {children.length > 0 && (
+                          <div className={styles.childTraces}>
+                            {children.map(child => (
+                              <div
+                                key={child.traceId}
+                                className={`${styles.item} ${styles.childItem}`}
+                                onClick={() => navigate(`/traces/${child.traceId}`)}
+                              >
+                                <div className={styles.itemHeader}>
+                                  <span className={styles.childIndicator}>↳</span>
+                                  <span className={styles.queryText}>"{child.query}"</span>
+                                  {getStatusBadge(child.status, child.hasAwakening)}
+                                </div>
+                                <div className={styles.itemDigPoints}>
+                                  {getDigPointsPreview(child)}
+                                </div>
+                                <div className={styles.itemMeta}>
+                                  <code className={styles.traceId}>{child.traceId.slice(0, 8)}</code>
+                                  <span className={styles.depth}>depth {child.depth}</span>
+                                  {(child.prevTraceId || child.nextTraceId) && (
+                                    <span className={styles.linkStatus}>
+                                      {child.prevTraceId && '←'}
+                                      {child.nextTraceId && '→'}
+                                      {!child.nextTraceId && child.prevTraceId && ' last'}
+                                    </span>
+                                  )}
+                                  <span className={styles.time}>
+                                    {new Date(child.createdAt).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                        <span className={styles.time}>
-                          {new Date(t.createdAt).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                    {/* Orphan children (parent in different date) */}
+                    {orphans.map(orphan => (
+                      <div
+                        key={orphan.traceId}
+                        className={`${styles.item} ${styles.childItem}`}
+                        onClick={() => navigate(`/traces/${orphan.traceId}`)}
+                      >
+                        <div className={styles.itemHeader}>
+                          <span className={styles.childIndicator}>↳</span>
+                          <span className={styles.queryText}>"{orphan.query}"</span>
+                          {getStatusBadge(orphan.status, orphan.hasAwakening)}
+                        </div>
+                        <div className={styles.itemDigPoints}>
+                          {getDigPointsPreview(orphan)}
+                        </div>
+                        <div className={styles.itemMeta}>
+                          <span className={styles.depth}>depth {orphan.depth}</span>
+                          <span className={styles.time}>
+                            {new Date(orphan.createdAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

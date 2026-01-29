@@ -96,8 +96,10 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  overflow-x: auto;
   margin: 16px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .content pre code {

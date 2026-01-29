@@ -93,6 +93,50 @@
   background: rgba(167, 139, 250, 0.05);
 }
 
+.traceFamily {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.childTraces {
+  margin-left: 24px;
+  padding-left: 16px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: -4px;
+  padding-top: 12px;
+}
+
+.childItem {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.childIndicator {
+  color: var(--accent);
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.traceId {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.linkStatus {
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(167, 139, 250, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 .itemHeader {
   display: flex;
   align-items: center;
@@ -174,12 +218,241 @@
   font-size: 14px;
   cursor: pointer;
   padding: 0;
-  margin-bottom: 32px;
   transition: color 0.2s;
 }
 
 .backLink:hover {
   color: var(--accent);
+}
+
+.navBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.chainNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navButton {
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navButton:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.navDisabled {
+  color: var(--text-muted);
+  padding: 6px 12px;
+  font-size: 13px;
+  opacity: 0.5;
+}
+
+.chainIndicator {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.chainDivider {
+  color: var(--border);
+  margin: 0 4px;
+}
+
+.chainNumbers {
+  display: flex;
+  gap: 4px;
+}
+
+.chainNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chainNumber:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chainNumber.currentNumber {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  cursor: default;
+}
+
+/* Linked Trace - Full Content */
+.linkedTrace {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 2px solid var(--accent);
+}
+
+.linkedTraceHeader {
+  margin-bottom: 24px;
+}
+
+.linkedTraceLabel {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.linkedTraceLabel:hover {
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+.linkedTraceQuery {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.linkedTraceMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chainHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.chainQuery {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.chainItem.current .chainQuery {
+  color: var(--accent);
+}
+
+.chainTime {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chainSection {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.chainSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chainList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chainFileItem {
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chainFilePath {
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.chainReason {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chainCommitItem {
+  font-size: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.chainCommitHash {
+  font-family: monospace;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.chainCommitHash:hover {
+  text-decoration: underline;
+}
+
+.chainIssueItem {
+  font-size: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.chainIssueItem a {
+  color: var(--text-primary);
+}
+
+.chainIssueItem a:hover {
+  color: var(--accent);
+}
+
+.chainIssueNumber {
+  font-family: monospace;
+  color: var(--accent);
+  font-size: 12px;
 }
 
 .detailHeader {

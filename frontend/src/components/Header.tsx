@@ -9,7 +9,7 @@ const navItems = [
   { path: '/graph', label: 'Graph' },
   { divider: true },
   { path: '/search', label: 'Search' },
-  { path: '/activity', label: 'Activity' },
+  { path: '/activity?tab=searches', label: 'Activity' },
   { divider: true },
   { path: '/forum', label: 'Forum' },
 ] as const;
@@ -103,7 +103,7 @@ export function Header() {
             <Link
               key={item.path}
               to={item.path}
-              className={`${styles.navLink} ${location.pathname === item.path ? styles.active : ''}`}
+              className={`${styles.navLink} ${location.pathname === item.path.split('?')[0] ? styles.active : ''}`}
             >
               {item.label}
             </Link>

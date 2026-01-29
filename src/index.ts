@@ -50,6 +50,9 @@ import {
   getTrace,
   listTraces,
   getTraceChain,
+  linkTraces,
+  unlinkTraces,
+  getTraceLinkedChain,
 } from './trace/handler.js';
 
 import type {
@@ -290,6 +293,8 @@ class OracleMCPServer {
    oracle_trace(query) → Log discovery sessions with dig points
    oracle_trace_list() → Find past traces
    oracle_trace_get(id) → Explore dig points (files, commits, issues)
+   oracle_trace_link(prevId, nextId) → Chain related traces together
+   oracle_trace_chain(id) → View the full linked chain
 
 5. DECIDE & TRACK
    oracle_decisions_create() → Track important decisions
@@ -828,6 +833,57 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             required: ['traceId']
           }
         },
+        {
+          name: 'oracle_trace_link',
+          description: 'Link two traces as a chain (prev → next). Creates bidirectional navigation without deleting anything. Use when agents create related traces that should be connected.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              prevTraceId: {
+                type: 'string',
+                description: 'UUID of the trace that comes first (will link forward)'
+              },
+              nextTraceId: {
+                type: 'string',
+                description: 'UUID of the trace that comes after (will link backward)'
+              }
+            },
+            required: ['prevTraceId', 'nextTraceId']
+          }
+        },
+        {
+          name: 'oracle_trace_unlink',
+          description: 'Remove a link between traces. Breaks the chain connection in the specified direction.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              traceId: {
+                type: 'string',
+                description: 'UUID of the trace to unlink from'
+              },
+              direction: {
+                type: 'string',
+                enum: ['prev', 'next'],
+                description: 'Which direction to unlink (prev or next)'
+              }
+            },
+            required: ['traceId', 'direction']
+          }
+        },
+        {
+          name: 'oracle_trace_chain',
+          description: 'Get the full linked chain for a trace. Returns all traces in the chain and the position of the requested trace.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              traceId: {
+                type: 'string',
+                description: 'UUID of any trace in the chain'
+              }
+            },
+            required: ['traceId']
+          }
+        },
         // ============================================================================
         // Supersede Tool (Issue #19) - "Nothing is Deleted" but can be outdated
         // ============================================================================
@@ -933,6 +989,15 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
 
           case 'oracle_trace_get':
             return await this.handleTraceGet(request.params.arguments as unknown as GetTraceInput);
+
+          case 'oracle_trace_link':
+            return await this.handleTraceLink(request.params.arguments as unknown as { prevTraceId: string; nextTraceId: string });
+
+          case 'oracle_trace_unlink':
+            return await this.handleTraceUnlink(request.params.arguments as unknown as { traceId: string; direction: 'prev' | 'next' });
+
+          case 'oracle_trace_chain':
+            return await this.handleTraceChain(request.params.arguments as unknown as { traceId: string });
 
           // Supersede handler (Issue #19)
           case 'oracle_supersede':
@@ -2158,9 +2223,12 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           file_count: trace.fileCount,
           commit_count: trace.commitCount,
           issue_count: trace.issueCount,
-          // Recursion
+          // Recursion (hierarchical)
           parent_trace_id: trace.parentTraceId,
           child_trace_ids: trace.childTraceIds,
+          // Linked chain (horizontal)
+          prev_trace_id: trace.prevTraceId,
+          next_trace_id: trace.nextTraceId,
           // Context
           project: trace.project,
           agent_count: trace.agentCount,
@@ -2178,6 +2246,91 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             has_awakening: chain.hasAwakening,
             awakening_trace_id: chain.awakeningTraceId,
           } : undefined,
+        }, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Tool: oracle_trace_link
+   * Link two traces as a chain (prev → next)
+   */
+  private async handleTraceLink(input: { prevTraceId: string; nextTraceId: string }) {
+    const result = linkTraces(this.db, input.prevTraceId, input.nextTraceId);
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    console.error(`[MCP:TRACE_LINK] ${input.prevTraceId} → ${input.nextTraceId}`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          message: result.message,
+          prev_trace: result.prevTrace ? {
+            trace_id: result.prevTrace.traceId,
+            query: result.prevTrace.query,
+            next_trace_id: result.prevTrace.nextTraceId,
+          } : undefined,
+          next_trace: result.nextTrace ? {
+            trace_id: result.nextTrace.traceId,
+            query: result.nextTrace.query,
+            prev_trace_id: result.nextTrace.prevTraceId,
+          } : undefined,
+        }, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Tool: oracle_trace_unlink
+   * Remove a link between traces
+   */
+  private async handleTraceUnlink(input: { traceId: string; direction: 'prev' | 'next' }) {
+    const result = unlinkTraces(this.db, input.traceId, input.direction);
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    console.error(`[MCP:TRACE_UNLINK] ${input.traceId} direction=${input.direction}`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          message: result.message,
+        }, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Tool: oracle_trace_chain
+   * Get the full linked chain for a trace
+   */
+  private async handleTraceChain(input: { traceId: string }) {
+    const result = getTraceLinkedChain(this.db, input.traceId);
+
+    console.error(`[MCP:TRACE_CHAIN] id=${input.traceId} chain_length=${result.chain.length} position=${result.position}`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          chain: result.chain.map(t => ({
+            trace_id: t.traceId,
+            query: t.query,
+            prev_trace_id: t.prevTraceId,
+            next_trace_id: t.nextTraceId,
+            created_at: new Date(t.createdAt).toISOString(),
+          })),
+          position: result.position,
+          chain_length: result.chain.length,
         }, null, 2)
       }]
     };

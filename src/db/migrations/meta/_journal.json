@@ -22,6 +22,13 @@
       "when": 1768119304148,
       "tag": "0002_mixed_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1769655270002,
+      "tag": "0003_rapid_strong_guy",
+      "breakpoints": true
     }
   ]
 }

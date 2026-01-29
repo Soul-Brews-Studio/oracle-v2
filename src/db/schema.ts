@@ -194,10 +194,14 @@ export const traceLog = sqliteTable('trace_log', {
   commitCount: integer('commit_count').default(0),
   issueCount: integer('issue_count').default(0),
 
-  // Recursion
+  // Recursion (hierarchical)
   depth: integer('depth').default(0),         // 0 = initial, 1+ = dig from parent
   parentTraceId: text('parent_trace_id'),     // Links to parent trace
   childTraceIds: text('child_trace_ids').default('[]'),  // Links to child traces
+
+  // Linked list (horizontal chain)
+  prevTraceId: text('prev_trace_id'),         // ← Previous trace in chain
+  nextTraceId: text('next_trace_id'),         // → Next trace in chain
 
   // Context
   project: text('project'),                   // ghq format project path
@@ -219,6 +223,8 @@ export const traceLog = sqliteTable('trace_log', {
   index('idx_trace_project').on(table.project),
   index('idx_trace_status').on(table.status),
   index('idx_trace_parent').on(table.parentTraceId),
+  index('idx_trace_prev').on(table.prevTraceId),
+  index('idx_trace_next').on(table.nextTraceId),
   index('idx_trace_created').on(table.createdAt),
 ]);
 

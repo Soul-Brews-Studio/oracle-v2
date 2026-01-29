@@ -734,6 +734,67 @@ app.get('/api/traces/:id/chain', (c) => {
   return c.json(chain);
 });
 
+// Link traces: POST /api/traces/:prevId/link { nextId: "..." }
+app.post('/api/traces/:prevId/link', async (c) => {
+  try {
+    const prevId = c.req.param('prevId');
+    const { nextId } = await c.req.json();
+
+    if (!nextId) {
+      return c.json({ error: 'Missing nextId in request body' }, 400);
+    }
+
+    const { linkTraces } = await import('./trace/handler.js');
+    const result = linkTraces(db, prevId, nextId);
+
+    if (!result.success) {
+      return c.json({ error: result.message }, 400);
+    }
+
+    return c.json(result);
+  } catch (err) {
+    console.error('Link traces error:', err);
+    return c.json({ error: 'Failed to link traces' }, 500);
+  }
+});
+
+// Unlink trace: DELETE /api/traces/:id/link?direction=prev|next
+app.delete('/api/traces/:id/link', async (c) => {
+  try {
+    const traceId = c.req.param('id');
+    const direction = c.req.query('direction') as 'prev' | 'next';
+
+    if (!direction || !['prev', 'next'].includes(direction)) {
+      return c.json({ error: 'Missing or invalid direction (prev|next)' }, 400);
+    }
+
+    const { unlinkTraces } = await import('./trace/handler.js');
+    const result = unlinkTraces(db, traceId, direction);
+
+    if (!result.success) {
+      return c.json({ error: result.message }, 400);
+    }
+
+    return c.json(result);
+  } catch (err) {
+    console.error('Unlink traces error:', err);
+    return c.json({ error: 'Failed to unlink traces' }, 500);
+  }
+});
+
+// Get trace linked chain: GET /api/traces/:id/linked-chain
+app.get('/api/traces/:id/linked-chain', async (c) => {
+  try {
+    const traceId = c.req.param('id');
+    const { getTraceLinkedChain } = await import('./trace/handler.js');
+    const result = getTraceLinkedChain(db, traceId);
+    return c.json(result);
+  } catch (err) {
+    console.error('Get linked chain error:', err);
+    return c.json({ error: 'Failed to get linked chain' }, 500);
+  }
+});
+
 // ============================================================================
 // Learn Route
 // ============================================================================

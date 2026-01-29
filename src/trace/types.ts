@@ -83,6 +83,8 @@ export interface TraceRecord {
   depth: number;
   parentTraceId: string | null;
   childTraceIds: string[];
+  prevTraceId: string | null;
+  nextTraceId: string | null;
   project: string | null;
   sessionId: string | null;
   agentCount: number;
