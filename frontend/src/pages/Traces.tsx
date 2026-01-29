@@ -237,7 +237,19 @@ export function Traces() {
 
       // Not found - show GitHub link if project available
       if (project) {
-        const ghUrl = `https://${project}/blob/main/${path}`;
+        // Check if path looks like a repo reference (Org/repo format, no nested path)
+        const isRepoRef = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(path);
+
+        if (isRepoRef) {
+          // Path is a repo reference - link to that repo directly
+          const ghUrl = `https://github.com/${path}`;
+          setFileContent(`__GITHUB_LINK__${ghUrl}`);
+          return;
+        }
+
+        // Project may be "owner/repo" or "github.com/owner/repo"
+        const ghProject = project.includes('github.com') ? project : `github.com/${project}`;
+        const ghUrl = `https://${ghProject}/blob/main/${path}`;
         setFileContent(`__GITHUB_LINK__${ghUrl}`);
       } else {
         setFileContent('File not found');
