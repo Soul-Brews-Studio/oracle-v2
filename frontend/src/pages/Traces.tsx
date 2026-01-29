@@ -517,9 +517,31 @@ export function Traces() {
           {t.foundRetrospectives.length > 0 && (
             <section className={styles.section}>
               <h3>Retrospectives ({t.foundRetrospectives.length})</h3>
-              <ul className={styles.pathList}>
+              <ul className={styles.fileList}>
                 {t.foundRetrospectives.map((path, i) => (
-                  <li key={i}>{path}</li>
+                  <li key={i} className={styles.fileEntry}>
+                    <div
+                      className={`${styles.fileItem} ${expandedFile === path ? styles.expanded : ''}`}
+                      onClick={() => toggleFilePreview(path, null)}
+                    >
+                      <span className={styles.filePath}>{path}</span>
+                    </div>
+                    {expandedFile === path && (
+                      <div className={styles.filePreview}>
+                        {loadingFile ? (
+                          <div className={styles.previewLoading}>Loading...</div>
+                        ) : (
+                          <>
+                            {fileContent ? (
+                              <pre className={styles.previewContent}>{fileContent}</pre>
+                            ) : (
+                              <div className={styles.notFoundLocal}>Retrospective not found</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -528,9 +550,31 @@ export function Traces() {
           {t.foundLearnings.length > 0 && (
             <section className={styles.section}>
               <h3>Learnings ({t.foundLearnings.length})</h3>
-              <ul className={styles.pathList}>
+              <ul className={styles.fileList}>
                 {t.foundLearnings.map((path, i) => (
-                  <li key={i}>{path}</li>
+                  <li key={i} className={styles.fileEntry}>
+                    <div
+                      className={`${styles.fileItem} ${expandedFile === path ? styles.expanded : ''}`}
+                      onClick={() => toggleFilePreview(path, null)}
+                    >
+                      <span className={styles.filePath}>{path}</span>
+                    </div>
+                    {expandedFile === path && (
+                      <div className={styles.filePreview}>
+                        {loadingFile ? (
+                          <div className={styles.previewLoading}>Loading...</div>
+                        ) : (
+                          <>
+                            {fileContent ? (
+                              <pre className={styles.previewContent}>{fileContent}</pre>
+                            ) : (
+                              <div className={styles.notFoundLocal}>Learning not found</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
