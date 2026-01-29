@@ -234,11 +234,26 @@
   border-top: 1px solid var(--border);
 }
 
+.fileNotFoundSection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .fileNotFound {
   font-size: 12px;
   color: #f59e0b;
-  display: block;
-  margin-bottom: 8px;
+}
+
+.projectSource {
+  font-size: 12px;
+  color: var(--accent);
+  background: rgba(167, 139, 250, 0.1);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: monospace;
 }
 
 .footerLinks {

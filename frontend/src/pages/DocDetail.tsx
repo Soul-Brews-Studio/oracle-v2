@@ -307,7 +307,12 @@ export function DocDetail() {
 
       <footer className={styles.footer}>
         {fileNotFound && (
-          <span className={styles.fileNotFound}>⚠️ local file not found</span>
+          <div className={styles.fileNotFoundSection}>
+            <span className={styles.fileNotFound}>⚠️ local file not found</span>
+            {doc.project && (
+              <span className={styles.projectSource}>📦 Source: {doc.project.replace('github.com/', '')}</span>
+            )}
+          </div>
         )}
         <div className={styles.footerLinks}>
           {!fileNotFound && (
@@ -326,13 +331,13 @@ export function DocDetail() {
           )}
           {doc.project && (
             <a
-              href={`https://${doc.project}/blob/main/${doc.source_file}`}
+              href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}/blob/main/${doc.source_file}`}
               target="_blank"
               rel="noopener noreferrer"
               className={styles.githubLink}
-              title={`https://${doc.project}/blob/main/${doc.source_file}`}
+              title="View on GitHub"
             >
-               {doc.project.replace('github.com/', '')}/{doc.source_file} ↗
+              View on GitHub ↗
             </a>
           )}
         </div>

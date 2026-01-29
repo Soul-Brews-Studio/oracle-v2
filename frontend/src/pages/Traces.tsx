@@ -58,6 +58,7 @@ export function Traces() {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileGithubUrl, setFileGithubUrl] = useState<string | null>(null);
   const [fileConcepts, setFileConcepts] = useState<string[]>([]);
+  const [fileProject, setFileProject] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
   const [linkedChain, setLinkedChain] = useState<TraceDetail[]>([]);
   const [chainPosition, setChainPosition] = useState(0);
@@ -146,7 +147,6 @@ export function Traces() {
       const current: TraceDetail = await res.json();
 
       const family: TraceDetail[] = [];
-      let position = 0;
 
       // Fetch parent if exists
       if (current.parentTraceId) {
@@ -154,7 +154,6 @@ export function Traces() {
         if (parentRes.ok) {
           const parent: TraceDetail = await parentRes.json();
           family.push(parent);
-          position = 1; // Current will be after parent
         }
       }
 
@@ -208,6 +207,7 @@ export function Traces() {
       setFileContent(null);
       setFileGithubUrl(null);
       setFileConcepts([]);
+      setFileProject(null);
       return;
     }
 
@@ -215,6 +215,7 @@ export function Traces() {
     setFileContent(null);
     setFileGithubUrl(null);
     setFileConcepts([]);
+    setFileProject(project);
     setLoadingFile(true);
 
     // Always compute GitHub URL if project available
@@ -461,7 +462,14 @@ export function Traces() {
                             {fileContent ? (
                               <pre className={styles.previewContent}>{fileContent}</pre>
                             ) : (
-                              <div className={styles.notFoundLocal}>File not found locally</div>
+                              <div className={styles.notFoundLocal}>
+                                ⚠️ local file not found
+                                {fileProject && (
+                                  <div className={styles.projectSource}>
+                                    📦 Source: {fileProject}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </>
                         )}
@@ -590,7 +598,7 @@ export function Traces() {
                     <li key={i} className={styles.fileEntry}>
                       <div
                         className={`${styles.fileItem} ${expandedFile === item ? styles.expanded : ''}`}
-                        onClick={() => toggleFilePreview(item, null)}
+                        onClick={() => toggleFilePreview(item, t.project)}
                       >
                         <span className={styles.filePath}>{item}</span>
                       </div>
@@ -602,6 +610,7 @@ export function Traces() {
                             <>
                               {fileConcepts.length > 0 && (
                                 <div className={styles.conceptsBar}>
+                                  <span className={styles.conceptLabel}>Related:</span>
                                   {fileConcepts.map((c, j) => (
                                     <span key={j} className={styles.conceptBadge}>{c}</span>
                                   ))}
@@ -610,7 +619,14 @@ export function Traces() {
                               {fileContent ? (
                                 <pre className={styles.previewContent}>{fileContent}</pre>
                               ) : (
-                                <div className={styles.notFoundLocal}>Learning not found</div>
+                                <div className={styles.notFoundLocal}>
+                                  ⚠️ local file not found
+                                  {fileProject && (
+                                    <div className={styles.projectSource}>
+                                      📦 Source: {fileProject}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </>
                           )}
