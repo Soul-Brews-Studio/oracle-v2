@@ -3,9 +3,12 @@
  *
  * CRUD operations for structured decision tracking.
  * Following the same patterns as forum/handler.ts
+ *
+ * Refactored to use Drizzle ORM for type-safe queries.
  */
 
-import { db } from '../server/db.js';
+import { eq, and, desc, sql, like, or } from 'drizzle-orm';
+import { db, decisions } from '../db/index.js';
 import { getProjectContext } from '../server/context.js';
 import type {
   Decision,
@@ -33,7 +36,7 @@ function getProjectContext_(): string | undefined {
 /**
  * Parse a row from the database into a Decision object
  */
-function parseDecisionRow(row: any): Decision {
+function parseDecisionRow(row: typeof decisions.$inferSelect): Decision {
   return {
     id: row.id,
     title: row.title,
@@ -44,10 +47,10 @@ function parseDecisionRow(row: any): Decision {
     rationale: row.rationale,
     project: row.project,
     tags: row.tags ? JSON.parse(row.tags) : null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    decidedAt: row.decided_at,
-    decidedBy: row.decided_by,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    decidedAt: row.decidedAt,
+    decidedBy: row.decidedBy,
   };
 }
 
@@ -62,21 +65,18 @@ export function createDecision(input: CreateDecisionInput): Decision {
   const now = Date.now();
   const project = input.project || getProjectContext_();
 
-  const result = db.prepare(`
-    INSERT INTO decisions (title, context, options, project, tags, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    input.title,
-    input.context || null,
-    input.options ? JSON.stringify(input.options) : null,
-    project || null,
-    input.tags ? JSON.stringify(input.tags) : null,
-    now,
-    now
-  );
+  const result = db.insert(decisions).values({
+    title: input.title,
+    context: input.context || null,
+    options: input.options ? JSON.stringify(input.options) : null,
+    project: project || null,
+    tags: input.tags ? JSON.stringify(input.tags) : null,
+    createdAt: now,
+    updatedAt: now,
+  }).run();
 
   return {
-    id: result.lastInsertRowid as number,
+    id: Number(result.lastInsertRowid),
     title: input.title,
     status: 'pending',
     context: input.context || null,
@@ -96,9 +96,10 @@ export function createDecision(input: CreateDecisionInput): Decision {
  * Get decision by ID
  */
 export function getDecision(id: number): Decision | null {
-  const row = db.prepare(`
-    SELECT * FROM decisions WHERE id = ?
-  `).get(id) as any;
+  const row = db.select()
+    .from(decisions)
+    .where(eq(decisions.id, id))
+    .get();
 
   if (!row) return null;
   return parseDecisionRow(row);
@@ -112,32 +113,25 @@ export function updateDecision(input: UpdateDecisionInput): Decision | null {
   if (!existing) return null;
 
   const now = Date.now();
-  const updates: string[] = ['updated_at = ?'];
-  const params: any[] = [now];
+  const updateData: Partial<typeof decisions.$inferInsert> = { updatedAt: now };
 
   if (input.title !== undefined) {
-    updates.push('title = ?');
-    params.push(input.title);
+    updateData.title = input.title;
   }
   if (input.context !== undefined) {
-    updates.push('context = ?');
-    params.push(input.context);
+    updateData.context = input.context;
   }
   if (input.options !== undefined) {
-    updates.push('options = ?');
-    params.push(JSON.stringify(input.options));
+    updateData.options = JSON.stringify(input.options);
   }
   if (input.decision !== undefined) {
-    updates.push('decision = ?');
-    params.push(input.decision);
+    updateData.decision = input.decision;
   }
   if (input.rationale !== undefined) {
-    updates.push('rationale = ?');
-    params.push(input.rationale);
+    updateData.rationale = input.rationale;
   }
   if (input.tags !== undefined) {
-    updates.push('tags = ?');
-    params.push(JSON.stringify(input.tags));
+    updateData.tags = JSON.stringify(input.tags);
   }
   if (input.status !== undefined) {
     // Validate transition
@@ -146,25 +140,21 @@ export function updateDecision(input: UpdateDecisionInput): Decision | null {
         `Invalid status transition: ${existing.status} → ${input.status}`
       );
     }
-    updates.push('status = ?');
-    params.push(input.status);
+    updateData.status = input.status;
 
     // Set decidedAt when transitioning to 'decided'
     if (input.status === 'decided' && existing.status !== 'decided') {
-      updates.push('decided_at = ?');
-      params.push(now);
+      updateData.decidedAt = now;
       if (input.decidedBy) {
-        updates.push('decided_by = ?');
-        params.push(input.decidedBy);
+        updateData.decidedBy = input.decidedBy;
       }
     }
   }
 
-  params.push(input.id);
-
-  db.prepare(`
-    UPDATE decisions SET ${updates.join(', ')} WHERE id = ?
-  `).run(...params);
+  db.update(decisions)
+    .set(updateData)
+    .where(eq(decisions.id, input.id))
+    .run();
 
   return getDecision(input.id);
 }
@@ -187,24 +177,23 @@ export function transitionStatus(
   }
 
   const now = Date.now();
-  const updates: string[] = ['status = ?', 'updated_at = ?'];
-  const params: any[] = [newStatus, now];
+  const updateData: Partial<typeof decisions.$inferInsert> = {
+    status: newStatus,
+    updatedAt: now,
+  };
 
   // Set decidedAt when transitioning to 'decided'
   if (newStatus === 'decided' && existing.status !== 'decided') {
-    updates.push('decided_at = ?');
-    params.push(now);
+    updateData.decidedAt = now;
     if (decidedBy) {
-      updates.push('decided_by = ?');
-      params.push(decidedBy);
+      updateData.decidedBy = decidedBy;
     }
   }
 
-  params.push(id);
-
-  db.prepare(`
-    UPDATE decisions SET ${updates.join(', ')} WHERE id = ?
-  `).run(...params);
+  db.update(decisions)
+    .set(updateData)
+    .where(eq(decisions.id, id))
+    .run();
 
   return getDecision(id);
 }
@@ -217,38 +206,41 @@ export function listDecisions(
 ): ListDecisionsOutput {
   const { status, project, tags, limit = 20, offset = 0 } = options;
 
-  let whereClause = '1=1';
-  const params: any[] = [];
-
+  // Build conditions array
+  const conditions = [];
   if (status) {
-    whereClause += ' AND status = ?';
-    params.push(status);
+    conditions.push(eq(decisions.status, status));
   }
   if (project) {
-    whereClause += ' AND project = ?';
-    params.push(project);
+    conditions.push(eq(decisions.project, project));
   }
   if (tags && tags.length > 0) {
     // Match any of the provided tags (using LIKE for JSON array)
-    const tagConditions = tags.map(() => "tags LIKE ?").join(' OR ');
-    whereClause += ` AND (${tagConditions})`;
-    tags.forEach(tag => params.push(`%"${tag}"%`));
+    const tagConditions = tags.map(tag => like(decisions.tags, `%"${tag}"%`));
+    conditions.push(or(...tagConditions)!);
   }
 
-  const countRow = db.prepare(`
-    SELECT COUNT(*) as total FROM decisions WHERE ${whereClause}
-  `).get(...params) as { total: number };
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const rows = db.prepare(`
-    SELECT * FROM decisions
-    WHERE ${whereClause}
-    ORDER BY updated_at DESC
-    LIMIT ? OFFSET ?
-  `).all(...params, limit, offset) as any[];
+  // Get count
+  const countResult = db.select({ count: sql<number>`count(*)` })
+    .from(decisions)
+    .where(whereClause)
+    .get();
+  const total = countResult?.count || 0;
+
+  // Get decisions
+  const rows = db.select()
+    .from(decisions)
+    .where(whereClause)
+    .orderBy(desc(decisions.updatedAt))
+    .limit(limit)
+    .offset(offset)
+    .all();
 
   return {
     decisions: rows.map(parseDecisionRow),
-    total: countRow.total,
+    total,
   };
 }
 
@@ -259,9 +251,10 @@ export function deleteDecision(id: number): boolean {
   const existing = getDecision(id);
   if (!existing) return false;
 
-  db.prepare(`
-    UPDATE decisions SET status = 'closed', updated_at = ? WHERE id = ?
-  `).run(Date.now(), id);
+  db.update(decisions)
+    .set({ status: 'closed', updatedAt: Date.now() })
+    .where(eq(decisions.id, id))
+    .run();
 
   return true;
 }
@@ -270,9 +263,13 @@ export function deleteDecision(id: number): boolean {
  * Get decisions by status counts (for dashboard)
  */
 export function getDecisionCounts(): Record<DecisionStatus, number> {
-  const rows = db.prepare(`
-    SELECT status, COUNT(*) as count FROM decisions GROUP BY status
-  `).all() as { status: DecisionStatus; count: number }[];
+  const rows = db.select({
+    status: decisions.status,
+    count: sql<number>`count(*)`
+  })
+    .from(decisions)
+    .groupBy(decisions.status)
+    .all();
 
   const counts: Record<DecisionStatus, number> = {
     pending: 0,
@@ -284,7 +281,7 @@ export function getDecisionCounts(): Record<DecisionStatus, number> {
   };
 
   for (const row of rows) {
-    counts[row.status] = row.count;
+    counts[row.status as DecisionStatus] = row.count;
   }
 
   return counts;
