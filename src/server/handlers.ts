@@ -1,10 +1,15 @@
 /**
  * Oracle v2 Core Request Handlers
+ *
+ * Partially migrated to Drizzle ORM. FTS5 operations remain as raw SQL
+ * since Drizzle doesn't support virtual tables.
  */
 
 import fs from 'fs';
 import path from 'path';
-import { db, REPO_ROOT } from './db.js';
+import { eq, sql, or, inArray } from 'drizzle-orm';
+import { db, sqlite, oracleDocuments, indexingStatus } from '../db/index.js';
+import { REPO_ROOT } from './db.js';
 import { logSearch, logDocumentAccess, logLearning, logConsult } from './logging.js';
 import type { SearchResult, SearchResponse } from './types.js';
 import { ChromaMcpClient } from '../chroma-mcp.js';
@@ -55,9 +60,10 @@ export async function handleSearch(
     : 'd.project IS NULL';
   const projectParams = resolvedProject ? [resolvedProject] : [];
 
+  // FTS5 search must use raw SQL (Drizzle doesn't support virtual tables)
   if (mode !== 'vector') {
     if (type === 'all') {
-      const countStmt = db.prepare(`
+      const countStmt = sqlite.prepare(`
         SELECT COUNT(*) as total
         FROM oracle_fts f
         JOIN oracle_documents d ON f.id = d.id
@@ -65,7 +71,7 @@ export async function handleSearch(
       `);
       ftsTotal = (countStmt.get(safeQuery, ...projectParams) as { total: number }).total;
 
-      const stmt = db.prepare(`
+      const stmt = sqlite.prepare(`
         SELECT f.id, f.content, d.type, d.source_file, d.concepts, d.project, rank as score
         FROM oracle_fts f
         JOIN oracle_documents d ON f.id = d.id
@@ -84,7 +90,7 @@ export async function handleSearch(
         score: normalizeRank(row.score)
       }));
     } else {
-      const countStmt = db.prepare(`
+      const countStmt = sqlite.prepare(`
         SELECT COUNT(*) as total
         FROM oracle_fts f
         JOIN oracle_documents d ON f.id = d.id
@@ -92,7 +98,7 @@ export async function handleSearch(
       `);
       ftsTotal = (countStmt.get(safeQuery, type, ...projectParams) as { total: number }).total;
 
-      const stmt = db.prepare(`
+      const stmt = sqlite.prepare(`
         SELECT f.id, f.content, d.type, d.source_file, d.concepts, d.project, rank as score
         FROM oracle_fts f
         JOIN oracle_documents d ON f.id = d.id
@@ -127,13 +133,12 @@ export async function handleSearch(
       console.log(`[Hybrid] First 3 distances: ${chromaResults.distances?.slice(0, 3)}`);
 
       if (chromaResults.ids && chromaResults.ids.length > 0) {
-        // Get project metadata for vector results from SQLite
-        const idsPlaceholder = chromaResults.ids.map(() => '?').join(',');
-        const projectStmt = db.prepare(`
-          SELECT id, project FROM oracle_documents WHERE id IN (${idsPlaceholder})
-        `);
+        // Get project metadata for vector results using Drizzle
+        const rows = db.select({ id: oracleDocuments.id, project: oracleDocuments.project })
+          .from(oracleDocuments)
+          .where(inArray(oracleDocuments.id, chromaResults.ids))
+          .all();
         const projectMap = new Map<string, string | null>();
-        const rows = projectStmt.all(...chromaResults.ids) as { id: string; project: string | null }[];
         rows.forEach(r => projectMap.set(r.id, r.project));
 
         vectorResults = chromaResults.ids
@@ -273,8 +278,8 @@ export async function handleConsult(decision: string, context: string = '') {
   // Remove FTS5 special characters: ? * + - ( ) ^ ~ " ' : (colon is column prefix)
   const safeQuery = query.replace(/[?*+\-()^~"':]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // Run FTS search
-  const principleStmt = db.prepare(`
+  // Run FTS search (must use raw SQL - Drizzle doesn't support FTS5)
+  const principleStmt = sqlite.prepare(`
     SELECT f.id, f.content, d.source_file, rank as score
     FROM oracle_fts f
     JOIN oracle_documents d ON f.id = d.id
@@ -288,7 +293,7 @@ export async function handleConsult(decision: string, context: string = '') {
     source: 'fts' as const
   }));
 
-  const learningStmt = db.prepare(`
+  const learningStmt = sqlite.prepare(`
     SELECT f.id, f.content, d.source_file, rank as score
     FROM oracle_fts f
     JOIN oracle_documents d ON f.id = d.id
@@ -406,18 +411,28 @@ function mergeConsultResults(fts: any[], vector: any[], limit: number): any[] {
  * Get random wisdom
  */
 export function handleReflect() {
-  const randomDoc = db.prepare(`
-    SELECT id, type, source_file, concepts FROM oracle_documents
-    WHERE type IN ('principle', 'learning')
-    ORDER BY RANDOM()
-    LIMIT 1
-  `).get() as any;
+  // Get random document using Drizzle
+  const randomDoc = db.select({
+    id: oracleDocuments.id,
+    type: oracleDocuments.type,
+    sourceFile: oracleDocuments.sourceFile,
+    concepts: oracleDocuments.concepts
+  })
+    .from(oracleDocuments)
+    .where(or(
+      eq(oracleDocuments.type, 'principle'),
+      eq(oracleDocuments.type, 'learning')
+    ))
+    .orderBy(sql`RANDOM()`)
+    .limit(1)
+    .get();
 
   if (!randomDoc) {
     return { error: 'No documents found' };
   }
 
-  const content = db.prepare(`
+  // Get content from FTS (must use raw SQL)
+  const content = sqlite.prepare(`
     SELECT content FROM oracle_fts WHERE id = ?
   `).get(randomDoc.id) as { content: string };
 
@@ -425,7 +440,7 @@ export function handleReflect() {
     id: randomDoc.id,
     type: randomDoc.type,
     content: content.content,
-    source_file: randomDoc.source_file,
+    source_file: randomDoc.sourceFile,
     concepts: JSON.parse(randomDoc.concepts || '[]')
   };
 }
@@ -433,23 +448,26 @@ export function handleReflect() {
 /**
  * List all documents (browse without search)
  * @param groupByFile - if true, dedupe by source_file (show one entry per file)
+ *
+ * Note: Uses raw SQL for FTS JOIN since Drizzle doesn't support virtual tables.
+ * Count queries use Drizzle where possible.
  */
 export function handleList(type: string = 'all', limit: number = 10, offset: number = 0, groupByFile: boolean = true): SearchResponse {
   // Validate
   if (limit < 1 || limit > 100) limit = 10;
   if (offset < 0) offset = 0;
 
-  let countStmt;
-  let stmt;
-
   if (groupByFile) {
     // Group by source_file to avoid duplicate entries from same file
-    // Use simple GROUP BY with MAX to pick longest content per file
     if (type === 'all') {
-      countStmt = db.prepare('SELECT COUNT(DISTINCT source_file) as total FROM oracle_documents');
-      const { total } = countStmt.get() as { total: number };
+      // Count distinct files using Drizzle
+      const countResult = db.select({ total: sql<number>`count(distinct ${oracleDocuments.sourceFile})` })
+        .from(oracleDocuments)
+        .get();
+      const total = countResult?.total || 0;
 
-      stmt = db.prepare(`
+      // Need raw SQL for FTS JOIN with GROUP BY
+      const stmt = sqlite.prepare(`
         SELECT d.id, d.type, d.source_file, d.concepts, d.project, MAX(d.indexed_at) as indexed_at, f.content
         FROM oracle_documents d
         JOIN oracle_fts f ON d.id = f.id
@@ -469,10 +487,15 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
 
       return { results, total, offset, limit };
     } else {
-      countStmt = db.prepare('SELECT COUNT(DISTINCT source_file) as total FROM oracle_documents WHERE type = ?');
-      const { total } = countStmt.get(type) as { total: number };
+      // Count distinct files for type using Drizzle
+      const countResult = db.select({ total: sql<number>`count(distinct ${oracleDocuments.sourceFile})` })
+        .from(oracleDocuments)
+        .where(eq(oracleDocuments.type, type))
+        .get();
+      const total = countResult?.total || 0;
 
-      stmt = db.prepare(`
+      // Need raw SQL for FTS JOIN with GROUP BY
+      const stmt = sqlite.prepare(`
         SELECT d.id, d.type, d.source_file, d.concepts, d.project, MAX(d.indexed_at) as indexed_at, f.content
         FROM oracle_documents d
         JOIN oracle_fts f ON d.id = f.id
@@ -497,10 +520,14 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
 
   // Original behavior without grouping
   if (type === 'all') {
-    countStmt = db.prepare('SELECT COUNT(*) as total FROM oracle_documents');
-    const { total } = countStmt.get() as { total: number };
+    // Count using Drizzle
+    const countResult = db.select({ total: sql<number>`count(*)` })
+      .from(oracleDocuments)
+      .get();
+    const total = countResult?.total || 0;
 
-    stmt = db.prepare(`
+    // Need raw SQL for FTS JOIN
+    const stmt = sqlite.prepare(`
       SELECT d.id, d.type, d.source_file, d.concepts, d.project, d.indexed_at, f.content
       FROM oracle_documents d
       JOIN oracle_fts f ON d.id = f.id
@@ -519,10 +546,15 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
 
     return { results, total, offset, limit };
   } else {
-    countStmt = db.prepare('SELECT COUNT(*) as total FROM oracle_documents WHERE type = ?');
-    const { total } = countStmt.get(type) as { total: number };
+    // Count using Drizzle
+    const countResult = db.select({ total: sql<number>`count(*)` })
+      .from(oracleDocuments)
+      .where(eq(oracleDocuments.type, type))
+      .get();
+    const total = countResult?.total || 0;
 
-    stmt = db.prepare(`
+    // Need raw SQL for FTS JOIN
+    const stmt = sqlite.prepare(`
       SELECT d.id, d.type, d.source_file, d.concepts, d.project, d.indexed_at, f.content
       FROM oracle_documents d
       JOIN oracle_fts f ON d.id = f.id
@@ -548,39 +580,54 @@ export function handleList(type: string = 'all', limit: number = 10, offset: num
  * Get database statistics
  */
 export function handleStats(dbPath: string) {
-  const totalDocs = db.prepare('SELECT COUNT(*) as count FROM oracle_documents').get() as { count: number };
-  const byType = db.prepare(`
-    SELECT type, COUNT(*) as count
-    FROM oracle_documents
-    GROUP BY type
-  `).all() as { type: string; count: number }[];
+  // Total documents using Drizzle
+  const totalDocsResult = db.select({ count: sql<number>`count(*)` })
+    .from(oracleDocuments)
+    .get();
+  const totalDocs = totalDocsResult?.count || 0;
 
-  // Get last indexed timestamp
-  const lastIndexed = db.prepare(`
-    SELECT MAX(indexed_at) as last_indexed FROM oracle_documents
-  `).get() as { last_indexed: number | null };
+  // Count by type using Drizzle
+  const byTypeResults = db.select({
+    type: oracleDocuments.type,
+    count: sql<number>`count(*)`
+  })
+    .from(oracleDocuments)
+    .groupBy(oracleDocuments.type)
+    .all();
 
-  const lastIndexedDate = lastIndexed.last_indexed
-    ? new Date(lastIndexed.last_indexed).toISOString()
+  // Get last indexed timestamp using Drizzle
+  const lastIndexedResult = db.select({ lastIndexed: sql<number | null>`max(${oracleDocuments.indexedAt})` })
+    .from(oracleDocuments)
+    .get();
+
+  const lastIndexedDate = lastIndexedResult?.lastIndexed
+    ? new Date(lastIndexedResult.lastIndexed).toISOString()
     : null;
 
   // Calculate age in hours
-  const indexAgeHours = lastIndexed.last_indexed
-    ? (Date.now() - lastIndexed.last_indexed) / (1000 * 60 * 60)
+  const indexAgeHours = lastIndexedResult?.lastIndexed
+    ? (Date.now() - lastIndexedResult.lastIndexed) / (1000 * 60 * 60)
     : null;
 
-  // Get indexing status (if table exists)
-  let indexingStatus = { is_indexing: false, progress_current: 0, progress_total: 0, completed_at: null as number | null };
+  // Get indexing status using Drizzle
+  let idxStatus = { is_indexing: false, progress_current: 0, progress_total: 0, completed_at: null as number | null };
   try {
-    const status = db.prepare(`
-      SELECT is_indexing, progress_current, progress_total, completed_at FROM indexing_status WHERE id = 1
-    `).get() as { is_indexing: number; progress_current: number; progress_total: number; completed_at: number | null } | undefined;
+    const status = db.select({
+      isIndexing: indexingStatus.isIndexing,
+      progressCurrent: indexingStatus.progressCurrent,
+      progressTotal: indexingStatus.progressTotal,
+      completedAt: indexingStatus.completedAt
+    })
+      .from(indexingStatus)
+      .where(eq(indexingStatus.id, 1))
+      .get();
+
     if (status) {
-      indexingStatus = {
-        is_indexing: status.is_indexing === 1,
-        progress_current: status.progress_current,
-        progress_total: status.progress_total,
-        completed_at: status.completed_at
+      idxStatus = {
+        is_indexing: status.isIndexing === 1,
+        progress_current: status.progressCurrent || 0,
+        progress_total: status.progressTotal || 0,
+        completed_at: status.completedAt
       };
     }
   } catch (e) {
@@ -588,20 +635,20 @@ export function handleStats(dbPath: string) {
   }
 
   return {
-    total: totalDocs.count,
-    by_type: byType.reduce((acc, row) => ({ ...acc, [row.type]: row.count }), {}),
+    total: totalDocs,
+    by_type: byTypeResults.reduce((acc, row) => ({ ...acc, [row.type]: row.count }), {}),
     last_indexed: lastIndexedDate,
     index_age_hours: indexAgeHours ? Math.round(indexAgeHours * 10) / 10 : null,
     is_stale: indexAgeHours ? indexAgeHours > 24 : true,
-    is_indexing: indexingStatus.is_indexing,
-    indexing_progress: indexingStatus.is_indexing ? {
-      current: indexingStatus.progress_current,
-      total: indexingStatus.progress_total,
-      percent: indexingStatus.progress_total > 0
-        ? Math.round((indexingStatus.progress_current / indexingStatus.progress_total) * 100)
+    is_indexing: idxStatus.is_indexing,
+    indexing_progress: idxStatus.is_indexing ? {
+      current: idxStatus.progress_current,
+      total: idxStatus.progress_total,
+      percent: idxStatus.progress_total > 0
+        ? Math.round((idxStatus.progress_current / idxStatus.progress_total) * 100)
         : 0
     } : null,
-    indexing_completed_at: indexingStatus.completed_at,
+    indexing_completed_at: idxStatus.completed_at,
     database: dbPath
   };
 }
@@ -613,19 +660,32 @@ export function handleStats(dbPath: string) {
 export function handleGraph() {
   // Only get principles (always) + sample learnings (limited)
   // This keeps graph manageable: ~163 principles + ~100 learnings = ~263 nodes max
-  const principles = db.prepare(`
-    SELECT id, type, source_file, concepts, project
-    FROM oracle_documents
-    WHERE type = 'principle'
-  `).all() as { id: string; type: string; source_file: string; concepts: string; project: string | null }[];
 
-  const learnings = db.prepare(`
-    SELECT id, type, source_file, concepts, project
-    FROM oracle_documents
-    WHERE type = 'learning'
-    ORDER BY RANDOM()
-    LIMIT 100
-  `).all() as { id: string; type: string; source_file: string; concepts: string; project: string | null }[];
+  // Get all principles using Drizzle
+  const principles = db.select({
+    id: oracleDocuments.id,
+    type: oracleDocuments.type,
+    sourceFile: oracleDocuments.sourceFile,
+    concepts: oracleDocuments.concepts,
+    project: oracleDocuments.project
+  })
+    .from(oracleDocuments)
+    .where(eq(oracleDocuments.type, 'principle'))
+    .all();
+
+  // Get random learnings using Drizzle
+  const learnings = db.select({
+    id: oracleDocuments.id,
+    type: oracleDocuments.type,
+    sourceFile: oracleDocuments.sourceFile,
+    concepts: oracleDocuments.concepts,
+    project: oracleDocuments.project
+  })
+    .from(oracleDocuments)
+    .where(eq(oracleDocuments.type, 'learning'))
+    .orderBy(sql`RANDOM()`)
+    .limit(100)
+    .all();
 
   const docs = [...principles, ...learnings];
 
@@ -633,7 +693,7 @@ export function handleGraph() {
   const nodes = docs.map(doc => ({
     id: doc.id,
     type: doc.type,
-    source_file: doc.source_file,
+    source_file: doc.sourceFile,
     project: doc.project,  // ghq-style path for cross-repo file access
     concepts: JSON.parse(doc.concepts || '[]')
   }));
@@ -733,25 +793,22 @@ export function handleLearn(
   const id = `learning_${dateStr}_${slug}`;
   const conceptsList = concepts || [];
 
-  // Insert into database with provenance
-  db.prepare(`
-    INSERT INTO oracle_documents (id, type, source_file, concepts, created_at, updated_at, indexed_at, origin, project, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  // Insert into database with provenance using Drizzle
+  db.insert(oracleDocuments).values({
     id,
-    'learning',
-    `ψ/memory/learnings/${filename}`,
-    JSON.stringify(conceptsList),
-    now.getTime(),
-    now.getTime(),
-    now.getTime(),
-    origin || null,          // origin: null = universal/mother
-    resolvedProject || null, // project: null = universal (auto-detected from cwd)
-    'oracle_learn'           // created_by
-  );
+    type: 'learning',
+    sourceFile: `ψ/memory/learnings/${filename}`,
+    concepts: JSON.stringify(conceptsList),
+    createdAt: now.getTime(),
+    updatedAt: now.getTime(),
+    indexedAt: now.getTime(),
+    origin: origin || null,          // origin: null = universal/mother
+    project: resolvedProject || null, // project: null = universal (auto-detected from cwd)
+    createdBy: 'oracle_learn'
+  }).run();
 
-  // Insert into FTS
-  db.prepare(`
+  // Insert into FTS (must use raw SQL - Drizzle doesn't support virtual tables)
+  sqlite.prepare(`
     INSERT INTO oracle_fts (id, content, concepts)
     VALUES (?, ?, ?)
   `).run(
