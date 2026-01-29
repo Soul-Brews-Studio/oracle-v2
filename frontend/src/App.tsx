@@ -13,6 +13,7 @@ import { Forum } from './pages/Forum';
 import { Decisions } from './pages/Decisions';
 import { Evolution } from './pages/Evolution';
 import { Traces } from './pages/Traces';
+import { Superseded } from './pages/Superseded';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="/evolution" element={<Evolution />} />
         <Route path="/traces" element={<Traces />} />
         <Route path="/traces/:id" element={<Traces />} />
+        <Route path="/superseded" element={<Superseded />} />
       </Routes>
       <QuickLearn />
     </BrowserRouter>

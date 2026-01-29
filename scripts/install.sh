@@ -2,12 +2,16 @@
 # Oracle-v2 Installer
 # Inspired by claude-mem's installation pattern
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/Soul-Brews-Studio/oracle-v2/main/scripts/install.sh | bash
+# Usage:
+#   curl -fsSL .../install.sh | bash                    # Install latest stable tag
+#   ORACLE_NIGHTLY=1 curl -fsSL .../install.sh | bash   # Install from main (developers)
+#   ORACLE_VERSION=v1.0.0 curl -fsSL .../install.sh | bash  # Install specific version
 
 set -e
 
 INSTALL_DIR="${ORACLE_INSTALL_DIR:-$HOME/.local/share/oracle-v2}"
 REPO_URL="https://github.com/Soul-Brews-Studio/oracle-v2.git"
+REPO_API="https://api.github.com/repos/Soul-Brews-Studio/oracle-v2"
 
 echo "🔮 Oracle-v2 Installer"
 echo "======================"
@@ -20,17 +24,45 @@ if ! command -v bun &> /dev/null; then
     exit 1
 fi
 
+# Determine version to install
+if [ -n "$ORACLE_NIGHTLY" ]; then
+    VERSION="main"
+    echo "🌙 Installing nightly (main branch)..."
+elif [ -n "$ORACLE_VERSION" ]; then
+    VERSION="$ORACLE_VERSION"
+    echo "📌 Installing version: $VERSION"
+else
+    # Fetch latest tag from GitHub API
+    echo "🔍 Finding latest stable version..."
+    VERSION=$(curl -sL "$REPO_API/tags" | grep -o '"name": "[^"]*"' | head -1 | cut -d'"' -f4)
+    if [ -z "$VERSION" ]; then
+        echo "⚠️  No tags found, falling back to main"
+        VERSION="main"
+    else
+        echo "📦 Latest stable: $VERSION"
+    fi
+fi
+
 # Check if already installed
 if [ -d "$INSTALL_DIR" ]; then
     echo "📁 Found existing installation at $INSTALL_DIR"
-    echo "   Updating..."
+    echo "   Updating to $VERSION..."
     cd "$INSTALL_DIR"
-    git pull origin main
+    git fetch --all --tags
+    if [ "$VERSION" = "main" ]; then
+        git checkout main
+        git pull origin main
+    else
+        git checkout "$VERSION"
+    fi
     bun install
 else
     echo "📥 Cloning to $INSTALL_DIR..."
     git clone "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
+    if [ "$VERSION" != "main" ]; then
+        git checkout "$VERSION"
+    fi
     bun install
 fi
 

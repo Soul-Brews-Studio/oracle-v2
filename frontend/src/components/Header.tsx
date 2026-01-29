@@ -20,6 +20,7 @@ const toolsItems = [
   { path: '/decisions', label: 'Decisions' },
   { path: '/evolution', label: 'Evolution' },
   { path: '/traces', label: 'Traces' },
+  { path: '/superseded', label: 'Superseded' },
   { path: '/handoff', label: 'Handoff' },
 ] as const;
 
@@ -90,7 +91,8 @@ export function Header() {
   return (
     <header className={styles.header}>
       <Link to="/" className={styles.logo}>
-        🔮 <span className={styles.logoFull}>Soulbrews </span>Oracle
+        🔮 Oracle
+        <span className={styles.version}>{__APP_VERSION__}</span>
       </Link>
 
       <nav className={styles.nav}>

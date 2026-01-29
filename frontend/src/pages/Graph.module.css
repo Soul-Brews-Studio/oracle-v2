@@ -1,7 +1,7 @@
 .container {
-  max-width: 900px;
+  max-width: none;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 16px 24px;
 }
 
 .header {
@@ -117,7 +117,7 @@
 .canvas3d {
   flex: 1;
   min-height: 600px;
-  height: calc(100vh - 280px);
+  height: calc(100vh - 200px);
   border-radius: 12px;
   overflow: hidden;
   background: #0a0a0f;
