@@ -27,10 +27,21 @@ import {
   UI_PATH,
   ARTHUR_UI_PATH,
   DASHBOARD_PATH,
-  db,
   initLoggingTables,
   closeDb
 } from './server/db.js';
+
+import { eq, desc, gt, and, sql } from 'drizzle-orm';
+import {
+  db,
+  sqlite,
+  oracleDocuments,
+  searchLog,
+  consultLog,
+  learnLog,
+  supersedeLog,
+  indexingStatus
+} from './db/index.js';
 
 import {
   handleSearch,
@@ -83,9 +94,12 @@ try {
   console.error('Failed to initialize logging tables:', e);
 }
 
-// Reset stale indexing status on startup
+// Reset stale indexing status on startup using Drizzle
 try {
-  db.prepare('UPDATE indexing_status SET is_indexing = 0 WHERE id = 1').run();
+  db.update(indexingStatus)
+    .set({ isIndexing: 0 })
+    .where(eq(indexingStatus.id, 1))
+    .run();
   console.log('🔮 Reset indexing status on startup');
 } catch (e) {
   // Table might not exist yet - that's fine
@@ -167,23 +181,31 @@ app.get('/api/stats', (c) => {
 app.get('/api/logs', (c) => {
   try {
     const limit = parseInt(c.req.query('limit') || '20');
-    const logs = db.prepare(`
-      SELECT query, type, mode, results_count, search_time_ms, created_at, project
-      FROM search_log
-      ORDER BY created_at DESC
-      LIMIT ?
-    `).all(limit);
+    const logs = db.select({
+      query: searchLog.query,
+      type: searchLog.type,
+      mode: searchLog.mode,
+      results_count: searchLog.resultsCount,
+      search_time_ms: searchLog.searchTimeMs,
+      created_at: searchLog.createdAt,
+      project: searchLog.project
+    })
+      .from(searchLog)
+      .orderBy(desc(searchLog.createdAt))
+      .limit(limit)
+      .all();
     return c.json({ logs, total: logs.length });
   } catch (e) {
     return c.json({ logs: [], error: 'Log table not found' });
   }
 });
 
-// Get document by ID
+// Get document by ID (uses raw SQL for FTS JOIN)
 app.get('/api/doc/:id', (c) => {
   const docId = c.req.param('id');
   try {
-    const row = db.prepare(`
+    // Must use raw SQL for FTS JOIN (Drizzle doesn't support virtual tables)
+    const row = sqlite.prepare(`
       SELECT d.id, d.type, d.source_file, d.concepts, d.project, f.content
       FROM oracle_documents d
       JOIN oracle_fts f ON d.id = f.id
@@ -314,17 +336,20 @@ app.get('/api/session/stats', (c) => {
   const since = c.req.query('since');
   const sinceTime = since ? parseInt(since) : Date.now() - 24 * 60 * 60 * 1000; // Default 24h
 
-  const searches = db.prepare(
-    'SELECT COUNT(*) as count FROM search_log WHERE created_at > ?'
-  ).get(sinceTime) as { count: number };
+  const searches = db.select({ count: sql<number>`count(*)` })
+    .from(searchLog)
+    .where(gt(searchLog.createdAt, sinceTime))
+    .get();
 
-  const consultations = db.prepare(
-    'SELECT COUNT(*) as count FROM consult_log WHERE created_at > ?'
-  ).get(sinceTime) as { count: number };
+  const consultations = db.select({ count: sql<number>`count(*)` })
+    .from(consultLog)
+    .where(gt(consultLog.createdAt, sinceTime))
+    .get();
 
-  const learnings = db.prepare(
-    'SELECT COUNT(*) as count FROM learn_log WHERE created_at > ?'
-  ).get(sinceTime) as { count: number };
+  const learnings = db.select({ count: sql<number>`count(*)` })
+    .from(learnLog)
+    .where(gt(learnLog.createdAt, sinceTime))
+    .get();
 
   return c.json({
     searches: searches?.count || 0,
@@ -590,35 +615,38 @@ app.get('/api/supersede', (c) => {
   const limit = parseInt(c.req.query('limit') || '50');
   const offset = parseInt(c.req.query('offset') || '0');
 
-  let query = `
-    SELECT * FROM supersede_log
-    WHERE 1=1
-    ${project ? 'AND project = ?' : ''}
-    ORDER BY superseded_at DESC
-    LIMIT ? OFFSET ?
-  `;
+  // Build where clause using Drizzle
+  const whereClause = project ? eq(supersedeLog.project, project) : undefined;
 
-  const params = project ? [project, limit, offset] : [limit, offset];
-  const logs = db.prepare(query).all(...params) as any[];
+  // Get total count using Drizzle
+  const countResult = db.select({ total: sql<number>`count(*)` })
+    .from(supersedeLog)
+    .where(whereClause)
+    .get();
+  const total = countResult?.total || 0;
 
-  // Get total count
-  let countQuery = `SELECT COUNT(*) as total FROM supersede_log WHERE 1=1 ${project ? 'AND project = ?' : ''}`;
-  const countParams = project ? [project] : [];
-  const { total } = db.prepare(countQuery).get(...countParams) as { total: number };
+  // Get logs using Drizzle
+  const logs = db.select()
+    .from(supersedeLog)
+    .where(whereClause)
+    .orderBy(desc(supersedeLog.supersededAt))
+    .limit(limit)
+    .offset(offset)
+    .all();
 
   return c.json({
     supersessions: logs.map(log => ({
       id: log.id,
-      old_path: log.old_path,
-      old_id: log.old_id,
-      old_title: log.old_title,
-      old_type: log.old_type,
-      new_path: log.new_path,
-      new_id: log.new_id,
-      new_title: log.new_title,
+      old_path: log.oldPath,
+      old_id: log.oldId,
+      old_title: log.oldTitle,
+      old_type: log.oldType,
+      new_path: log.newPath,
+      new_id: log.newId,
+      new_title: log.newTitle,
       reason: log.reason,
-      superseded_at: new Date(log.superseded_at).toISOString(),
-      superseded_by: log.superseded_by,
+      superseded_at: new Date(log.supersededAt).toISOString(),
+      superseded_by: log.supersededBy,
       project: log.project
     })),
     total,
@@ -631,25 +659,29 @@ app.get('/api/supersede', (c) => {
 app.get('/api/supersede/chain/:path', (c) => {
   const docPath = decodeURIComponent(c.req.param('path'));
 
-  // Find all supersessions where this doc was old or new
-  const asOld = db.prepare(`
-    SELECT * FROM supersede_log WHERE old_path = ? ORDER BY superseded_at
-  `).all(docPath) as any[];
+  // Find all supersessions where this doc was old or new using Drizzle
+  const asOld = db.select()
+    .from(supersedeLog)
+    .where(eq(supersedeLog.oldPath, docPath))
+    .orderBy(supersedeLog.supersededAt)
+    .all();
 
-  const asNew = db.prepare(`
-    SELECT * FROM supersede_log WHERE new_path = ? ORDER BY superseded_at
-  `).all(docPath) as any[];
+  const asNew = db.select()
+    .from(supersedeLog)
+    .where(eq(supersedeLog.newPath, docPath))
+    .orderBy(supersedeLog.supersededAt)
+    .all();
 
   return c.json({
     superseded_by: asOld.map(log => ({
-      new_path: log.new_path,
+      new_path: log.newPath,
       reason: log.reason,
-      superseded_at: new Date(log.superseded_at).toISOString()
+      superseded_at: new Date(log.supersededAt).toISOString()
     })),
     supersedes: asNew.map(log => ({
-      old_path: log.old_path,
+      old_path: log.oldPath,
       reason: log.reason,
-      superseded_at: new Date(log.superseded_at).toISOString()
+      superseded_at: new Date(log.supersededAt).toISOString()
     }))
   });
 });
@@ -662,25 +694,19 @@ app.post('/api/supersede', async (c) => {
       return c.json({ error: 'Missing required field: old_path' }, 400);
     }
 
-    const result = db.prepare(`
-      INSERT INTO supersede_log (
-        old_path, old_id, old_title, old_type,
-        new_path, new_id, new_title,
-        reason, superseded_at, superseded_by, project
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      data.old_path,
-      data.old_id || null,
-      data.old_title || null,
-      data.old_type || null,
-      data.new_path || null,
-      data.new_id || null,
-      data.new_title || null,
-      data.reason || null,
-      Date.now(),
-      data.superseded_by || 'user',
-      data.project || null
-    );
+    const result = db.insert(supersedeLog).values({
+      oldPath: data.old_path,
+      oldId: data.old_id || null,
+      oldTitle: data.old_title || null,
+      oldType: data.old_type || null,
+      newPath: data.new_path || null,
+      newId: data.new_id || null,
+      newTitle: data.new_title || null,
+      reason: data.reason || null,
+      supersededAt: Date.now(),
+      supersededBy: data.superseded_by || 'user',
+      project: data.project || null
+    }).run();
 
     return c.json({
       id: result.lastInsertRowid,
