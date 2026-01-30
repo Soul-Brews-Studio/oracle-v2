@@ -17,6 +17,10 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { Database } from 'bun:sqlite';
+import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import { eq, sql, and, ne, isNotNull, inArray } from 'drizzle-orm';
+import * as schema from './db/schema.js';
+import { oracleDocuments, consultLog } from './db/schema.js';
 import { ChromaMcpClient } from './chroma-mcp.js';
 import path from 'path';
 import fs from 'fs';
@@ -182,7 +186,8 @@ const WRITE_TOOLS = [
 
 class OracleMCPServer {
   private server: Server;
-  private db: Database.Database;
+  private sqlite: Database;  // Raw bun:sqlite for FTS operations
+  private db: BunSQLiteDatabase<typeof schema>;  // Drizzle for type-safe queries
   private repoRoot: string;
   private chromaMcp: ChromaMcpClient;
   private chromaStatus: 'unknown' | 'connected' | 'unavailable' = 'unknown';
@@ -217,7 +222,8 @@ class OracleMCPServer {
     // Initialize SQLite database (central location: ~/.oracle-v2/)
     const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle-v2');
     const dbPath = process.env.ORACLE_DB_PATH || path.join(oracleDataDir, 'oracle.db');
-    this.db = new Database(dbPath);
+    this.sqlite = new Database(dbPath);  // Raw connection for FTS operations
+    this.db = drizzle(this.sqlite, { schema });  // Drizzle wrapper for type-safe queries
 
     this.setupHandlers();
     this.setupErrorHandling();
@@ -258,7 +264,7 @@ class OracleMCPServer {
   }
 
   private async cleanup(): Promise<void> {
-    this.db.close();
+    this.sqlite.close();
     await this.chromaMcp.close();
   }
 
@@ -1065,7 +1071,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
     let ftsRawResults: any[] = [];
     if (mode !== 'vector') {
       if (type === 'all') {
-        const stmt = this.db.prepare(`
+        const stmt = this.sqlite.prepare(`
           SELECT f.id, f.content, d.type, d.source_file, d.concepts, rank
           FROM oracle_fts f
           JOIN oracle_documents d ON f.id = d.id
@@ -1075,7 +1081,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
         `);
         ftsRawResults = stmt.all(safeQuery, limit * 2);
       } else {
-        const stmt = this.db.prepare(`
+        const stmt = this.sqlite.prepare(`
           SELECT f.id, f.content, d.type, d.source_file, d.concepts, rank
           FROM oracle_fts f
           JOIN oracle_documents d ON f.id = d.id
@@ -1205,7 +1211,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
     const safeQuery = this.sanitizeFtsQuery(query);
 
     // Search for relevant principles
-    const principleStmt = this.db.prepare(`
+    const principleStmt = this.sqlite.prepare(`
       SELECT f.id, f.content, d.source_file
       FROM oracle_fts f
       JOIN oracle_documents d ON f.id = d.id
@@ -1216,7 +1222,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
     const principles = principleStmt.all(safeQuery);
 
     // Search for relevant learnings
-    const learningStmt = this.db.prepare(`
+    const learningStmt = this.sqlite.prepare(`
       SELECT f.id, f.content, d.source_file
       FROM oracle_fts f
       JOIN oracle_documents d ON f.id = d.id
@@ -1233,19 +1239,16 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
       patterns.map((p: any) => p.content)
     );
 
-    // Log the consultation to database
+    // Log the consultation to database (Drizzle)
     try {
-      this.db.prepare(`
-        INSERT INTO consult_log (decision, context, principles_found, patterns_found, guidance, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
+      this.db.insert(consultLog).values({
         decision,
-        context || null,
-        principles.length,
-        patterns.length,
+        context: context || null,
+        principlesFound: principles.length,
+        patternsFound: patterns.length,
         guidance,
-        Date.now()
-      );
+        createdAt: Date.now(),
+      }).run();
     } catch (e) {
       // Ignore logging errors - table may not exist yet
       console.error('[ConsultLog]', e instanceof Error ? e.message : String(e));
@@ -1278,19 +1281,25 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
    * Return random wisdom
    */
   private async handleReflect(_input: OracleReflectInput) {
-    const randomDoc = this.db.prepare(`
-      SELECT id, type, source_file, concepts FROM oracle_documents
-      WHERE type IN ('principle', 'learning')
-      ORDER BY RANDOM()
-      LIMIT 1
-    `).get() as OracleMetadata;
+    // Drizzle for oracle_documents query
+    const randomDoc = this.db.select({
+      id: oracleDocuments.id,
+      type: oracleDocuments.type,
+      sourceFile: oracleDocuments.sourceFile,
+      concepts: oracleDocuments.concepts,
+    })
+      .from(oracleDocuments)
+      .where(inArray(oracleDocuments.type, ['principle', 'learning']))
+      .orderBy(sql`RANDOM()`)
+      .limit(1)
+      .get();
 
     if (!randomDoc) {
       throw new Error('No documents found in Oracle knowledge base');
     }
 
-    // Get content from FTS
-    const content = this.db.prepare(`
+    // Raw SQL for FTS content fetch (Drizzle doesn't support FTS5)
+    const content = this.sqlite.prepare(`
       SELECT content FROM oracle_fts WHERE id = ?
     `).get(randomDoc.id) as { content: string };
 
@@ -1302,7 +1311,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             id: randomDoc.id,
             type: randomDoc.type,
             content: content.content,
-            source_file: randomDoc.source_file,
+            source_file: randomDoc.sourceFile,
             concepts: JSON.parse(randomDoc.concepts || '[]')
           }
         }, null, 2)
@@ -1364,25 +1373,22 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
     // Index into database
     const id = `learning_${dateStr}_${slug}`;
 
-    // Insert metadata with provenance
-    this.db.prepare(`
-      INSERT INTO oracle_documents (id, type, source_file, concepts, created_at, updated_at, indexed_at, origin, project, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    // Insert metadata with provenance (Drizzle)
+    this.db.insert(oracleDocuments).values({
       id,
-      'learning',
-      `ψ/memory/learnings/${filename}`,
-      JSON.stringify(conceptsList),
-      now.getTime(),
-      now.getTime(),
-      now.getTime(),
-      null,           // origin: null = universal/mother
-      detectProject(this.repoRoot),  // project: auto-detect from repoRoot
-      'oracle_learn'  // created_by
-    );
+      type: 'learning',
+      sourceFile: `ψ/memory/learnings/${filename}`,
+      concepts: JSON.stringify(conceptsList),
+      createdAt: now.getTime(),
+      updatedAt: now.getTime(),
+      indexedAt: now.getTime(),
+      origin: null,  // null = universal/mother
+      project: detectProject(this.repoRoot),
+      createdBy: 'oracle_learn',
+    }).run();
 
     // Insert into FTS
-    this.db.prepare(`
+    this.sqlite.prepare(`
       INSERT INTO oracle_fts (id, content, concepts)
       VALUES (?, ?, ?)
     `).run(
@@ -1424,23 +1430,22 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
       throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
     }
 
-    // Get total count
-    const countStmt = type === 'all'
-      ? this.db.prepare('SELECT COUNT(*) as total FROM oracle_documents')
-      : this.db.prepare('SELECT COUNT(*) as total FROM oracle_documents WHERE type = ?');
-    const countResult = type === 'all' ? countStmt.get() : countStmt.get(type);
-    const total = (countResult as { total: number }).total;
+    // Get total count (Drizzle)
+    const countResult = type === 'all'
+      ? this.db.select({ total: sql<number>`count(*)` }).from(oracleDocuments).get()
+      : this.db.select({ total: sql<number>`count(*)` }).from(oracleDocuments).where(eq(oracleDocuments.type, type)).get();
+    const total = countResult?.total ?? 0;
 
     // Get documents sorted by indexed_at DESC
     const listStmt = type === 'all'
-      ? this.db.prepare(`
+      ? this.sqlite.prepare(`
           SELECT d.id, d.type, d.source_file, d.concepts, d.indexed_at, f.content
           FROM oracle_documents d
           JOIN oracle_fts f ON d.id = f.id
           ORDER BY d.indexed_at DESC
           LIMIT ? OFFSET ?
         `)
-      : this.db.prepare(`
+      : this.sqlite.prepare(`
           SELECT d.id, d.type, d.source_file, d.concepts, d.indexed_at, f.content
           FROM oracle_documents d
           JOIN oracle_fts f ON d.id = f.id
@@ -1482,12 +1487,14 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
    * Get knowledge base statistics and health status
    */
   private async handleStats(_input: OracleStatsInput) {
-    // Get document counts by type
-    const typeCounts = this.db.prepare(`
-      SELECT type, COUNT(*) as count
-      FROM oracle_documents
-      GROUP BY type
-    `).all() as Array<{ type: string; count: number }>;
+    // Get document counts by type (Drizzle)
+    const typeCounts = this.db.select({
+      type: oracleDocuments.type,
+      count: sql<number>`count(*)`,
+    })
+      .from(oracleDocuments)
+      .groupBy(oracleDocuments.type)
+      .all();
 
     const byType: Record<string, number> = {};
     let totalDocs = 0;
@@ -1496,18 +1503,21 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
       totalDocs += row.count;
     }
 
-    // Get FTS index count
-    const ftsCount = this.db.prepare('SELECT COUNT(*) as count FROM oracle_fts').get() as { count: number };
+    // Get FTS index count (raw SQL - FTS table)
+    const ftsCount = this.sqlite.prepare('SELECT COUNT(*) as count FROM oracle_fts').get() as { count: number };
 
-    // Get last indexed timestamp
-    const lastIndexed = this.db.prepare(`
-      SELECT MAX(indexed_at) as last_indexed FROM oracle_documents
-    `).get() as { last_indexed: number | null };
+    // Get last indexed timestamp (Drizzle)
+    const lastIndexed = this.db.select({
+      lastIndexed: sql<number | null>`MAX(indexed_at)`,
+    }).from(oracleDocuments).get();
 
-    // Get concept count (approximate)
-    const conceptsResult = this.db.prepare(`
-      SELECT concepts FROM oracle_documents WHERE concepts IS NOT NULL AND concepts != '[]'
-    `).all() as Array<{ concepts: string }>;
+    // Get concept count (Drizzle)
+    const conceptsResult = this.db.select({
+      concepts: oracleDocuments.concepts,
+    })
+      .from(oracleDocuments)
+      .where(and(isNotNull(oracleDocuments.concepts), ne(oracleDocuments.concepts, '[]')))
+      .all();
 
     const uniqueConcepts = new Set<string>();
     for (const row of conceptsResult) {
@@ -1529,8 +1539,8 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           by_type: byType,
           fts_indexed: ftsCount.count,
           unique_concepts: uniqueConcepts.size,
-          last_indexed: lastIndexed.last_indexed
-            ? new Date(lastIndexed.last_indexed).toISOString()
+          last_indexed: lastIndexed?.lastIndexed
+            ? new Date(lastIndexed.lastIndexed).toISOString()
             : null,
           chroma_status: this.chromaStatus,
           fts_status: ftsCount.count > 0 ? 'healthy' : 'empty',
@@ -1547,12 +1557,11 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
   private async handleConcepts(input: OracleConceptsInput) {
     const { limit = 50, type = 'all' } = input;
 
-    // Get all concepts from documents
-    const stmt = type === 'all'
-      ? this.db.prepare('SELECT concepts FROM oracle_documents WHERE concepts IS NOT NULL AND concepts != \'[]\'')
-      : this.db.prepare('SELECT concepts FROM oracle_documents WHERE type = ? AND concepts IS NOT NULL AND concepts != \'[]\'');
-
-    const rows = type === 'all' ? stmt.all() : stmt.all(type);
+    // Get all concepts from documents (Drizzle)
+    const baseCondition = and(isNotNull(oracleDocuments.concepts), ne(oracleDocuments.concepts, '[]'));
+    const rows = type === 'all'
+      ? this.db.select({ concepts: oracleDocuments.concepts }).from(oracleDocuments).where(baseCondition).all()
+      : this.db.select({ concepts: oracleDocuments.concepts }).from(oracleDocuments).where(and(baseCondition, eq(oracleDocuments.type, type))).all();
 
     // Count concept occurrences
     const conceptCounts = new Map<string, number>();
@@ -2344,9 +2353,15 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
     const { oldId, newId, reason } = input;
     const now = Date.now();
 
-    // Verify both documents exist
-    const oldDoc = this.db.query('SELECT id, type FROM oracle_documents WHERE id = ?').get(oldId) as { id: string; type: string } | null;
-    const newDoc = this.db.query('SELECT id, type FROM oracle_documents WHERE id = ?').get(newId) as { id: string; type: string } | null;
+    // Verify both documents exist (Drizzle)
+    const oldDoc = this.db.select({ id: oracleDocuments.id, type: oracleDocuments.type })
+      .from(oracleDocuments)
+      .where(eq(oracleDocuments.id, oldId))
+      .get();
+    const newDoc = this.db.select({ id: oracleDocuments.id, type: oracleDocuments.type })
+      .from(oracleDocuments)
+      .where(eq(oracleDocuments.id, newId))
+      .get();
 
     if (!oldDoc) {
       throw new Error(`Old document not found: ${oldId}`);
@@ -2355,11 +2370,15 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
       throw new Error(`New document not found: ${newId}`);
     }
 
-    // Update the old document
-    this.db.run(
-      'UPDATE oracle_documents SET superseded_by = ?, superseded_at = ?, superseded_reason = ? WHERE id = ?',
-      [newId, now, reason || null, oldId]
-    );
+    // Update the old document (Drizzle)
+    this.db.update(oracleDocuments)
+      .set({
+        supersededBy: newId,
+        supersededAt: now,
+        supersededReason: reason || null,
+      })
+      .where(eq(oracleDocuments.id, oldId))
+      .run();
 
     console.error(`[MCP:SUPERSEDE] ${oldId} → superseded by → ${newId}`);
 
