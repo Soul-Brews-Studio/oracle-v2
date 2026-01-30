@@ -519,6 +519,7 @@ export class OracleIndexer {
   /**
    * Parse frontmatter project from markdown content
    * Returns the project field if found in frontmatter
+   * Also extracts project from source field (e.g., "source: rrr: owner/repo")
    */
   private parseFrontmatterProject(content: string): string | null {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -526,17 +527,29 @@ export class OracleIndexer {
 
     const frontmatter = frontmatterMatch[1];
 
-    // Match project: value
+    // First, try direct project: field
     const projectMatch = frontmatter.match(/^project:\s*(.+)$/m);
-    if (!projectMatch) return null;
-
-    const project = projectMatch[1].trim();
-    // Handle quoted values
-    if ((project.startsWith('"') && project.endsWith('"')) ||
-        (project.startsWith("'") && project.endsWith("'"))) {
-      return project.slice(1, -1);
+    if (projectMatch) {
+      const project = projectMatch[1].trim();
+      // Handle quoted values
+      if ((project.startsWith('"') && project.endsWith('"')) ||
+          (project.startsWith("'") && project.endsWith("'"))) {
+        return project.slice(1, -1);
+      }
+      return project || null;
     }
-    return project || null;
+
+    // Fallback: extract from source field (e.g., "source: rrr: owner/repo")
+    const sourceMatch = frontmatter.match(/^source:\s*rrr:\s*(.+)$/m);
+    if (sourceMatch) {
+      const repo = sourceMatch[1].trim();
+      // Convert owner/repo to github.com/owner/repo
+      if (repo && repo.includes('/')) {
+        return `github.com/${repo}`;
+      }
+    }
+
+    return null;
   }
 
   /**
