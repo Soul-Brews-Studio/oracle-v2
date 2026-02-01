@@ -93,13 +93,19 @@ oracle_learn({
 
 ## Verification
 
-After each test, verify with:
+After each test, verify with Oracle MCP:
 
-```bash
-sqlite3 ~/.oracle-v2/oracle.db "SELECT id, project FROM oracle_documents WHERE id LIKE '%test-X%' ORDER BY created_at DESC LIMIT 1"
+```typescript
+// Search for the test doc
+oracle_search({ query: "Test 1", limit: 1 })
+
+// Check project field in result
 ```
 
 Or check in UI: http://localhost:3000/learnings
+- Click on test doc
+- Verify repo link shows correct project
+- Verify "View on GitHub" link works
 
 ---
 
