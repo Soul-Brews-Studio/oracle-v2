@@ -93,16 +93,24 @@ oracle_learn({
 
 ## Verification
 
-After each test, verify with Oracle MCP:
+### Option 1: HTTP API (preferred)
+
+```bash
+# Get doc by ID - returns project field
+curl -s "http://localhost:47778/api/doc/learning_2026-02-01_test-1-short-format-normalization" | jq .project
+# Expected: "github.com/laris-co/Nat-s-Agents"
+```
+
+### Option 2: Oracle MCP
 
 ```typescript
-// Search for the test doc
 oracle_search({ query: "Test 1", limit: 1 })
-
 // Check project field in result
 ```
 
-Or check in UI: http://localhost:3000/learnings
+### Option 3: UI
+
+http://localhost:3000/learnings
 - Click on test doc
 - Verify repo link shows correct project
 - Verify "View on GitHub" link works
