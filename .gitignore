@@ -43,3 +43,6 @@ test-results/
 ψ/memory/traces/
 ψ/inbox/
 ψ/data/
+
+# Learn: ignore origin symlinks (source lives in ghq)
+ψ/learn/**/origin
