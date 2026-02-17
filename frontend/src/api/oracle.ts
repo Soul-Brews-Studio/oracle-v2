@@ -158,3 +158,69 @@ export async function getDashboardGrowth(period: 'week' | 'month' | 'quarter' = 
   const res = await fetch(`${API_BASE}/dashboard/growth?${params}`);
   return res.json();
 }
+
+// ============================================================================
+// Auth API
+// ============================================================================
+
+export interface AuthStatus {
+  authenticated: boolean;
+  authEnabled: boolean;
+  hasPassword: boolean;
+  localBypass: boolean;
+  isLocal: boolean;
+}
+
+export interface Settings {
+  authEnabled: boolean;
+  localBypass: boolean;
+  hasPassword: boolean;
+}
+
+// Get auth status
+export async function getAuthStatus(): Promise<AuthStatus> {
+  const res = await fetch(`${API_BASE}/auth/status`);
+  return res.json();
+}
+
+// Login
+export async function login(password: string): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  return res.json();
+}
+
+// Logout
+export async function logout(): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST'
+  });
+  return res.json();
+}
+
+// Get settings
+export async function getSettings(): Promise<Settings> {
+  const res = await fetch(`${API_BASE}/settings`);
+  return res.json();
+}
+
+// Update settings
+export interface UpdateSettingsParams {
+  currentPassword?: string;
+  newPassword?: string;
+  removePassword?: boolean;
+  authEnabled?: boolean;
+  localBypass?: boolean;
+}
+
+export async function updateSettings(params: UpdateSettingsParams): Promise<Settings & { success?: boolean; error?: string }> {
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  return res.json();
+}

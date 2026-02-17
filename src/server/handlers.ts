@@ -54,10 +54,10 @@ export async function handleSearch(
   let ftsTotal = 0;
 
   // Project filter: if project specified, include project + universal (NULL)
-  // If no project, only return universal (NULL)
+  // If no project, return ALL documents (no filter)
   const projectFilter = resolvedProject
     ? '(d.project = ? OR d.project IS NULL)'
-    : 'd.project IS NULL';
+    : '1=1';
   const projectParams = resolvedProject ? [resolvedProject] : [];
 
   // FTS5 search must use raw SQL (Drizzle doesn't support virtual tables)

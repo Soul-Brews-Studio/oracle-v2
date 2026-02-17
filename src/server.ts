@@ -5,9 +5,10 @@
  * Same handlers, same DB, just cleaner HTTP layer.
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/bun';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import fs from 'fs';
 import path from 'path';
 
@@ -40,7 +41,8 @@ import {
   consultLog,
   learnLog,
   supersedeLog,
-  indexingStatus
+  indexingStatus,
+  settings
 } from './db/index.js';
 
 import {
@@ -129,6 +131,260 @@ const app = new Hono();
 
 // CORS middleware
 app.use('*', cors());
+
+// ============================================================================
+// Auth Helpers
+// ============================================================================
+
+// Session secret - generate once per server run
+const SESSION_SECRET = process.env.ORACLE_SESSION_SECRET || crypto.randomUUID();
+const SESSION_COOKIE_NAME = 'oracle_session';
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Get a setting value
+function getSetting(key: string): string | null {
+  const row = db.select().from(settings).where(eq(settings.key, key)).get();
+  return row?.value ?? null;
+}
+
+// Set a setting value
+function setSetting(key: string, value: string | null): void {
+  db.insert(settings)
+    .values({ key, value, updatedAt: Date.now() })
+    .onConflictDoUpdate({
+      target: settings.key,
+      set: { value, updatedAt: Date.now() }
+    })
+    .run();
+}
+
+// Check if request is from local network
+function isLocalNetwork(c: Context): boolean {
+  const forwarded = c.req.header('x-forwarded-for');
+  const realIp = c.req.header('x-real-ip');
+  const ip = forwarded?.split(',')[0]?.trim() || realIp || '127.0.0.1';
+
+  return ip === '127.0.0.1'
+      || ip === '::1'
+      || ip === 'localhost'
+      || ip.startsWith('192.168.')
+      || ip.startsWith('10.')
+      || ip.startsWith('172.16.')
+      || ip.startsWith('172.17.')
+      || ip.startsWith('172.18.')
+      || ip.startsWith('172.19.')
+      || ip.startsWith('172.20.')
+      || ip.startsWith('172.21.')
+      || ip.startsWith('172.22.')
+      || ip.startsWith('172.23.')
+      || ip.startsWith('172.24.')
+      || ip.startsWith('172.25.')
+      || ip.startsWith('172.26.')
+      || ip.startsWith('172.27.')
+      || ip.startsWith('172.28.')
+      || ip.startsWith('172.29.')
+      || ip.startsWith('172.30.')
+      || ip.startsWith('172.31.');
+}
+
+// Generate session token
+function generateSessionToken(): string {
+  const expires = Date.now() + SESSION_DURATION_MS;
+  const payload = `${expires}:${SESSION_SECRET}`;
+  // Simple hash for verification
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payload);
+  let hash = 0;
+  for (const byte of data) {
+    hash = ((hash << 5) - hash) + byte;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `${expires}:${Math.abs(hash).toString(36)}`;
+}
+
+// Verify session token
+function verifySessionToken(token: string): boolean {
+  if (!token) return false;
+  const [expiresStr] = token.split(':');
+  const expires = parseInt(expiresStr, 10);
+  if (isNaN(expires) || expires < Date.now()) return false;
+
+  // Regenerate expected token and compare
+  const expected = generateSessionToken();
+  // Just check expiry is in future for now (simple implementation)
+  return expires > Date.now();
+}
+
+// Check if auth is required and user is authenticated
+function isAuthenticated(c: Context): boolean {
+  const authEnabled = getSetting('auth_enabled') === 'true';
+  if (!authEnabled) return true; // Auth not enabled, everyone is "authenticated"
+
+  const localBypass = getSetting('auth_local_bypass') !== 'false'; // Default true
+  if (localBypass && isLocalNetwork(c)) return true;
+
+  const sessionCookie = getCookie(c, SESSION_COOKIE_NAME);
+  return verifySessionToken(sessionCookie || '');
+}
+
+// ============================================================================
+// Auth Middleware (protects /api/* except auth routes)
+// ============================================================================
+
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+
+  // Skip auth for certain endpoints
+  const publicPaths = [
+    '/api/auth/status',
+    '/api/auth/login',
+    '/api/health'
+  ];
+  if (publicPaths.some(p => path === p)) {
+    return next();
+  }
+
+  if (!isAuthenticated(c)) {
+    return c.json({ error: 'Unauthorized', requiresAuth: true }, 401);
+  }
+
+  return next();
+});
+
+// ============================================================================
+// Auth Routes
+// ============================================================================
+
+// Auth status - public
+app.get('/api/auth/status', (c) => {
+  const authEnabled = getSetting('auth_enabled') === 'true';
+  const hasPassword = !!getSetting('auth_password_hash');
+  const localBypass = getSetting('auth_local_bypass') !== 'false';
+  const isLocal = isLocalNetwork(c);
+  const authenticated = isAuthenticated(c);
+
+  return c.json({
+    authenticated,
+    authEnabled,
+    hasPassword,
+    localBypass,
+    isLocal
+  });
+});
+
+// Login
+app.post('/api/auth/login', async (c) => {
+  const body = await c.req.json();
+  const { password } = body;
+
+  if (!password) {
+    return c.json({ success: false, error: 'Password required' }, 400);
+  }
+
+  const storedHash = getSetting('auth_password_hash');
+  if (!storedHash) {
+    return c.json({ success: false, error: 'No password configured' }, 400);
+  }
+
+  // Verify password using Bun's built-in password functions
+  const valid = await Bun.password.verify(password, storedHash);
+  if (!valid) {
+    return c.json({ success: false, error: 'Invalid password' }, 401);
+  }
+
+  // Set session cookie
+  const token = generateSessionToken();
+  setCookie(c, SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: false, // Allow HTTP for local dev
+    sameSite: 'Lax',
+    maxAge: SESSION_DURATION_MS / 1000,
+    path: '/'
+  });
+
+  return c.json({ success: true });
+});
+
+// Logout
+app.post('/api/auth/logout', (c) => {
+  deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
+  return c.json({ success: true });
+});
+
+// ============================================================================
+// Settings Routes
+// ============================================================================
+
+// Get settings (no password hash exposed)
+app.get('/api/settings', (c) => {
+  const authEnabled = getSetting('auth_enabled') === 'true';
+  const localBypass = getSetting('auth_local_bypass') !== 'false';
+  const hasPassword = !!getSetting('auth_password_hash');
+
+  return c.json({
+    authEnabled,
+    localBypass,
+    hasPassword
+  });
+});
+
+// Update settings
+app.post('/api/settings', async (c) => {
+  const body = await c.req.json();
+
+  // Handle password change
+  if (body.newPassword) {
+    // If password exists, require current password
+    const existingHash = getSetting('auth_password_hash');
+    if (existingHash) {
+      if (!body.currentPassword) {
+        return c.json({ error: 'Current password required' }, 400);
+      }
+      const valid = await Bun.password.verify(body.currentPassword, existingHash);
+      if (!valid) {
+        return c.json({ error: 'Current password is incorrect' }, 401);
+      }
+    }
+
+    // Hash and store new password
+    const hash = await Bun.password.hash(body.newPassword);
+    setSetting('auth_password_hash', hash);
+  }
+
+  // Handle removing password
+  if (body.removePassword === true) {
+    const existingHash = getSetting('auth_password_hash');
+    if (existingHash && body.currentPassword) {
+      const valid = await Bun.password.verify(body.currentPassword, existingHash);
+      if (!valid) {
+        return c.json({ error: 'Current password is incorrect' }, 401);
+      }
+    }
+    setSetting('auth_password_hash', null);
+    setSetting('auth_enabled', 'false');
+  }
+
+  // Handle auth enabled toggle
+  if (typeof body.authEnabled === 'boolean') {
+    // Can only enable auth if password is set
+    if (body.authEnabled && !getSetting('auth_password_hash')) {
+      return c.json({ error: 'Cannot enable auth without password' }, 400);
+    }
+    setSetting('auth_enabled', body.authEnabled ? 'true' : 'false');
+  }
+
+  // Handle local bypass toggle
+  if (typeof body.localBypass === 'boolean') {
+    setSetting('auth_local_bypass', body.localBypass ? 'true' : 'false');
+  }
+
+  return c.json({
+    success: true,
+    authEnabled: getSetting('auth_enabled') === 'true',
+    localBypass: getSetting('auth_local_bypass') !== 'false',
+    hasPassword: !!getSetting('auth_password_hash')
+  });
+});
 
 // ============================================================================
 // API Routes

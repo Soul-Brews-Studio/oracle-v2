@@ -282,3 +282,13 @@ export const activityLog = sqliteTable('activity_log', {
   index('idx_activity_type').on(table.type),
   index('idx_activity_project').on(table.project),
 ]);
+
+// ============================================================================
+// Settings Table - Key-value store for configuration
+// ============================================================================
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value'),
+  updatedAt: integer('updated_at').notNull(),
+});
