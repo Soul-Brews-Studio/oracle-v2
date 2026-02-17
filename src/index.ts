@@ -2522,7 +2522,7 @@ async function main() {
   // Auto-start HTTP server if not running (Issue #24)
   try {
     console.error('[Startup] Ensuring HTTP server is running...');
-    await ensureServerRunning({ background: true, timeout: 5000 });
+    await ensureServerRunning({ timeout: 5000 });
     console.error('[Startup] HTTP server ready');
   } catch (e) {
     console.error('[Startup] HTTP server auto-start failed:', e instanceof Error ? e.message : e);

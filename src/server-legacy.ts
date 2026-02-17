@@ -133,14 +133,14 @@ const dataDir = path.join(import.meta.dirname || __dirname, '..');
 configure({ dataDir });
 
 // Write PID file for process tracking
-writePidFile({ port: Number(PORT), name: 'oracle-http' });
+writePidFile({ pid: process.pid, port: Number(PORT), startedAt: new Date().toISOString(), name: 'oracle-http' });
 
 // Register graceful shutdown handlers
 registerSignalHandlers(async () => {
   console.log('\n🔮 Shutting down gracefully...');
   await performGracefulShutdown({
-    closeables: [
-      { name: 'database', close: () => { closeDb(); return Promise.resolve(); } }
+    resources: [
+      { close: () => { closeDb(); return Promise.resolve(); } }
     ]
   });
   removePidFile();

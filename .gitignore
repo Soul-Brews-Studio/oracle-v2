@@ -8,6 +8,8 @@ node_modules/
 *.db
 *.db-shm
 *.db-wal
+!.oracle-v2/
+!.oracle-v2/*.db
 
 # Chroma storage
 chroma/

@@ -65,7 +65,7 @@ export function createDecision(input: CreateDecisionInput): Decision {
   const now = Date.now();
   const project = input.project || getProjectContext_();
 
-  const result = db.insert(decisions).values({
+  const [inserted] = db.insert(decisions).values({
     title: input.title,
     context: input.context || null,
     options: input.options ? JSON.stringify(input.options) : null,
@@ -73,23 +73,9 @@ export function createDecision(input: CreateDecisionInput): Decision {
     tags: input.tags ? JSON.stringify(input.tags) : null,
     createdAt: now,
     updatedAt: now,
-  }).run();
+  }).returning().all();
 
-  return {
-    id: Number(result.lastInsertRowid),
-    title: input.title,
-    status: 'pending',
-    context: input.context || null,
-    options: input.options || null,
-    decision: null,
-    rationale: null,
-    project: project || null,
-    tags: input.tags || null,
-    createdAt: now,
-    updatedAt: now,
-    decidedAt: null,
-    decidedBy: null,
-  };
+  return parseDecisionRow(inserted);
 }
 
 /**

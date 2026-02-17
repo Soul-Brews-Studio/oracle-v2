@@ -1,0 +1,60 @@
+{
+  "mcpServers": {
+    "oracle-v2": {
+      "description": "Oracle v2 - Knowledge base with principles, patterns, learnings (project-local)",
+      "command": "bun",
+      "args": ["run", "src/index.ts"],
+      "cwd": "${projectRoot}",
+      "env": {
+        "ORACLE_DB_PATH": "${projectRoot}/.oracle-v2/oracle.db",
+        "ORACLE_DATA_DIR": "${projectRoot}/.oracle-v2"
+      }
+    },
+    "wikipedia": {
+      "description": "Wikipedia search - for knowledge lookup",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-wikipedia"]
+    },
+    "brave-search": {
+      "description": "Brave Search API - Web search (requires BRAVE_API_KEY env)",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-brave-search-api-key-here"
+      }
+    },
+    "desktop-commander": {
+      "description": "Desktop automation - file operations, process management",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-desktop-commander"]
+    },
+    "filesystem": {
+      "description": "File system access - read, write, search files",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${projectRoot}"]
+    },
+    "github": {
+      "description": "GitHub integration - issues, PRs, repositories (requires GITHUB_TOKEN env)",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "your-github-personal-access-token-here"
+      }
+    },
+    "playwright": {
+      "description": "Browser automation - screenshots, interaction",
+      "command": "npx",
+      "args": ["-y", "@executeautomation/playwright-mcp-server"]
+    },
+    "sequential-thinking": {
+      "description": "Sequential thinking - step-by-step reasoning",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "time": {
+      "description": "Time utilities - current time, timezone conversion",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"]
+    }
+  }
+}

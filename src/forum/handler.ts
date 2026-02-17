@@ -44,17 +44,17 @@ export function createThread(
 ): ForumThread {
   const now = Date.now();
 
-  const result = db.insert(forumThreads).values({
+  const [inserted] = db.insert(forumThreads).values({
     title,
     createdBy,
     status: 'active',
     project: project || null,
     createdAt: now,
     updatedAt: now,
-  }).run();
+  }).returning().all();
 
   return {
-    id: Number(result.lastInsertRowid),
+    id: inserted.id,
     title,
     createdBy,
     status: 'active',
@@ -78,14 +78,14 @@ export function getThread(threadId: number): ForumThread | null {
   return {
     id: row.id,
     title: row.title,
-    createdBy: row.createdBy || undefined,
-    status: row.status || undefined,
-    issueUrl: row.issueUrl || undefined,
-    issueNumber: row.issueNumber || undefined,
-    project: row.project || undefined,
+    createdBy: row.createdBy ?? 'user',
+    status: (row.status ?? 'active') as ThreadStatus,
+    issueUrl: row.issueUrl ?? undefined,
+    issueNumber: row.issueNumber ?? undefined,
+    project: row.project ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    syncedAt: row.syncedAt || undefined,
+    syncedAt: row.syncedAt ?? undefined,
   };
 }
 
@@ -141,14 +141,14 @@ export function listThreads(options: {
     threads: rows.map(row => ({
       id: row.id,
       title: row.title,
-      createdBy: row.createdBy || undefined,
-      status: row.status || undefined,
-      issueUrl: row.issueUrl || undefined,
-      issueNumber: row.issueNumber || undefined,
-      project: row.project || undefined,
+      createdBy: row.createdBy ?? 'user',
+      status: (row.status ?? 'active') as ThreadStatus,
+      issueUrl: row.issueUrl ?? undefined,
+      issueNumber: row.issueNumber ?? undefined,
+      project: row.project ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      syncedAt: row.syncedAt || undefined,
+      syncedAt: row.syncedAt ?? undefined,
     })),
     total,
   };
@@ -174,7 +174,7 @@ export function addMessage(
 ): ForumMessage {
   const now = Date.now();
 
-  const result = db.insert(forumMessages).values({
+  const [inserted] = db.insert(forumMessages).values({
     threadId,
     role,
     content,
@@ -183,7 +183,7 @@ export function addMessage(
     patternsFound: options.patternsFound || null,
     searchQuery: options.searchQuery || null,
     createdAt: now,
-  }).run();
+  }).returning().all();
 
   // Update thread timestamp
   db.update(forumThreads)
@@ -192,7 +192,7 @@ export function addMessage(
     .run();
 
   return {
-    id: Number(result.lastInsertRowid),
+    id: inserted.id,
     threadId,
     role,
     content,

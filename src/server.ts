@@ -119,8 +119,8 @@ writePidFile({ pid: process.pid, port: Number(PORT), startedAt: new Date().toISO
 registerSignalHandlers(async () => {
   console.log('\n🔮 Shutting down gracefully...');
   await performGracefulShutdown({
-    closeables: [
-      { name: 'database', close: () => { closeDb(); return Promise.resolve(); } }
+    resources: [
+      { close: () => { closeDb(); return Promise.resolve(); } }
     ]
   });
   removePidFile();
@@ -953,7 +953,7 @@ app.post('/api/supersede', async (c) => {
       return c.json({ error: 'Missing required field: old_path' }, 400);
     }
 
-    const result = db.insert(supersedeLog).values({
+    const [inserted] = db.insert(supersedeLog).values({
       oldPath: data.old_path,
       oldId: data.old_id || null,
       oldTitle: data.old_title || null,
@@ -965,10 +965,10 @@ app.post('/api/supersede', async (c) => {
       supersededAt: Date.now(),
       supersededBy: data.superseded_by || 'user',
       project: data.project || null
-    }).run();
+    }).returning().all();
 
     return c.json({
-      id: result.lastInsertRowid,
+      id: inserted.id,
       message: 'Supersession logged'
     }, 201);
   } catch (error) {
