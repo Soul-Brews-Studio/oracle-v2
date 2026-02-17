@@ -27,5 +27,6 @@ export default defineConfig({
     'trace_log',      // Issue #17
     'supersede_log',  // Issue #18
     'activity_log',   // User activity tracking
+    'settings',       // Auth & app settings
   ],
 });

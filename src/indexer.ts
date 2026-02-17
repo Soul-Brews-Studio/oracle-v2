@@ -293,6 +293,9 @@ export class OracleIndexer {
       return [];
     }
     const files = fs.readdirSync(resonancePath).filter(f => f.endsWith('.md'));
+    if (files.length === 0) {
+      console.log(`Warning: ${resonancePath} exists but contains no .md files`);
+    }
     const documents: OracleDocument[] = [];
 
     for (const file of files) {
@@ -369,15 +372,21 @@ export class OracleIndexer {
    */
   private async indexLearnings(): Promise<OracleDocument[]> {
     const learningsPath = path.join(this.config.repoRoot, this.config.sourcePaths.learnings);
-    if (!fs.existsSync(learningsPath)) return [];
+    if (!fs.existsSync(learningsPath)) {
+      console.log(`Skipping learnings: ${learningsPath} not found`);
+      return [];
+    }
 
-    const files = fs.readdirSync(learningsPath).filter(f => f.endsWith('.md'));
+    const files = this.getAllMarkdownFiles(learningsPath);
+    if (files.length === 0) {
+      console.log(`Warning: ${learningsPath} exists but contains no .md files`);
+    }
     const documents: OracleDocument[] = [];
 
-    for (const file of files) {
-      const filePath = path.join(learningsPath, file);
+    for (const filePath of files) {
       const content = fs.readFileSync(filePath, 'utf-8');
-      const docs = this.parseLearningFile(file, content);
+      const relName = path.relative(learningsPath, filePath);
+      const docs = this.parseLearningFile(relName, content);
       documents.push(...docs);
     }
 
@@ -741,8 +750,13 @@ export class OracleIndexer {
 const isMain = import.meta.url.endsWith('indexer.ts') || import.meta.url.endsWith('indexer.js');
 if (isMain) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-  const repoRoot = process.env.ORACLE_REPO_ROOT || process.cwd();
   const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle-v2');
+
+  // Use same ψ/-aware detection as the server (src/server/db.ts)
+  const scriptDir = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
+  const projectRoot = path.resolve(scriptDir, '..');
+  const repoRoot = process.env.ORACLE_REPO_ROOT ||
+    (fs.existsSync(path.join(projectRoot, 'ψ')) ? projectRoot : process.cwd());
 
   const config: IndexerConfig = {
     repoRoot,

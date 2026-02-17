@@ -9,6 +9,7 @@ import { Hono, type Context, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/bun';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { createHmac, timingSafeEqual } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -187,32 +188,34 @@ function isLocalNetwork(c: Context): boolean {
       || ip.startsWith('172.31.');
 }
 
-// Generate session token
+// Generate session token using HMAC-SHA256
 function generateSessionToken(): string {
   const expires = Date.now() + SESSION_DURATION_MS;
-  const payload = `${expires}:${SESSION_SECRET}`;
-  // Simple hash for verification
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payload);
-  let hash = 0;
-  for (const byte of data) {
-    hash = ((hash << 5) - hash) + byte;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return `${expires}:${Math.abs(hash).toString(36)}`;
+  const signature = createHmac('sha256', SESSION_SECRET)
+    .update(String(expires))
+    .digest('hex');
+  return `${expires}:${signature}`;
 }
 
-// Verify session token
+// Verify session token with timing-safe comparison
 function verifySessionToken(token: string): boolean {
   if (!token) return false;
-  const [expiresStr] = token.split(':');
+  const colonIdx = token.indexOf(':');
+  if (colonIdx === -1) return false;
+
+  const expiresStr = token.substring(0, colonIdx);
+  const signature = token.substring(colonIdx + 1);
   const expires = parseInt(expiresStr, 10);
   if (isNaN(expires) || expires < Date.now()) return false;
 
-  // Regenerate expected token and compare
-  const expected = generateSessionToken();
-  // Just check expiry is in future for now (simple implementation)
-  return expires > Date.now();
+  const expectedSignature = createHmac('sha256', SESSION_SECRET)
+    .update(expiresStr)
+    .digest('hex');
+
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(sigBuf, expectedBuf);
 }
 
 // Check if auth is required and user is authenticated

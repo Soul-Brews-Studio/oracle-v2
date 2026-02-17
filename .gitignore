@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
+# Build output (root-level TypeScript compilation only, not frontend/dist)
+/dist/
 
 # Database files
 *.db
