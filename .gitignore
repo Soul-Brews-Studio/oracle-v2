@@ -36,3 +36,10 @@ coverage/
 playwright-report/
 test-results/
 *.pid
+
+# Personal Oracle data (per-user, not shared)
+ψ/memory/learnings/
+ψ/memory/retrospectives/
+ψ/memory/traces/
+ψ/inbox/
+ψ/data/
