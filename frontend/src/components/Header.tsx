@@ -17,7 +17,6 @@ const navItems = [
 
 // Dropdown items (Tools)
 const toolsItems = [
-  { path: '/consult', label: 'Consult' },
   { path: '/evolution', label: 'Evolution' },
   { path: '/traces', label: 'Traces' },
   { path: '/superseded', label: 'Superseded' },
