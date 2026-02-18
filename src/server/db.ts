@@ -113,25 +113,6 @@ export function bootstrapCoreTables() {
       )
     `);
 
-    // Decisions table
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS decisions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        context TEXT,
-        options TEXT,
-        decision TEXT,
-        rationale TEXT,
-        project TEXT,
-        tags TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        decided_at INTEGER,
-        decided_by TEXT
-      )
-    `);
-
     // Trace log table
     db.exec(`
       CREATE TABLE IF NOT EXISTS trace_log (

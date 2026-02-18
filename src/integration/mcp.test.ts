@@ -200,28 +200,6 @@ describe("MCP Integration", () => {
   });
 
   // ===================
-  // Decision Tools
-  // ===================
-  describe("Decision Tools", () => {
-    test("oracle_decisions_list returns decisions", async () => {
-      const result = await callTool("oracle_decisions_list", {
-        limit: 10,
-      });
-
-      expect(result).toBeDefined();
-    });
-
-    test("oracle_decisions_list with status filter", async () => {
-      const result = await callTool("oracle_decisions_list", {
-        status: "pending",
-        limit: 5,
-      });
-
-      expect(result).toBeDefined();
-    });
-  });
-
-  // ===================
   // Trace Tools
   // ===================
   describe("Trace Tools", () => {

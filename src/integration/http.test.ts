@@ -205,25 +205,6 @@ describe("HTTP API Integration", () => {
   });
 
   // ===================
-  // Decisions
-  // ===================
-  describe("Decisions", () => {
-    test("GET /api/decisions returns decision list", async () => {
-      const res = await fetch(`${BASE_URL}/api/decisions`);
-      expect(res.ok).toBe(true);
-      const data = await res.json();
-      expect(Array.isArray(data.decisions)).toBe(true);
-    });
-
-    test("GET /api/decisions with status filter", async () => {
-      const res = await fetch(`${BASE_URL}/api/decisions?status=pending`);
-      expect(res.ok).toBe(true);
-      const data = await res.json();
-      expect(Array.isArray(data.decisions)).toBe(true);
-    });
-  });
-
-  // ===================
   // Error Handling
   // ===================
   describe("Error Handling", () => {
