@@ -33,21 +33,6 @@ import {
 } from './forum/handler.js';
 import { detectProject } from './server/project-detect.js';
 
-import {
-  createDecision,
-  getDecision,
-  updateDecision,
-  listDecisions,
-  transitionStatus,
-  getDecisionCounts,
-} from './decisions/handler.js';
-
-import type {
-  DecisionStatus,
-  CreateDecisionInput,
-  UpdateDecisionInput,
-  ListDecisionsInput,
-} from './decisions/types.js';
 
 import {
   createTrace,
@@ -134,39 +119,6 @@ interface OracleThreadUpdateInput {
   status?: 'active' | 'closed' | 'answered' | 'pending';
 }
 
-// Decision tracking interfaces
-interface OracleDecisionsListInput {
-  status?: DecisionStatus;
-  project?: string;
-  tags?: string[];
-  limit?: number;
-  offset?: number;
-}
-
-interface OracleDecisionsCreateInput {
-  title: string;
-  context?: string;
-  options?: Array<{ label: string; pros: string[]; cons: string[] }>;
-  tags?: string[];
-  project?: string;
-}
-
-interface OracleDecisionsGetInput {
-  id: number;
-}
-
-interface OracleDecisionsUpdateInput {
-  id: number;
-  title?: string;
-  context?: string;
-  options?: Array<{ label: string; pros: string[]; cons: string[] }>;
-  decision?: string;
-  rationale?: string;
-  tags?: string[];
-  status?: DecisionStatus;
-  decidedBy?: string;
-}
-
 // Issue #19: Supersede pattern
 interface OracleSupersededInput {
   oldId: string;
@@ -174,15 +126,25 @@ interface OracleSupersededInput {
   reason?: string;
 }
 
+interface OracleHandoffInput {
+  content: string;
+  slug?: string;
+}
+
+interface OracleInboxInput {
+  limit?: number;
+  offset?: number;
+  type?: 'handoff' | 'all';
+}
+
 // Write tools that should be disabled in read-only mode
 const WRITE_TOOLS = [
   'oracle_learn',
   'oracle_thread',
   'oracle_thread_update',
-  'oracle_decisions_create',
-  'oracle_decisions_update',
   'oracle_trace',
   'oracle_supersede',
+  'oracle_handoff',
 ];
 
 class OracleMCPServer {
@@ -303,9 +265,9 @@ class OracleMCPServer {
    oracle_trace_link(prevId, nextId) → Chain related traces together
    oracle_trace_chain(id) → View the full linked chain
 
-5. DECIDE & TRACK
-   oracle_decisions_create() → Track important decisions
-   oracle_decisions_list() → Review pending decisions
+5. HANDOFF & INBOX
+   oracle_handoff(content) → Save session context for next session
+   oracle_inbox() → List pending handoffs
 
 6. SUPERSEDE (when info changes)
    oracle_supersede(oldId, newId, reason) → Mark old doc as outdated
@@ -556,151 +518,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             required: ['threadId', 'status']
           }
         },
-        // Decision tracking tools
-        {
-          name: 'oracle_decisions_list',
-          description: 'List decisions with optional filters. Returns decisions with status counts for dashboard view.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              status: {
-                type: 'string',
-                enum: ['pending', 'parked', 'researching', 'decided', 'implemented', 'closed'],
-                description: 'Filter by decision status'
-              },
-              project: {
-                type: 'string',
-                description: 'Filter by project (ghq path)'
-              },
-              tags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Filter by tags (matches any)'
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum decisions to return (default: 20)',
-                default: 20
-              },
-              offset: {
-                type: 'number',
-                description: 'Pagination offset',
-                default: 0
-              }
-            },
-            required: []
-          }
-        },
-        {
-          name: 'oracle_decisions_create',
-          description: 'Create a new decision to track. Starts in "pending" status.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              title: {
-                type: 'string',
-                description: 'Decision title (e.g., "Multiple psi directory architecture")'
-              },
-              context: {
-                type: 'string',
-                description: 'Why this decision matters, background information'
-              },
-              options: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    label: { type: 'string', description: 'Option name' },
-                    pros: { type: 'array', items: { type: 'string' }, description: 'Advantages' },
-                    cons: { type: 'array', items: { type: 'string' }, description: 'Disadvantages' }
-                  },
-                  required: ['label', 'pros', 'cons']
-                },
-                description: 'Available options with pros/cons'
-              },
-              tags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Tags for categorization (e.g., ["architecture", "urgent"])'
-              },
-              project: {
-                type: 'string',
-                description: 'Project context (auto-detected if not provided)'
-              }
-            },
-            required: ['title']
-          }
-        },
-        {
-          name: 'oracle_decisions_get',
-          description: 'Get a single decision with full details including options, decision, and rationale.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              id: {
-                type: 'number',
-                description: 'Decision ID'
-              }
-            },
-            required: ['id']
-          }
-        },
-        {
-          name: 'oracle_decisions_update',
-          description: 'Update a decision. Use to add decision/rationale, change status, or modify details. Status transitions are validated.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              id: {
-                type: 'number',
-                description: 'Decision ID to update'
-              },
-              title: {
-                type: 'string',
-                description: 'Updated title'
-              },
-              context: {
-                type: 'string',
-                description: 'Updated context'
-              },
-              options: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    label: { type: 'string' },
-                    pros: { type: 'array', items: { type: 'string' } },
-                    cons: { type: 'array', items: { type: 'string' } }
-                  }
-                },
-                description: 'Updated options'
-              },
-              decision: {
-                type: 'string',
-                description: 'The decision made (what was chosen)'
-              },
-              rationale: {
-                type: 'string',
-                description: 'Why this choice was made'
-              },
-              tags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Updated tags'
-              },
-              status: {
-                type: 'string',
-                enum: ['pending', 'parked', 'researching', 'decided', 'implemented', 'closed'],
-                description: 'New status (must be valid transition)'
-              },
-              decidedBy: {
-                type: 'string',
-                description: 'Who made the decision (e.g., "user", "opus")'
-              }
-            },
-            required: ['id']
-          }
-        },
         // ============================================================================
         // Trace Log Tools (Issue #17)
         // ============================================================================
@@ -919,6 +736,52 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             },
             required: ['oldId', 'newId']
           }
+        },
+        // ============================================================================
+        // Inbox Tools - Session handoff and inbox management
+        // ============================================================================
+        {
+          name: 'oracle_handoff',
+          description: 'Write session context to the Oracle inbox for future sessions to pick up. Creates a timestamped markdown file in ψ/inbox/handoff/. Use at end of sessions to preserve context.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              content: {
+                type: 'string',
+                description: 'The handoff content (markdown). Include context, progress, next steps.'
+              },
+              slug: {
+                type: 'string',
+                description: 'Optional slug for the filename. Auto-generated from content if not provided.'
+              }
+            },
+            required: ['content']
+          }
+        },
+        {
+          name: 'oracle_inbox',
+          description: 'List and preview pending handoff files from the Oracle inbox. Returns files sorted newest-first with previews.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              limit: {
+                type: 'number',
+                description: 'Maximum files to return (default: 10)',
+                default: 10
+              },
+              offset: {
+                type: 'number',
+                description: 'Number of files to skip (for pagination)',
+                default: 0
+              },
+              type: {
+                type: 'string',
+                enum: ['handoff', 'all'],
+                description: 'Filter by inbox type (default: all)',
+                default: 'all'
+              }
+            }
+          }
         }
       ];
 
@@ -978,19 +841,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           case 'oracle_thread_update':
             return await this.handleThreadUpdate(request.params.arguments as unknown as OracleThreadUpdateInput);
 
-          // Decision tracking handlers
-          case 'oracle_decisions_list':
-            return await this.handleDecisionsList(request.params.arguments as unknown as OracleDecisionsListInput);
-
-          case 'oracle_decisions_create':
-            return await this.handleDecisionsCreate(request.params.arguments as unknown as OracleDecisionsCreateInput);
-
-          case 'oracle_decisions_get':
-            return await this.handleDecisionsGet(request.params.arguments as unknown as OracleDecisionsGetInput);
-
-          case 'oracle_decisions_update':
-            return await this.handleDecisionsUpdate(request.params.arguments as unknown as OracleDecisionsUpdateInput);
-
           // Trace log handlers (Issue #17)
           case 'oracle_trace':
             return await this.handleTrace(request.params.arguments as unknown as CreateTraceInput);
@@ -1013,6 +863,13 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           // Supersede handler (Issue #19)
           case 'oracle_supersede':
             return await this.handleSupersede(request.params.arguments as unknown as OracleSupersededInput);
+
+          // Inbox handlers
+          case 'oracle_handoff':
+            return await this.handleHandoff(request.params.arguments as unknown as OracleHandoffInput);
+
+          case 'oracle_inbox':
+            return await this.handleInbox(request.params.arguments as unknown as OracleInboxInput);
 
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
@@ -2056,148 +1913,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
   }
 
   // ============================================================================
-  // Decision Tracking Handlers
-  // ============================================================================
-
-  /**
-   * List decisions with optional filters
-   */
-  private async handleDecisionsList(input: OracleDecisionsListInput) {
-    const result = listDecisions({
-      status: input.status,
-      project: input.project,
-      tags: input.tags,
-      limit: input.limit || 20,
-      offset: input.offset || 0,
-    });
-
-    const counts = getDecisionCounts();
-
-    console.error(`[MCP:DECISIONS_LIST] ${input.status || 'all'} → ${result.decisions.length} decisions`);
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          decisions: result.decisions.map(d => ({
-            id: d.id,
-            title: d.title,
-            status: d.status,
-            context: d.context,
-            decision: d.decision,
-            project: d.project,
-            tags: d.tags,
-            created_at: new Date(d.createdAt).toISOString(),
-            updated_at: new Date(d.updatedAt).toISOString(),
-            decided_at: d.decidedAt ? new Date(d.decidedAt).toISOString() : null,
-            decided_by: d.decidedBy,
-          })),
-          total: result.total,
-          counts,
-        }, null, 2)
-      }]
-    };
-  }
-
-  /**
-   * Create a new decision
-   */
-  private async handleDecisionsCreate(input: OracleDecisionsCreateInput) {
-    const decision = createDecision({
-      title: input.title,
-      context: input.context,
-      options: input.options,
-      tags: input.tags,
-      project: input.project,
-    });
-
-    console.error(`[MCP:DECISIONS_CREATE] "${input.title}" → id=${decision.id}`);
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          id: decision.id,
-          title: decision.title,
-          status: decision.status,
-          project: decision.project,
-          created_at: new Date(decision.createdAt).toISOString(),
-        }, null, 2)
-      }]
-    };
-  }
-
-  /**
-   * Get a single decision with full details
-   */
-  private async handleDecisionsGet(input: OracleDecisionsGetInput) {
-    const decision = getDecision(input.id);
-    if (!decision) {
-      throw new Error(`Decision ${input.id} not found`);
-    }
-
-    console.error(`[MCP:DECISIONS_GET] id=${input.id} → "${decision.title}"`);
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          id: decision.id,
-          title: decision.title,
-          status: decision.status,
-          context: decision.context,
-          options: decision.options,
-          decision: decision.decision,
-          rationale: decision.rationale,
-          project: decision.project,
-          tags: decision.tags,
-          created_at: new Date(decision.createdAt).toISOString(),
-          updated_at: new Date(decision.updatedAt).toISOString(),
-          decided_at: decision.decidedAt ? new Date(decision.decidedAt).toISOString() : null,
-          decided_by: decision.decidedBy,
-        }, null, 2)
-      }]
-    };
-  }
-
-  /**
-   * Update a decision (fields and/or status)
-   */
-  private async handleDecisionsUpdate(input: OracleDecisionsUpdateInput) {
-    const decision = updateDecision({
-      id: input.id,
-      title: input.title,
-      context: input.context,
-      options: input.options,
-      decision: input.decision,
-      rationale: input.rationale,
-      tags: input.tags,
-      status: input.status,
-      decidedBy: input.decidedBy,
-    });
-
-    if (!decision) {
-      throw new Error(`Decision ${input.id} not found`);
-    }
-
-    console.error(`[MCP:DECISIONS_UPDATE] id=${input.id} → status=${decision.status}`);
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          id: decision.id,
-          title: decision.title,
-          status: decision.status,
-          updated_at: new Date(decision.updatedAt).toISOString(),
-          decided_at: decision.decidedAt ? new Date(decision.decidedAt).toISOString() : null,
-          decided_by: decision.decidedBy,
-        }, null, 2)
-      }]
-    };
-  }
-
-  // ============================================================================
   // Trace Log Handlers (Issue #17)
   // ============================================================================
 
@@ -2406,6 +2121,112 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           })),
           position: result.position,
           chain_length: result.chain.length,
+        }, null, 2)
+      }]
+    };
+  }
+
+  // ============================================================================
+  // Inbox Handlers
+  // ============================================================================
+
+  /**
+   * Tool: oracle_handoff
+   * Write session context to ψ/inbox/handoff/ for future sessions
+   */
+  private async handleHandoff(input: OracleHandoffInput) {
+    const { content, slug: slugInput } = input;
+    const now = new Date();
+
+    // Format: YYYY-MM-DD_HH-MM
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Generate slug from content if not provided
+    const slug = slugInput || content
+      .substring(0, 50)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'handoff';
+
+    const filename = `${dateStr}_${timeStr}_${slug}.md`;
+    const dirPath = path.join(this.repoRoot, 'ψ/inbox/handoff');
+    const filePath = path.join(dirPath, filename);
+
+    // Ensure directory exists
+    fs.mkdirSync(dirPath, { recursive: true });
+
+    // Write the handoff file
+    fs.writeFileSync(filePath, content, 'utf-8');
+
+    console.error(`[MCP:HANDOFF] Written: ${filename}`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          file: `ψ/inbox/handoff/${filename}`,
+          message: `Handoff written. Next session can read it with oracle_inbox().`
+        }, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Tool: oracle_inbox
+   * List and preview pending handoff files
+   */
+  private async handleInbox(input: OracleInboxInput) {
+    const { limit = 10, offset = 0, type = 'all' } = input;
+    const inboxDir = path.join(this.repoRoot, 'ψ/inbox');
+    const results: Array<{ filename: string; path: string; created: string; preview: string; type: string }> = [];
+
+    // Read handoff directory
+    if (type === 'all' || type === 'handoff') {
+      const handoffDir = path.join(inboxDir, 'handoff');
+      if (fs.existsSync(handoffDir)) {
+        const files = fs.readdirSync(handoffDir)
+          .filter(f => f.endsWith('.md'))
+          .sort()
+          .reverse(); // Newest first (filenames are timestamped)
+
+        for (const file of files) {
+          const filePath = path.join(handoffDir, file);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          // Extract date from filename: YYYY-MM-DD_HH-MM_slug.md
+          const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2})/);
+          const created = dateMatch
+            ? `${dateMatch[1]}T${dateMatch[2].replace('-', ':')}:00`
+            : 'unknown';
+
+          results.push({
+            filename: file,
+            path: `ψ/inbox/handoff/${file}`,
+            created,
+            preview: content.substring(0, 500),
+            type: 'handoff',
+          });
+        }
+      }
+    }
+
+    // Apply pagination
+    const total = results.length;
+    const paginated = results.slice(offset, offset + limit);
+
+    console.error(`[MCP:INBOX] ${total} files, returning ${paginated.length} (offset=${offset})`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          files: paginated,
+          total,
+          limit,
+          offset,
         }, null, 2)
       }]
     };

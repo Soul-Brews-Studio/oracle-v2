@@ -72,14 +72,6 @@ import {
   updateThreadStatus
 } from './forum/handler.js';
 
-import {
-  createDecision,
-  getDecision,
-  updateDecision,
-  listDecisions,
-  transitionStatus,
-  getDecisionCounts
-} from './decisions/handler.js';
 
 import {
   listTraces,
@@ -717,154 +709,6 @@ app.patch('/api/thread/:id/status', async (c) => {
 });
 
 // ============================================================================
-// Decision Routes
-// ============================================================================
-
-// List decisions
-app.get('/api/decisions', (c) => {
-  const status = c.req.query('status') as any;
-  const project = c.req.query('project');
-  const tagsRaw = c.req.query('tags');
-  const tags = tagsRaw ? tagsRaw.split(',') : undefined;
-  const limit = parseInt(c.req.query('limit') || '20');
-  const offset = parseInt(c.req.query('offset') || '0');
-
-  const result = listDecisions({ status, project, tags, limit, offset });
-  return c.json({
-    decisions: result.decisions.map(d => ({
-      id: d.id,
-      title: d.title,
-      status: d.status,
-      context: d.context,
-      decision: d.decision,
-      project: d.project,
-      tags: d.tags,
-      created_at: new Date(d.createdAt).toISOString(),
-      updated_at: new Date(d.updatedAt).toISOString(),
-      decided_at: d.decidedAt ? new Date(d.decidedAt).toISOString() : null,
-      decided_by: d.decidedBy
-    })),
-    total: result.total,
-    counts: getDecisionCounts()
-  });
-});
-
-// Get single decision
-app.get('/api/decisions/:id', (c) => {
-  const decisionId = parseInt(c.req.param('id'), 10);
-  const decision = getDecision(decisionId);
-
-  if (!decision) {
-    return c.json({ error: 'Decision not found' }, 404);
-  }
-
-  return c.json({
-    id: decision.id,
-    title: decision.title,
-    status: decision.status,
-    context: decision.context,
-    options: decision.options,
-    decision: decision.decision,
-    rationale: decision.rationale,
-    project: decision.project,
-    tags: decision.tags,
-    created_at: new Date(decision.createdAt).toISOString(),
-    updated_at: new Date(decision.updatedAt).toISOString(),
-    decided_at: decision.decidedAt ? new Date(decision.decidedAt).toISOString() : null,
-    decided_by: decision.decidedBy
-  });
-});
-
-// Create decision
-app.post('/api/decisions', async (c) => {
-  try {
-    const data = await c.req.json();
-    if (!data.title) {
-      return c.json({ error: 'Missing required field: title' }, 400);
-    }
-    const decision = createDecision({
-      title: data.title,
-      context: data.context,
-      options: data.options,
-      tags: data.tags,
-      project: data.project
-    });
-    return c.json({
-      id: decision.id,
-      title: decision.title,
-      status: decision.status,
-      created_at: new Date(decision.createdAt).toISOString()
-    }, 201);
-  } catch (error) {
-    return c.json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
-  }
-});
-
-// Update decision
-app.patch('/api/decisions/:id', async (c) => {
-  const decisionId = parseInt(c.req.param('id'), 10);
-  try {
-    const data = await c.req.json();
-    const decision = updateDecision({
-      id: decisionId,
-      title: data.title,
-      context: data.context,
-      options: data.options,
-      decision: data.decision,
-      rationale: data.rationale,
-      tags: data.tags,
-      status: data.status,
-      decidedBy: data.decided_by
-    });
-
-    if (!decision) {
-      return c.json({ error: 'Decision not found' }, 404);
-    }
-
-    return c.json({
-      id: decision.id,
-      title: decision.title,
-      status: decision.status,
-      updated_at: new Date(decision.updatedAt).toISOString()
-    });
-  } catch (error) {
-    return c.json({
-      error: error instanceof Error ? error.message : 'Invalid request'
-    }, 400);
-  }
-});
-
-// Transition decision status
-app.post('/api/decisions/:id/transition', async (c) => {
-  const decisionId = parseInt(c.req.param('id'), 10);
-  try {
-    const data = await c.req.json();
-    if (!data.status) {
-      return c.json({ error: 'Missing required field: status' }, 400);
-    }
-    const decision = transitionStatus(decisionId, data.status, data.decided_by);
-
-    if (!decision) {
-      return c.json({ error: 'Decision not found' }, 404);
-    }
-
-    return c.json({
-      id: decision.id,
-      title: decision.title,
-      status: decision.status,
-      decided_at: decision.decidedAt ? new Date(decision.decidedAt).toISOString() : null,
-      decided_by: decision.decidedBy
-    });
-  } catch (error) {
-    return c.json({
-      error: error instanceof Error ? error.message : 'Invalid request'
-    }, 400);
-  }
-});
-
-// ============================================================================
 // Supersede Log Routes (Issue #18, #19)
 // ============================================================================
 
@@ -1081,6 +925,90 @@ app.get('/api/traces/:id/linked-chain', async (c) => {
 });
 
 // ============================================================================
+// Inbox Routes (handoff context between sessions)
+// ============================================================================
+
+app.post('/api/handoff', async (c) => {
+  try {
+    const data = await c.req.json();
+    if (!data.content) {
+      return c.json({ error: 'Missing required field: content' }, 400);
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Generate slug
+    const slug = data.slug || data.content
+      .substring(0, 50)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'handoff';
+
+    const filename = `${dateStr}_${timeStr}_${slug}.md`;
+    const dirPath = path.join(REPO_ROOT, 'ψ/inbox/handoff');
+    const filePath = path.join(dirPath, filename);
+
+    fs.mkdirSync(dirPath, { recursive: true });
+    fs.writeFileSync(filePath, data.content, 'utf-8');
+
+    return c.json({
+      success: true,
+      file: `ψ/inbox/handoff/${filename}`,
+      message: 'Handoff written.'
+    }, 201);
+  } catch (error) {
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+app.get('/api/inbox', (c) => {
+  const limit = parseInt(c.req.query('limit') || '10');
+  const offset = parseInt(c.req.query('offset') || '0');
+  const type = c.req.query('type') || 'all';
+
+  const inboxDir = path.join(REPO_ROOT, 'ψ/inbox');
+  const results: Array<{ filename: string; path: string; created: string; preview: string; type: string }> = [];
+
+  if (type === 'all' || type === 'handoff') {
+    const handoffDir = path.join(inboxDir, 'handoff');
+    if (fs.existsSync(handoffDir)) {
+      const files = fs.readdirSync(handoffDir)
+        .filter(f => f.endsWith('.md'))
+        .sort()
+        .reverse();
+
+      for (const file of files) {
+        const filePath = path.join(handoffDir, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2})/);
+        const created = dateMatch
+          ? `${dateMatch[1]}T${dateMatch[2].replace('-', ':')}:00`
+          : 'unknown';
+
+        results.push({
+          filename: file,
+          path: `ψ/inbox/handoff/${file}`,
+          created,
+          preview: content.substring(0, 500),
+          type: 'handoff',
+        });
+      }
+    }
+  }
+
+  const total = results.length;
+  const paginated = results.slice(offset, offset + limit);
+
+  return c.json({ files: paginated, total, limit, offset });
+});
+
+// ============================================================================
 // Learn Route
 // ============================================================================
 
@@ -1189,12 +1117,6 @@ console.log(`
    - GET  /api/threads         List threads
    - GET  /api/thread/:id      Get thread
    - POST /api/thread          Send message
-
-   Decisions:
-   - GET  /api/decisions       List decisions
-   - GET  /api/decisions/:id   Get decision
-   - POST /api/decisions       Create decision
-   - PATCH /api/decisions/:id  Update decision
 
    Supersede Log:
    - GET  /api/supersede       List supersessions
