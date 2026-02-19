@@ -39,7 +39,6 @@ import {
   sqlite,
   oracleDocuments,
   searchLog,
-  consultLog,
   learnLog,
   supersedeLog,
   indexingStatus,
@@ -48,7 +47,6 @@ import {
 
 import {
   handleSearch,
-  handleConsult,
   handleReflect,
   handleList,
   handleStats,
@@ -407,17 +405,6 @@ app.get('/api/search', async (c) => {
   return c.json({ ...result, query: q });
 });
 
-// Consult
-app.get('/api/consult', async (c) => {
-  const q = c.req.query('q');
-  if (!q) {
-    return c.json({ error: 'Missing query parameter: q (decision)' }, 400);
-  }
-  const context = c.req.query('context') || '';
-  const result = await handleConsult(q, context);
-  return c.json(result);
-});
-
 // Reflect
 app.get('/api/reflect', (c) => {
   return c.json(handleReflect());
@@ -592,11 +579,6 @@ app.get('/api/session/stats', (c) => {
     .where(gt(searchLog.createdAt, sinceTime))
     .get();
 
-  const consultations = db.select({ count: sql<number>`count(*)` })
-    .from(consultLog)
-    .where(gt(consultLog.createdAt, sinceTime))
-    .get();
-
   const learnings = db.select({ count: sql<number>`count(*)` })
     .from(learnLog)
     .where(gt(learnLog.createdAt, sinceTime))
@@ -604,7 +586,6 @@ app.get('/api/session/stats', (c) => {
 
   return c.json({
     searches: searches?.count || 0,
-    consultations: consultations?.count || 0,
     learnings: learnings?.count || 0,
     since: sinceTime
   });
@@ -1034,26 +1015,6 @@ app.post('/api/learn', async (c) => {
   }
 });
 
-// Arthur AI chat endpoint
-app.post('/api/ask', async (c) => {
-  try {
-    const data = await c.req.json();
-    if (!data.question) {
-      return c.json({ error: 'Missing required field: question' }, 400);
-    }
-    const consultResult = await handleConsult(data.question, data.context || '');
-    return c.json({
-      response: consultResult.guidance || 'I found some relevant information but couldn\'t formulate a specific response.',
-      principles: consultResult.principles?.length || 0,
-      patterns: consultResult.patterns?.length || 0
-    });
-  } catch (error) {
-    return c.json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
-  }
-});
-
 // ============================================================================
 // Legacy HTML UIs
 // ============================================================================
@@ -1105,13 +1066,11 @@ console.log(`
    - GET  /api/health          Health check
    - GET  /api/search?q=...    Search Oracle knowledge
    - GET  /api/list            Browse all documents
-   - GET  /api/consult?q=...   Get guidance on decision
    - GET  /api/reflect         Random wisdom
    - GET  /api/stats           Database statistics
    - GET  /api/graph           Knowledge graph data
    - GET  /api/context         Project context (ghq format)
    - POST /api/learn           Add new pattern/learning
-   - POST /api/ask             Arthur AI chat
 
    Forum:
    - GET  /api/threads         List threads

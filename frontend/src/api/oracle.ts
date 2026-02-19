@@ -20,13 +20,6 @@ export interface SearchResult {
   query: string;
 }
 
-export interface ConsultResult {
-  decision: string;
-  principles: Document[];
-  patterns: Document[];
-  guidance: string;
-}
-
 export interface Stats {
   total: number;
   by_type?: {
@@ -49,14 +42,6 @@ export async function search(query: string, type: string = 'all', limit: number 
 export async function list(type: string = 'all', limit: number = 20, offset: number = 0): Promise<{ results: Document[]; total: number }> {
   const params = new URLSearchParams({ type, limit: String(limit), offset: String(offset) });
   const res = await fetch(`${API_BASE}/list?${params}`);
-  return res.json();
-}
-
-// Get consultation guidance
-export async function consult(decision: string, context?: string): Promise<ConsultResult> {
-  const params = new URLSearchParams({ q: decision });
-  if (context) params.append('context', context);
-  const res = await fetch(`${API_BASE}/consult?${params}`);
   return res.json();
 }
 

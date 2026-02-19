@@ -187,11 +187,6 @@ export function Overview() {
             <span className={styles.actionTitle}>Search</span>
             <span className={styles.actionDesc}>Find patterns and learnings</span>
           </a>
-          <a href="/consult" className={styles.actionCard}>
-            <span className={styles.actionIcon}>🔮</span>
-            <span className={styles.actionTitle}>Consult</span>
-            <span className={styles.actionDesc}>Get guidance on decisions</span>
-          </a>
           <a href="/graph" className={styles.actionCard}>
             <span className={styles.actionIcon}>🕸️</span>
             <span className={styles.actionTitle}>Graph</span>

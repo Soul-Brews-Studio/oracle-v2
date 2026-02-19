@@ -8,7 +8,6 @@
  * - GET /health          - Health check
  * - GET /search?q=...    - Search Oracle knowledge
  * - GET /list            - Browse all documents (no query needed)
- * - GET /consult?q=...   - Get guidance on decision
  * - GET /reflect         - Random wisdom
  * - GET /stats           - Database statistics
  * - GET /graph           - Knowledge graph data
@@ -42,7 +41,6 @@ import {
 
 import {
   handleSearch,
-  handleConsult,
   handleReflect,
   handleList,
   handleStats,
@@ -279,34 +277,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // POST /ask - Arthur AI chat endpoint (wraps /consult)
-    if (pathname === '/api/ask' && req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => { body += chunk.toString(); });
-      req.on('end', async () => {
-        try {
-          const data = JSON.parse(body);
-          if (!data.question) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'Missing required field: question' }));
-            return;
-          }
-          const consultResult = await handleConsult(data.question, data.context || '');
-          res.end(JSON.stringify({
-            response: consultResult.guidance || 'I found some relevant information but couldn\'t formulate a specific response.',
-            principles: consultResult.principles?.length || 0,
-            patterns: consultResult.patterns?.length || 0
-          }, null, 2));
-        } catch (error) {
-          res.statusCode = 500;
-          res.end(JSON.stringify({
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }));
-        }
-      });
-      return;
-    }
-
     switch (pathname) {
       case '/':
         // Serve React SPA at root
@@ -355,18 +325,6 @@ const server = http.createServer(async (req, res) => {
             ...searchResult,
             query: query.q
           };
-        }
-        break;
-
-      case '/api/consult':
-        if (!query.q) {
-          res.statusCode = 400;
-          result = { error: 'Missing query parameter: q (decision)' };
-        } else {
-          result = handleConsult(
-            query.q as string,
-            (query.context as string) || ''
-          );
         }
         break;
 
@@ -507,7 +465,6 @@ const server = http.createServer(async (req, res) => {
             'GET /health - Health check',
             'GET /search?q=... - Search Oracle',
             'GET /list - Browse all documents',
-            'GET /consult?q=... - Get guidance',
             'GET /reflect - Random wisdom',
             'GET /stats - Database stats',
             'GET /graph - Knowledge graph data',
@@ -543,7 +500,6 @@ server.listen(PORT, () => {
    - GET /health          Health check
    - GET /search?q=...    Search Oracle knowledge
    - GET /list            Browse all documents
-   - GET /consult?q=...   Get guidance on decision
    - GET /reflect         Random wisdom
    - GET /stats           Database statistics
    - GET /graph           Knowledge graph data
@@ -554,7 +510,6 @@ server.listen(PORT, () => {
    curl http://localhost:${PORT}/health
    curl http://localhost:${PORT}/search?q=nothing+deleted
    curl http://localhost:${PORT}/list?type=learning&limit=5
-   curl http://localhost:${PORT}/consult?q=force+push
    curl http://localhost:${PORT}/reflect
    curl http://localhost:${PORT}/stats
    curl http://localhost:${PORT}/graph
