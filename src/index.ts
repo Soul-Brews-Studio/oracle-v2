@@ -1,13 +1,11 @@
 /**
- * Oracle Nightly MCP Server (MVP - FTS5 only)
+ * Oracle Nightly MCP Server
  *
- * Provides keyword search and consultation over Oracle knowledge base.
- * MVP version using SQLite FTS5 only (no ChromaDB).
+ * Provides keyword search over Oracle knowledge base.
  *
  * Tools:
  * 1. oracle_search - Search Oracle knowledge using keywords
- * 2. oracle_consult - Get guidance based on principles
- * 3. oracle_reflect - Random wisdom for reflection
+ * 2. oracle_reflect - Random wisdom for reflection
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -20,7 +18,7 @@ import { Database } from 'bun:sqlite';
 import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { eq, sql, and, ne, isNotNull, inArray } from 'drizzle-orm';
 import * as schema from './db/schema.js';
-import { oracleDocuments, consultLog } from './db/schema.js';
+import { oracleDocuments } from './db/schema.js';
 import { ChromaMcpClient } from './chroma-mcp.js';
 import path from 'path';
 import fs from 'fs';
@@ -44,6 +42,8 @@ import {
   getTraceLinkedChain,
 } from './trace/handler.js';
 
+import { verifyKnowledgeBase } from './verify/handler.js';
+
 import type {
   CreateTraceInput,
   ListTracesInput,
@@ -59,11 +59,6 @@ interface OracleSearchInput {
   limit?: number;
   offset?: number;
   mode?: 'hybrid' | 'fts' | 'vector';
-}
-
-interface OracleConsultInput {
-  decision: string;
-  context?: string;
 }
 
 interface OracleReflectInput {}
@@ -131,6 +126,11 @@ interface OracleHandoffInput {
   slug?: string;
 }
 
+interface OracleVerifyInput {
+  check?: boolean;
+  type?: string;
+}
+
 interface OracleInboxInput {
   limit?: number;
   offset?: number;
@@ -155,6 +155,7 @@ class OracleMCPServer {
   private chromaMcp: ChromaMcpClient;
   private chromaStatus: 'unknown' | 'connected' | 'unavailable' = 'unknown';
   private readOnly: boolean;
+  private version: string;
 
   constructor(options: { readOnly?: boolean } = {}) {
     this.readOnly = options.readOnly ?? false;
@@ -170,10 +171,12 @@ class OracleMCPServer {
     const chromaPath = path.join(homeDir, '.chromadb');
     this.chromaMcp = new ChromaMcpClient('oracle_knowledge', chromaPath, '3.12');
 
+    const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname || __dirname, '..', 'package.json'), 'utf-8'));
+    this.version = pkg.version;
     this.server = new Server(
       {
         name: 'oracle-nightly',
-        version: '0.2.1',
+        version: this.version,
       },
       {
         capabilities: {
@@ -241,15 +244,14 @@ class OracleMCPServer {
         // Meta-documentation tool (not callable, just instructions)
         {
           name: '____IMPORTANT',
-          description: `ORACLE WORKFLOW GUIDE:
+          description: `ORACLE WORKFLOW GUIDE (v${this.version}):
 
 1. SEARCH & DISCOVER
    oracle_search(query) → Find knowledge by keywords/vectors
    oracle_list() → Browse all documents
    oracle_concepts() → See topic coverage
 
-2. CONSULT & REFLECT
-   oracle_consult(decision) → Get guidance for decisions
+2. REFLECT
    oracle_reflect() → Random wisdom for alignment
 
 3. LEARN & REMEMBER
@@ -272,6 +274,11 @@ class OracleMCPServer {
 6. SUPERSEDE (when info changes)
    oracle_supersede(oldId, newId, reason) → Mark old doc as outdated
    "Nothing is Deleted" — old preserved, just marked superseded
+
+7. VERIFY (health check)
+   oracle_verify(check?) → Compare ψ/ files vs DB index
+   check=true (default): read-only report
+   check=false: also flag orphaned entries
 
 Philosophy: "Nothing is Deleted" — All interactions logged.`,
           inputSchema: {
@@ -313,24 +320,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
               }
             },
             required: ['query']
-          }
-        },
-        {
-          name: 'oracle_consult',
-          description: 'Get guidance on a decision based on Oracle philosophy. Returns relevant principles and patterns with synthesized guidance.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              decision: {
-                type: 'string',
-                description: 'The decision you need to make'
-              },
-              context: {
-                type: 'string',
-                description: 'Additional context about your current situation'
-              }
-            },
-            required: ['decision']
           }
         },
         {
@@ -782,6 +771,29 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
               }
             }
           }
+        },
+        // ============================================================================
+        // Verify Tool - Knowledge base health check
+        // ============================================================================
+        {
+          name: 'oracle_verify',
+          description: 'Verify knowledge base integrity: compare ψ/ files on disk vs DB index. Detects missing (on disk, not indexed), orphaned (in DB, file gone), and drifted (file changed since last index) documents.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              check: {
+                type: 'boolean',
+                description: 'If true (default), read-only report. If false, also flag orphaned DB entries with superseded_by="_verified_orphan".',
+                default: true
+              },
+              type: {
+                type: 'string',
+                description: 'Filter by document type (default: all)',
+                enum: ['principle', 'pattern', 'learning', 'retro', 'all'],
+                default: 'all'
+              }
+            }
+          }
         }
       ];
 
@@ -810,9 +822,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
         switch (request.params.name) {
           case 'oracle_search':
             return await this.handleSearch(request.params.arguments as unknown as OracleSearchInput);
-
-          case 'oracle_consult':
-            return await this.handleConsult(request.params.arguments as unknown as OracleConsultInput);
 
           case 'oracle_reflect':
             return await this.handleReflect(request.params.arguments as unknown as OracleReflectInput);
@@ -870,6 +879,9 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
 
           case 'oracle_inbox':
             return await this.handleInbox(request.params.arguments as unknown as OracleInboxInput);
+
+          case 'oracle_verify':
+            return await this.handleVerify(request.params.arguments as unknown as OracleVerifyInput);
 
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
@@ -1058,81 +1070,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           total: results.length,
           query,
           metadata,
-        }, null, 2)
-      }]
-    };
-  }
-
-  /**
-   * Tool: oracle_consult
-   * Get guidance based on principles and patterns
-   */
-  private async handleConsult(input: OracleConsultInput) {
-    const { decision, context = '' } = input;
-    const query = context ? `${decision} ${context}` : decision;
-    const safeQuery = this.sanitizeFtsQuery(query);
-
-    // Search for relevant principles
-    const principleStmt = this.sqlite.prepare(`
-      SELECT f.id, f.content, d.source_file
-      FROM oracle_fts f
-      JOIN oracle_documents d ON f.id = d.id
-      WHERE oracle_fts MATCH ? AND d.type = 'principle'
-      ORDER BY rank
-      LIMIT 3
-    `);
-    const principles = principleStmt.all(safeQuery);
-
-    // Search for relevant learnings
-    const learningStmt = this.sqlite.prepare(`
-      SELECT f.id, f.content, d.source_file
-      FROM oracle_fts f
-      JOIN oracle_documents d ON f.id = d.id
-      WHERE oracle_fts MATCH ? AND d.type = 'learning'
-      ORDER BY rank
-      LIMIT 3
-    `);
-    const patterns = learningStmt.all(safeQuery);
-
-    // Synthesize guidance
-    const guidance = this.synthesizeGuidance(
-      decision,
-      principles.map((p: any) => p.content),
-      patterns.map((p: any) => p.content)
-    );
-
-    // Log the consultation to database (Drizzle)
-    try {
-      this.db.insert(consultLog).values({
-        decision,
-        context: context || null,
-        principlesFound: principles.length,
-        patternsFound: patterns.length,
-        guidance,
-        createdAt: Date.now(),
-      }).run();
-    } catch (e) {
-      // Ignore logging errors - table may not exist yet
-      console.error('[ConsultLog]', e instanceof Error ? e.message : String(e));
-    }
-
-    // Log to console
-    console.error(`[MCP:CONSULT] "${decision}" → ${principles.length} principles, ${patterns.length} patterns`);
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          decision,
-          principles: principles.map((p: any) => ({
-            content: p.content.substring(0, 300),
-            source: p.source_file
-          })),
-          patterns: patterns.map((p: any) => ({
-            content: p.content.substring(0, 300),
-            source: p.source_file
-          })),
-          guidance
         }, null, 2)
       }]
     };
@@ -1467,7 +1404,7 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
             : null,
           chroma_status: this.chromaStatus,
           fts_status: ftsCount.count > 0 ? 'healthy' : 'empty',
-          version: '0.2.1',
+          version: this.version,
         }, null, 2)
       }]
     };
@@ -1525,40 +1462,6 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
         }, null, 2)
       }]
     };
-  }
-
-  /**
-   * Synthesize guidance from principles and patterns
-   */
-  private synthesizeGuidance(decision: string, principles: string[], patterns: string[]): string {
-    let guidance = `Based on Oracle philosophy:\n\n`;
-
-    if (principles.length > 0) {
-      guidance += `**Relevant Principles:**\n`;
-      principles.forEach((p, i) => {
-        guidance += `${i + 1}. ${p.substring(0, 200)}...\n`;
-      });
-      guidance += `\n`;
-    }
-
-    if (patterns.length > 0) {
-      guidance += `**Relevant Patterns:**\n`;
-      patterns.forEach((p, i) => {
-        guidance += `${i + 1}. ${p.substring(0, 200)}...\n`;
-      });
-      guidance += `\n`;
-    }
-
-    if (principles.length === 0 && patterns.length === 0) {
-      guidance += `No directly matching principles or patterns found for: "${decision}"\n`;
-      guidance += `Try rephrasing your query or being more specific.\n`;
-    } else {
-      guidance += `**Recommendation:**\n`;
-      guidance += `Consider these Oracle principles when making your decision about: "${decision}". `;
-      guidance += `Remember: The Oracle Keeps the Human Human - this is guidance, not commands.`;
-    }
-
-    return guidance;
   }
 
   /**
@@ -2227,6 +2130,37 @@ Philosophy: "Nothing is Deleted" — All interactions logged.`,
           total,
           limit,
           offset,
+        }, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Tool: oracle_verify
+   * Compare ψ/ files on disk vs DB index
+   */
+  private async handleVerify(input: OracleVerifyInput) {
+    const { check = true, type } = input;
+
+    const result = verifyKnowledgeBase({
+      check,
+      type,
+      repoRoot: this.repoRoot,
+    });
+
+    console.error(`[MCP:VERIFY] healthy=${result.counts.healthy} missing=${result.counts.missing} orphaned=${result.counts.orphaned} drifted=${result.counts.drifted}`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          counts: result.counts,
+          missing: result.missing,
+          orphaned: result.orphaned,
+          drifted: result.drifted,
+          untracked: result.untracked,
+          recommendation: result.recommendation,
+          ...(result.fixedOrphans ? { fixed_orphans: result.fixedOrphans } : {}),
         }, null, 2)
       }]
     };
