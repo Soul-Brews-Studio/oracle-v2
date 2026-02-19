@@ -336,56 +336,6 @@ describe("Database Integration (Drizzle ORM)", () => {
   });
 
   // ===================
-  // Decision Lifecycle (Drizzle)
-  // ===================
-  describe("Decision Lifecycle (Drizzle ORM)", () => {
-    let decisionId: number;
-    const now = Date.now();
-
-    test("CREATE decision (pending)", async () => {
-      const result = await db.insert(schema.decisions).values({
-        title: "Test Drizzle Decision",
-        context: "Testing Drizzle ORM integration",
-        status: "pending",
-        tags: JSON.stringify(["test", "drizzle"]),
-        createdAt: now,
-        updatedAt: now,
-      }).returning({ id: schema.decisions.id });
-
-      decisionId = result[0].id;
-
-      const decisions = await db
-        .select()
-        .from(schema.decisions)
-        .where(eq(schema.decisions.id, decisionId));
-
-      expect(decisions[0].status).toBe("pending");
-    });
-
-    test("TRANSITION pending → decided", async () => {
-      await db
-        .update(schema.decisions)
-        .set({
-          status: "decided",
-          decision: "Go with Drizzle",
-          rationale: "Type safety and DX",
-          decidedAt: Date.now(),
-          decidedBy: "user",
-          updatedAt: Date.now(),
-        })
-        .where(eq(schema.decisions.id, decisionId));
-
-      const decisions = await db
-        .select()
-        .from(schema.decisions)
-        .where(eq(schema.decisions.id, decisionId));
-
-      expect(decisions[0].status).toBe("decided");
-      expect(decisions[0].decision).toBe("Go with Drizzle");
-    });
-  });
-
-  // ===================
   // Trace Logging (Drizzle)
   // ===================
   describe("Trace Logging (Drizzle ORM)", () => {

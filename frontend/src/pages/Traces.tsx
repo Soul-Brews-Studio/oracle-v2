@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { SidebarLayout } from '../components/SidebarLayout';
+import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
 import styles from './Traces.module.css';
 
 interface TraceSummary {
@@ -47,6 +47,13 @@ interface TracesResponse {
   hasMore: boolean;
 }
 
+const TRACE_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'raw', label: 'Raw' },
+  { key: 'reviewed', label: 'Reviewed' },
+  { key: 'distilled', label: 'Distilled' },
+];
+
 export function Traces() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -54,6 +61,7 @@ export function Traces() {
   const [selectedTrace, setSelectedTrace] = useState<TraceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileGithubUrl, setFileGithubUrl] = useState<string | null>(null);
@@ -90,13 +98,15 @@ export function Traces() {
       setLinkedChain([]);
       setFamilyChain([]);
     }
-  }, [id]);
+  }, [id, statusFilter]);
 
   async function loadTraces() {
     setLoading(true);
     setSelectedTrace(null);
     try {
-      const res = await fetch('/api/traces?limit=100');
+      const params = new URLSearchParams({ limit: '100' });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const res = await fetch(`/api/traces?${params}`);
       const data: TracesResponse = await res.json();
       setTraces(data.traces);
       setTotal(data.total);
@@ -317,7 +327,14 @@ export function Traces() {
       t.foundRetrospectives.length + t.foundLearnings.length;
 
     return (
-      <SidebarLayout>
+      <SidebarLayout
+        navItems={TOOLS_NAV}
+        navTitle="Tools"
+        filters={TRACE_FILTERS}
+        filterTitle="Filter by Status"
+        activeType={statusFilter}
+        onTypeChange={setStatusFilter}
+      >
         <div className={styles.navBar}>
           <button onClick={() => navigate('/traces')} className={styles.backLink}>
             ← Back to Traces
@@ -753,7 +770,12 @@ export function Traces() {
 
   // List view
   return (
-    <SidebarLayout>
+    <SidebarLayout
+      filters={TRACE_FILTERS}
+      filterTitle="Filter by Status"
+      activeType={statusFilter}
+      onTypeChange={setStatusFilter}
+    >
       <h1 className={styles.title}>Discovery Traces</h1>
       <p className={styles.subtitle}>
         Your discovery journeys — what you searched and found

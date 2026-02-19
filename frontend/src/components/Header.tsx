@@ -17,8 +17,6 @@ const navItems = [
 
 // Dropdown items (Tools)
 const toolsItems = [
-  { path: '/consult', label: 'Consult' },
-  { path: '/decisions', label: 'Decisions' },
   { path: '/evolution', label: 'Evolution' },
   { path: '/traces', label: 'Traces' },
   { path: '/superseded', label: 'Superseded' },
@@ -27,7 +25,6 @@ const toolsItems = [
 
 interface SessionStats {
   searches: number;
-  consultations: number;
   learnings: number;
   startTime: number;
 }
@@ -61,7 +58,6 @@ export function Header() {
         const data = await response.json();
         setSessionStats({
           searches: data.searches,
-          consultations: data.consultations,
           learnings: data.learnings,
           startTime: sessionStartTime
         });
@@ -71,7 +67,6 @@ export function Header() {
       // Fallback to zeros on error
       setSessionStats({
         searches: 0,
-        consultations: 0,
         learnings: 0,
         startTime: sessionStartTime
       });

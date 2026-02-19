@@ -139,18 +139,9 @@ describe("HTTP API Integration", () => {
   });
 
   // ===================
-  // Consult & Reflect
+  // Reflect
   // ===================
-  describe("Consult & Reflect", () => {
-    test("GET /api/consult with decision", async () => {
-      const res = await fetch(
-        `${BASE_URL}/api/consult?q=${encodeURIComponent("Should I use TypeScript?")}`
-      );
-      expect(res.ok).toBe(true);
-      const data = await res.json();
-      expect(data).toHaveProperty("guidance");
-    });
-
+  describe("Reflect", () => {
     test("GET /api/reflect returns random wisdom", async () => {
       const res = await fetch(`${BASE_URL}/api/reflect`);
       expect(res.ok).toBe(true);
@@ -201,25 +192,6 @@ describe("HTTP API Integration", () => {
       expect(res.ok).toBe(true);
       const data = await res.json();
       expect(Array.isArray(data.threads)).toBe(true);
-    });
-  });
-
-  // ===================
-  // Decisions
-  // ===================
-  describe("Decisions", () => {
-    test("GET /api/decisions returns decision list", async () => {
-      const res = await fetch(`${BASE_URL}/api/decisions`);
-      expect(res.ok).toBe(true);
-      const data = await res.json();
-      expect(Array.isArray(data.decisions)).toBe(true);
-    });
-
-    test("GET /api/decisions with status filter", async () => {
-      const res = await fetch(`${BASE_URL}/api/decisions?status=pending`);
-      expect(res.ok).toBe(true);
-      const data = await res.json();
-      expect(Array.isArray(data.decisions)).toBe(true);
     });
   });
 

@@ -5,12 +5,10 @@ import { Overview } from './pages/Overview';
 import { Feed } from './pages/Feed';
 import { DocDetail } from './pages/DocDetail';
 import { Search } from './pages/Search';
-import { Consult } from './pages/Consult';
 import { Graph } from './pages/Graph';
 import { Handoff } from './pages/Handoff';
 import { Activity } from './pages/Activity';
 import { Forum } from './pages/Forum';
-import { Decisions } from './pages/Decisions';
 import { Evolution } from './pages/Evolution';
 import { Traces } from './pages/Traces';
 import { Superseded } from './pages/Superseded';
@@ -47,13 +45,11 @@ function AppContent() {
         <Route path="/feed" element={<RequireAuth><Feed /></RequireAuth>} />
         <Route path="/doc/:id" element={<RequireAuth><DocDetail /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><Search /></RequireAuth>} />
-        <Route path="/consult" element={<RequireAuth><Consult /></RequireAuth>} />
         <Route path="/graph" element={<RequireAuth><Graph /></RequireAuth>} />
         <Route path="/graph3d" element={<Navigate to="/graph" replace />} />
         <Route path="/handoff" element={<RequireAuth><Handoff /></RequireAuth>} />
         <Route path="/activity" element={<RequireAuth><Activity /></RequireAuth>} />
         <Route path="/forum" element={<RequireAuth><Forum /></RequireAuth>} />
-        <Route path="/decisions" element={<RequireAuth><Decisions /></RequireAuth>} />
         <Route path="/evolution" element={<RequireAuth><Evolution /></RequireAuth>} />
         <Route path="/traces" element={<RequireAuth><Traces /></RequireAuth>} />
         <Route path="/traces/:id" element={<RequireAuth><Traces /></RequireAuth>} />
