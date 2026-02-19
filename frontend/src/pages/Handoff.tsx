@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
+import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
 import styles from './Handoff.module.css';
 
 interface HandoffFile {
@@ -88,7 +89,7 @@ export function Handoff() {
   }
 
   return (
-    <div className={styles.container}>
+    <SidebarLayout navItems={TOOLS_NAV} navTitle="Tools" filters={[]}>
       <h1 className={styles.title}>Inbox</h1>
       <p className={styles.subtitle}>
         Session handoffs from <code>oracle_handoff()</code>
@@ -141,6 +142,6 @@ export function Handoff() {
           </div>
         </>
       )}
-    </div>
+    </SidebarLayout>
   );
 }

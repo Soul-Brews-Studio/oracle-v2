@@ -1,9 +1,3 @@
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
 .header {
   display: flex;
   justify-content: space-between;

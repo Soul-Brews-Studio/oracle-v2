@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
+import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
 import styles from './Superseded.module.css';
+
+const TYPE_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'learning', label: 'Learning' },
+  { key: 'principle', label: 'Principle' },
+  { key: 'retro', label: 'Retro' },
+  { key: 'pattern', label: 'Pattern' },
+];
 
 interface SupersedeLog {
   id: number;
@@ -28,6 +37,7 @@ export function Superseded() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [typeFilter, setTypeFilter] = useState('all');
   const limit = 20;
 
   useEffect(() => {
@@ -66,10 +76,21 @@ export function Superseded() {
     return filename.replace(/\.md$/, '').replace(/[-_]/g, ' ');
   }
 
+  const filtered = typeFilter === 'all'
+    ? logs
+    : logs.filter(l => l.old_type === typeFilter);
+
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className={styles.container}>
+    <SidebarLayout
+      navItems={TOOLS_NAV}
+      navTitle="Tools"
+      filters={TYPE_FILTERS}
+      filterTitle="Filter by Type"
+      activeType={typeFilter}
+      onTypeChange={setTypeFilter}
+    >
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Superseded Documents</h1>
@@ -84,7 +105,7 @@ export function Superseded() {
 
       {loading ? (
         <div className={styles.loading}>Loading...</div>
-      ) : logs.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className={styles.empty}>
           <p>No superseded documents yet.</p>
           <p className={styles.hint}>
@@ -94,7 +115,7 @@ export function Superseded() {
       ) : (
         <>
           <div className={styles.list}>
-            {logs.map((log) => (
+            {filtered.map((log) => (
               <div key={log.id} className={styles.card}>
                 <div className={styles.cardHeader}>
                   <span className={styles.badge}>{log.old_type || 'doc'}</span>
@@ -154,6 +175,6 @@ export function Superseded() {
           )}
         </>
       )}
-    </div>
+    </SidebarLayout>
   );
 }

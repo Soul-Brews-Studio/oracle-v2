@@ -5,7 +5,6 @@ import { Overview } from './pages/Overview';
 import { Feed } from './pages/Feed';
 import { DocDetail } from './pages/DocDetail';
 import { Search } from './pages/Search';
-import { Consult } from './pages/Consult';
 import { Graph } from './pages/Graph';
 import { Handoff } from './pages/Handoff';
 import { Activity } from './pages/Activity';
@@ -46,7 +45,6 @@ function AppContent() {
         <Route path="/feed" element={<RequireAuth><Feed /></RequireAuth>} />
         <Route path="/doc/:id" element={<RequireAuth><DocDetail /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><Search /></RequireAuth>} />
-        <Route path="/consult" element={<RequireAuth><Consult /></RequireAuth>} />
         <Route path="/graph" element={<RequireAuth><Graph /></RequireAuth>} />
         <Route path="/graph3d" element={<Navigate to="/graph" replace />} />
         <Route path="/handoff" element={<RequireAuth><Handoff /></RequireAuth>} />

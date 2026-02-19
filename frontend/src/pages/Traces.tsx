@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { SidebarLayout } from '../components/SidebarLayout';
+import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
 import styles from './Traces.module.css';
 
 interface TraceSummary {
@@ -328,6 +328,8 @@ export function Traces() {
 
     return (
       <SidebarLayout
+        navItems={TOOLS_NAV}
+        navTitle="Tools"
         filters={TRACE_FILTERS}
         filterTitle="Filter by Status"
         activeType={statusFilter}

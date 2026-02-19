@@ -18,8 +18,35 @@
   font-size: 12px;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   letter-spacing: 0.5px;
+}
+
+.navLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 24px;
+}
+
+.navLink {
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.navLink:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.navActive {
+  background: var(--bg-card);
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .filters {
@@ -46,7 +73,7 @@
   color: var(--text-primary);
 }
 
-.filterBtn.active {
+.active {
   background: var(--bg-card);
   color: var(--accent);
 }

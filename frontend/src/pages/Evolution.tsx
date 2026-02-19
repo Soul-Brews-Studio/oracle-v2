@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
-import { SidebarLayout } from '../components/SidebarLayout';
+import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
 import styles from './Evolution.module.css';
+
+const EVOLUTION_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'learning', label: 'Learning' },
+  { key: 'principle', label: 'Principle' },
+  { key: 'retro', label: 'Retro' },
+  { key: 'pattern', label: 'Pattern' },
+];
 
 interface Supersession {
   id: number;
@@ -28,6 +36,7 @@ export function Evolution() {
   const [supersessions, setSupersessions] = useState<Supersession[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
     loadSupersessions();
@@ -47,8 +56,12 @@ export function Evolution() {
     }
   }
 
+  const filtered = typeFilter === 'all'
+    ? supersessions
+    : supersessions.filter(s => s.old_type === typeFilter);
+
   // Group by date
-  const grouped = supersessions.reduce((acc, s) => {
+  const grouped = filtered.reduce((acc, s) => {
     const date = new Date(s.superseded_at).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -75,7 +88,14 @@ export function Evolution() {
   }
 
   return (
-    <SidebarLayout>
+    <SidebarLayout
+      navItems={TOOLS_NAV}
+      navTitle="Tools"
+      filters={EVOLUTION_FILTERS}
+      filterTitle="Filter by Type"
+      activeType={typeFilter}
+      onTypeChange={setTypeFilter}
+    >
       <h1 className={styles.title}>Knowledge Evolution</h1>
       <p className={styles.subtitle}>
         Track how knowledge evolves — what was superseded and why
@@ -84,7 +104,7 @@ export function Evolution() {
 
       {loading ? (
         <div className={styles.loading}>Loading supersessions...</div>
-      ) : supersessions.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className={styles.empty}>
           <p>No supersessions recorded yet.</p>
           <p className={styles.hint}>

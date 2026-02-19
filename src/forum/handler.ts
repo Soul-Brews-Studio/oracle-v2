@@ -11,7 +11,6 @@
 
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { db, forumThreads, forumMessages } from '../db/index.js';
-import { handleConsult } from '../server/handlers.js';
 import { getProjectContext } from '../server/context.js';
 import type {
   ForumThread,
@@ -233,34 +232,18 @@ export function getMessages(threadId: number): ForumMessage[] {
 // ============================================================================
 
 /**
- * Generate Oracle response for a question
- * Uses existing handleConsult logic
+ * Generate Oracle response for a question.
+ * Stub: oracle_consult was removed. Returns null (no auto-response).
  */
 export async function generateOracleResponse(
-  question: string,
-  context?: string
+  _question: string,
+  _context?: string
 ): Promise<{
   response: string;
   principlesFound: number;
   patternsFound: number;
 } | null> {
-  try {
-    const result = await handleConsult(question, context);
-
-    if (result.principles.length === 0 && result.patterns.length === 0) {
-      // No relevant knowledge found
-      return null;
-    }
-
-    return {
-      response: result.guidance,
-      principlesFound: result.principles.length,
-      patternsFound: result.patterns.length,
-    };
-  } catch (error) {
-    console.error('Oracle response failed:', error);
-    return null;
-  }
+  return null;
 }
 
 // ============================================================================
