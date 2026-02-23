@@ -101,7 +101,7 @@ async function isServerHealthy(): Promise<boolean> {
       signal: AbortSignal.timeout(2000)
     });
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as import('./server/types.js').HealthResponse;
       return data.status === 'ok';
     }
     return false;

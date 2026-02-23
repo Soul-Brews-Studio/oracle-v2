@@ -109,8 +109,8 @@ writePidFile({ pid: process.pid, port: Number(PORT), startedAt: new Date().toISO
 registerSignalHandlers(async () => {
   console.log('\n🔮 Shutting down gracefully...');
   await performGracefulShutdown({
-    closeables: [
-      { name: 'database', close: () => { closeDb(); return Promise.resolve(); } }
+    resources: [
+      { close: () => { closeDb(); return Promise.resolve(); } }
     ]
   });
   removePidFile();
@@ -790,10 +790,10 @@ app.post('/api/supersede', async (c) => {
       supersededAt: Date.now(),
       supersededBy: data.superseded_by || 'user',
       project: data.project || null
-    }).run();
+    }).returning({ id: supersedeLog.id }).get();
 
     return c.json({
-      id: result.lastInsertRowid,
+      id: result.id,
       message: 'Supersession logged'
     }, 201);
   } catch (error) {

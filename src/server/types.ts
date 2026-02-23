@@ -73,6 +73,12 @@ export interface DashboardSummary {
   };
 }
 
+export interface HealthResponse {
+  status: string;
+  server?: string;
+  port?: number | string;
+}
+
 export interface DashboardActivity {
   consultations: Array<{
     decision: string;
@@ -82,15 +88,15 @@ export interface DashboardActivity {
   }>;
   searches: Array<{
     query: string;
-    type: string;
-    results_count: number;
-    search_time_ms: number;
+    type: string | null;
+    results_count: number | null;
+    search_time_ms: number | null;
     created_at: string;
   }>;
   learnings: Array<{
     document_id: string;
-    pattern_preview: string;
-    source: string;
+    pattern_preview: string | null;
+    source: string | null;
     concepts: string[];
     created_at: string;
   }>;

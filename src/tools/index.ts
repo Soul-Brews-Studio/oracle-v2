@@ -62,10 +62,29 @@ export { inboxToolDef, handleInbox } from './inbox.js';
 // Verify (bridge to verify/handler.ts)
 export { verifyToolDef, handleVerify } from './verify.js';
 
-/**
- * All tool definitions (for ListTools handler).
- * Does NOT include forum/trace/meta tools — those stay in index.ts.
- */
-export const coreToolDefs = [
-  // Imported lazily to avoid circular — use the named exports above
-];
+// Forum
+export type {
+  OracleThreadInput,
+  OracleThreadsInput,
+  OracleThreadReadInput,
+  OracleThreadUpdateInput,
+} from './forum.js';
+export {
+  forumToolDefs,
+  handleThread,
+  handleThreads,
+  handleThreadRead,
+  handleThreadUpdate,
+} from './forum.js';
+
+// Trace
+export {
+  traceToolDefs,
+  handleTrace,
+  handleTraceList,
+  handleTraceGet,
+  handleTraceLink,
+  handleTraceUnlink,
+  handleTraceChain,
+} from './trace.js';
+
