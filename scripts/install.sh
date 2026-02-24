@@ -67,7 +67,7 @@ else
 fi
 
 # Create data directory
-mkdir -p ~/.oracle-v2
+mkdir -p ~/.oracle
 
 # Add to Claude Code MCP
 echo ""
@@ -92,7 +92,7 @@ If you see errors, here are fixes from @tacha-hash's 20-min debug session:
 |---------|-----|
 | "bun not found" | export PATH="$HOME/.bun/bin:$PATH" |
 | "bunx not found" | Use ~/.bun/bin/bunx |
-| "directory does not exist" | mkdir -p ~/.oracle-v2 |
+| "directory does not exist" | mkdir -p ~/.oracle |
 | ChromaDB hangs | Ignore - SQLite works without vectors |
 | MCP not loading | Check .mcp.json or ~/.claude.json |
 

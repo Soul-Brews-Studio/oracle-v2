@@ -6,7 +6,7 @@ import Database from "bun:sqlite";
 import path from "path";
 
 const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR ||
-  path.join(process.env.HOME || '/tmp', '.oracle-v2');
+  path.join(process.env.HOME || '/tmp', '.oracle');
 const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, 'oracle.db');
 
 console.log(`Seeding test data to: ${DB_PATH}`);

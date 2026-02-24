@@ -771,7 +771,7 @@ export class OracleIndexer {
 const isMain = import.meta.url.endsWith('indexer.ts') || import.meta.url.endsWith('indexer.js');
 if (isMain) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-  const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle-v2');
+  const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle');
 
   // Prefer vault repo for centralized indexing, fall back to local ψ/ detection
   const scriptDir = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);

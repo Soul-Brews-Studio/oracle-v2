@@ -13,6 +13,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execSync } from 'child_process';
 import { eq } from 'drizzle-orm';
 import { db, settings } from '../db/index.ts';
@@ -240,6 +241,20 @@ export function initVault(repo: string): InitResult {
   // 2. Save settings
   setSetting('vault_repo', repo);
   setSetting('vault_enabled', 'true');
+
+  // 3. Create ~/.oracle/ψ symlink → vault repo's ψ/
+  const oracleHome = path.join(os.homedir(), '.oracle');
+  const psiSymlink = path.join(oracleHome, 'ψ');
+  const vaultPsiDir = path.join(vaultPath, 'ψ');
+
+  if (!fs.existsSync(oracleHome)) {
+    fs.mkdirSync(oracleHome, { recursive: true });
+  }
+
+  if (!fs.existsSync(psiSymlink) && fs.existsSync(vaultPsiDir)) {
+    fs.symlinkSync(vaultPsiDir, psiSymlink);
+    console.error(`[Vault] Symlink: ${psiSymlink} → ${vaultPsiDir}`);
+  }
 
   console.error(`[Vault] Initialized: ${repo} → ${vaultPath}`);
   return { repo, vaultPath, created };

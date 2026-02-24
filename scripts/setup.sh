@@ -6,7 +6,7 @@ echo "🔧 Installing root dependencies..."
 bun install
 
 echo "🗄️ Setting up database..."
-mkdir -p ~/.oracle-v2
+mkdir -p ~/.oracle
 bun run db:push  # Creates/updates tables from schema
 
 echo "🔧 Installing frontend dependencies..."

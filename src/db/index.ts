@@ -7,9 +7,9 @@ import { Database } from 'bun:sqlite';
 import path from 'path';
 import * as schema from './schema.ts';
 
-// Configuration - central location: ~/.oracle-v2/
+// Configuration - central location: ~/.oracle/
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/tmp';
-const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, '.oracle-v2');
+const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, '.oracle');
 export const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, 'oracle.db');
 
 // Create bun:sqlite connection

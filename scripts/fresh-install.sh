@@ -4,7 +4,7 @@
 set -e
 
 INSTALL_DIR="${ORACLE_INSTALL_DIR:-$HOME/.local/share/oracle-v2}"
-DATA_DIR="$HOME/.oracle-v2"
+DATA_DIR="$HOME/.oracle"
 
 echo "🔮 Oracle Nightly - Fresh Installation"
 echo "======================================="

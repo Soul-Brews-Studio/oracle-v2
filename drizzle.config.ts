@@ -1,9 +1,9 @@
 import { defineConfig } from 'drizzle-kit';
 import path from 'path';
 
-// Default to ~/.oracle-v2/oracle.db (same as server)
+// Default to ~/.oracle/oracle.db (same as server)
 const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR ||
-  path.join(process.env.HOME || '/tmp', '.oracle-v2');
+  path.join(process.env.HOME || '/tmp', '.oracle');
 const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, 'oracle.db');
 
 export default defineConfig({

@@ -3,7 +3,7 @@
 # This creates a minimal ψ/memory structure for testing
 set -e
 
-SEED_DIR="${ORACLE_SEED_DIR:-$HOME/.oracle-v2/seed}"
+SEED_DIR="${ORACLE_SEED_DIR:-$HOME/.oracle/seed}"
 
 echo "🌱 Creating seed directory at $SEED_DIR..."
 mkdir -p "$SEED_DIR/ψ/memory/resonance"
