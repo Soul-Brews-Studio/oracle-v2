@@ -12,8 +12,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Database } from 'bun:sqlite';
 import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { eq, and, or, isNull, inArray } from 'drizzle-orm';
-import * as schema from './db/schema.js';
-import { oracleDocuments } from './db/schema.js';
+import * as schema from './db/schema.ts';
+import { oracleDocuments } from './db/schema.ts';
 import fs from 'fs';
 
 // ============================================================================

@@ -4,8 +4,8 @@
  * Wraps src/verify/handler.ts for consistency with tools/ pattern.
  */
 
-import { verifyKnowledgeBase } from '../verify/handler.js';
-import type { ToolContext, ToolResponse, OracleVerifyInput } from './types.js';
+import { verifyKnowledgeBase } from '../verify/handler.ts';
+import type { ToolContext, ToolResponse, OracleVerifyInput } from './types.ts';
 
 export const verifyToolDef = {
   name: 'oracle_verify',

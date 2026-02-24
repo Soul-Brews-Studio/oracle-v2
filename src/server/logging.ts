@@ -4,8 +4,8 @@
  * Refactored to use Drizzle ORM for type-safe queries.
  */
 
-import { db, searchLog, documentAccess, learnLog, consultLog } from '../db/index.js';
-import type { SearchResult } from './types.js';
+import { db, searchLog, documentAccess, learnLog, consultLog } from '../db/index.ts';
+import type { SearchResult } from './types.ts';
 
 /**
  * Log search query with full details

@@ -5,8 +5,8 @@
  */
 
 import { sql, gt, and, gte, lt, desc } from 'drizzle-orm';
-import { db, oracleDocuments, consultLog, searchLog, learnLog } from '../db/index.js';
-import type { DashboardSummary, DashboardActivity, DashboardGrowth } from './types.js';
+import { db, oracleDocuments, consultLog, searchLog, learnLog } from '../db/index.ts';
+import type { DashboardSummary, DashboardActivity, DashboardGrowth } from './types.ts';
 
 /**
  * Dashboard summary - aggregated stats for the dashboard

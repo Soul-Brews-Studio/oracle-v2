@@ -10,7 +10,7 @@
  * - HTTP-based shutdown requests
  */
 
-import { logger } from './logger.js';
+import { logger } from './logger.ts';
 
 export interface HealthCheckOptions {
   /** Base URL for health checks (default: http://127.0.0.1) */

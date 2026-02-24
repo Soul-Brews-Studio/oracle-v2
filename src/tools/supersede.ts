@@ -6,8 +6,8 @@
  */
 
 import { eq } from 'drizzle-orm';
-import { oracleDocuments } from '../db/schema.js';
-import type { ToolContext, ToolResponse, OracleSupersededInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import type { ToolContext, ToolResponse, OracleSupersededInput } from './types.ts';
 
 export const supersedeToolDef = {
   name: 'oracle_supersede',

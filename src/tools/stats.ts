@@ -5,8 +5,8 @@
  */
 
 import { sql, and, ne, isNotNull } from 'drizzle-orm';
-import { oracleDocuments } from '../db/schema.js';
-import type { ToolContext, ToolResponse, OracleStatsInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import type { ToolContext, ToolResponse, OracleStatsInput } from './types.ts';
 
 export const statsToolDef = {
   name: 'oracle_stats',

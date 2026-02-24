@@ -10,8 +10,8 @@
  */
 
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { db, forumThreads, forumMessages } from '../db/index.js';
-import { getProjectContext } from '../server/context.js';
+import { db, forumThreads, forumMessages } from '../db/index.ts';
+import { getProjectContext } from '../server/context.ts';
 import type {
   ForumThread,
   ForumMessage,
@@ -19,7 +19,7 @@ import type {
   MessageRole,
   OracleThreadInput,
   OracleThreadOutput,
-} from './types.js';
+} from './types.ts';
 
 /**
  * Get project context from environment (ghq path detection)

@@ -1,15 +1,22 @@
 /**
  * Oracle Vault Handler
  *
- * Backs up ψ/ to a private GitHub repo as a 1:1 mirror.
+ * Backs up ψ/ to a private GitHub repo with project-nested paths.
  * No manifest, no hashing — git is the diff engine.
+ *
+ * Local → Vault mapping:
+ *   ψ/memory/learnings/file.md       → ψ/memory/learnings/{project}/file.md
+ *   ψ/memory/retrospectives/2026/... → ψ/memory/retrospectives/{project}/2026/...
+ *   ψ/inbox/handoff/file.md          → ψ/inbox/handoff/{project}/file.md
+ *   ψ/memory/resonance/file.md       → ψ/memory/resonance/file.md  (universal)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { eq } from 'drizzle-orm';
-import { db, settings } from '../db/index.js';
+import { db, settings } from '../db/index.ts';
+import { detectProject } from '../server/project-detect.ts';
 
 // ---------------------------------------------------------------------------
 // Settings helpers (same pattern as server.ts)
@@ -77,6 +84,83 @@ function cleanEmptyDirs(dir: string, stopAt: string): void {
   }
 }
 
+// Categories that get project-nested in the vault
+const PROJECT_CATEGORIES = [
+  'ψ/memory/learnings/',
+  'ψ/memory/retrospectives/',
+  'ψ/inbox/handoff/',
+];
+
+// Universal categories — no project prefix
+const UNIVERSAL_CATEGORIES = [
+  'ψ/memory/resonance/',
+];
+
+/**
+ * Map a local ψ/ relative path to its vault destination.
+ * Project-nested categories get a project prefix inserted after the category dir.
+ * Universal categories (resonance) stay flat.
+ */
+export function mapToVaultPath(relativePath: string, project: string | null): string {
+  if (!project) return relativePath;
+
+  for (const category of PROJECT_CATEGORIES) {
+    if (relativePath.startsWith(category)) {
+      const rest = relativePath.slice(category.length);
+      return `${category}${project}/${rest}`;
+    }
+  }
+
+  // Universal or unknown — keep as-is
+  return relativePath;
+}
+
+/**
+ * Reverse: map a vault path back to local ψ/ path.
+ * Strips the project prefix from project-nested categories.
+ */
+export function mapFromVaultPath(vaultRelativePath: string, project: string): string | null {
+  for (const category of PROJECT_CATEGORIES) {
+    const prefix = `${category}${project}/`;
+    if (vaultRelativePath.startsWith(prefix)) {
+      const rest = vaultRelativePath.slice(prefix.length);
+      return `${category}${rest}`;
+    }
+  }
+
+  // Universal categories — keep as-is
+  for (const category of UNIVERSAL_CATEGORIES) {
+    if (vaultRelativePath.startsWith(category)) {
+      return vaultRelativePath;
+    }
+  }
+
+  return null; // Not a recognized path for this project
+}
+
+/**
+ * Ensure markdown file has project: field in frontmatter.
+ * If frontmatter exists but has no project:, inject it.
+ * If no frontmatter, add one with just project:.
+ * Returns modified content (or original if already has project).
+ */
+export function ensureFrontmatterProject(content: string, project: string): string {
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+    // Already has project: field
+    if (/^project:\s/m.test(frontmatter)) return content;
+
+    // Inject project: after existing frontmatter fields
+    const newFrontmatter = `${frontmatter}\nproject: ${project}`;
+    return content.replace(frontmatterMatch[0], `---\n${newFrontmatter}\n---`);
+  }
+
+  // No frontmatter — add one
+  return `---\nproject: ${project}\n---\n\n${content}`;
+}
+
 // ---------------------------------------------------------------------------
 // Git status parser (exported for testing)
 // ---------------------------------------------------------------------------
@@ -102,6 +186,32 @@ export function parseGitStatus(porcelainOutput: string): GitStatusCounts {
   }
 
   return { added, modified, deleted };
+}
+
+// ---------------------------------------------------------------------------
+// Vault path resolution (shared across tools)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the vault ψ/ root for shared use by oracle_learn, oracle_handoff, indexer, etc.
+ * Returns the vault repo local path, or a setup hint if not configured.
+ */
+export function getVaultPsiRoot(): { path: string } | { needsInit: true; hint: string } {
+  const repo = getSetting('vault_repo');
+  if (!repo) {
+    return {
+      needsInit: true,
+      hint: 'Run: oracle-vault init <owner/repo> to set up central knowledge vault.\nExample: oracle-vault init Soul-Brews-Studio/oracle-vault',
+    };
+  }
+  try {
+    return { path: resolveVaultPath(repo) };
+  } catch {
+    return {
+      needsInit: true,
+      hint: `Vault repo "${repo}" not found locally. Run: ghq get ${repo}`,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +251,7 @@ export interface SyncResult {
   modified: number;
   deleted: number;
   commitHash?: string;
+  project?: string | null;
 }
 
 export function syncVault(opts: {
@@ -158,25 +269,60 @@ export function syncVault(opts: {
     throw new Error(`ψ/ directory not found at ${psiDir}`);
   }
 
+  // Detect project for nested paths
+  const project = detectProject(repoRoot)?.toLowerCase() ?? null;
+  console.error(`[Vault] Project: ${project || '(universal)'}`);
+
   // 1. Walk ψ/ recursively (skip symlinks)
   const diskFiles = walkFiles(psiDir, repoRoot);
 
-  // 2. Copy ALL files to vault/ψ/ (overwrite, create dirs)
+  // 2. Copy files to vault with project-nested paths
+  const vaultDestPaths = new Set<string>();
+
   for (const { relativePath, fullPath } of diskFiles) {
-    const dest = path.join(vaultPath, relativePath);
+    const vaultRelPath = mapToVaultPath(relativePath, project);
+    vaultDestPaths.add(vaultRelPath);
+
+    const dest = path.join(vaultPath, vaultRelPath);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(fullPath, dest);
+
+    // For .md files in project categories: ensure project frontmatter
+    if (project && fullPath.endsWith('.md') && isProjectCategory(relativePath)) {
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      const tagged = ensureFrontmatterProject(content, project);
+      fs.writeFileSync(dest, tagged);
+    } else {
+      fs.copyFileSync(fullPath, dest);
+    }
   }
 
-  // 3. Walk vault/ψ/ → remove files no longer in ψ/
-  const diskPaths = new Set(diskFiles.map((f) => f.relativePath));
-  const vaultPsiDir = path.join(vaultPath, 'ψ');
-  const vaultFiles = walkFiles(vaultPsiDir, vaultPath);
+  // 3. Clean up: remove vault files for THIS project that no longer exist locally
+  if (project) {
+    for (const category of PROJECT_CATEGORIES) {
+      const vaultCategoryDir = path.join(vaultPath, category, project);
+      if (!fs.existsSync(vaultCategoryDir)) continue;
 
-  for (const { relativePath, fullPath: vaultFullPath } of vaultFiles) {
-    if (!diskPaths.has(relativePath)) {
-      fs.unlinkSync(vaultFullPath);
-      cleanEmptyDirs(path.dirname(vaultFullPath), vaultPsiDir);
+      const vaultFiles = walkFiles(vaultCategoryDir, vaultPath);
+      for (const { relativePath: vaultRelPath, fullPath: vaultFullPath } of vaultFiles) {
+        if (!vaultDestPaths.has(vaultRelPath)) {
+          fs.unlinkSync(vaultFullPath);
+          cleanEmptyDirs(path.dirname(vaultFullPath), path.join(vaultPath, 'ψ'));
+        }
+      }
+    }
+  }
+
+  // Also clean universal categories
+  for (const category of UNIVERSAL_CATEGORIES) {
+    const vaultCategoryDir = path.join(vaultPath, category);
+    if (!fs.existsSync(vaultCategoryDir)) continue;
+
+    const vaultFiles = walkFiles(vaultCategoryDir, vaultPath);
+    for (const { relativePath: vaultRelPath, fullPath: vaultFullPath } of vaultFiles) {
+      if (!vaultDestPaths.has(vaultRelPath)) {
+        fs.unlinkSync(vaultFullPath);
+        cleanEmptyDirs(path.dirname(vaultFullPath), path.join(vaultPath, 'ψ'));
+      }
     }
   }
 
@@ -191,7 +337,7 @@ export function syncVault(opts: {
 
   // 5. If dry-run or no changes: return counts, stop
   if (dryRun || !status) {
-    return { dryRun: true, added, modified, deleted };
+    return { dryRun: true, added, modified, deleted, project };
   }
 
   // 6. Commit + push
@@ -202,8 +348,9 @@ export function syncVault(opts: {
   if (modified) parts.push(`~${modified}`);
   if (deleted) parts.push(`-${deleted}`);
   const summary = parts.length ? ` (${parts.join(', ')})` : '';
+  const projectTag = project ? ` [${project}]` : '';
 
-  execSync(`git commit -m "vault sync: ${ts}${summary}"`, {
+  execSync(`git commit -m "vault sync: ${ts}${summary}${projectTag}"`, {
     cwd: vaultPath,
     stdio: 'pipe',
   });
@@ -222,7 +369,69 @@ export function syncVault(opts: {
     `[Vault] Synced: +${added} ~${modified} -${deleted} (${commitHash})`,
   );
 
-  return { dryRun: false, added, modified, deleted, commitHash };
+  return { dryRun: false, added, modified, deleted, commitHash, project };
+}
+
+export interface PullResult {
+  files: number;
+  project: string;
+}
+
+export function pullVault(opts: {
+  repoRoot: string;
+}): PullResult {
+  const { repoRoot } = opts;
+
+  const repo = getSetting('vault_repo');
+  if (!repo) throw new Error('Vault not initialized. Run vault:init first.');
+
+  const vaultPath = resolveVaultPath(repo);
+  const project = detectProject(repoRoot)?.toLowerCase() ?? null;
+  if (!project) {
+    throw new Error('Cannot detect project from repoRoot. Pull requires project context.');
+  }
+
+  // Pull latest from vault repo
+  try {
+    execSync('git pull', { cwd: vaultPath, stdio: 'pipe' });
+  } catch {
+    console.error('[Vault] git pull failed — continuing with local vault state');
+  }
+
+  let fileCount = 0;
+
+  // Copy project-nested files from vault → local
+  for (const category of PROJECT_CATEGORIES) {
+    const vaultCategoryDir = path.join(vaultPath, category, project);
+    if (!fs.existsSync(vaultCategoryDir)) continue;
+
+    const vaultFiles = walkFiles(vaultCategoryDir, path.join(vaultPath, category, project));
+    for (const { relativePath, fullPath: vaultFullPath } of vaultFiles) {
+      const localDest = path.join(repoRoot, category, relativePath);
+      fs.mkdirSync(path.dirname(localDest), { recursive: true });
+      fs.copyFileSync(vaultFullPath, localDest);
+      fileCount++;
+    }
+  }
+
+  // Copy universal files (resonance) from vault → local
+  for (const category of UNIVERSAL_CATEGORIES) {
+    const vaultCategoryDir = path.join(vaultPath, category);
+    if (!fs.existsSync(vaultCategoryDir)) continue;
+
+    const vaultFiles = walkFiles(vaultCategoryDir, path.join(vaultPath, category));
+    for (const { relativePath, fullPath: vaultFullPath } of vaultFiles) {
+      // Skip .gitkeep
+      if (relativePath === '.gitkeep') continue;
+      const localDest = path.join(repoRoot, category, relativePath);
+      fs.mkdirSync(path.dirname(localDest), { recursive: true });
+      fs.copyFileSync(vaultFullPath, localDest);
+      fileCount++;
+    }
+  }
+
+  console.error(`[Vault] Pulled ${fileCount} files for ${project}`);
+  return { files: fileCount, project };
 }
 
 export interface VaultStatusResult {
@@ -281,4 +490,12 @@ export function vaultStatus(repoRoot: string): VaultStatusResult {
     vaultPath,
     pending,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function isProjectCategory(relativePath: string): boolean {
+  return PROJECT_CATEGORIES.some((cat) => relativePath.startsWith(cat));
 }

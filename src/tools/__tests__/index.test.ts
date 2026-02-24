@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import * as tools from '../index.js';
+import * as tools from '../index.ts';
 
 describe('tools barrel export', () => {
   it('exports core tool definitions', () => {

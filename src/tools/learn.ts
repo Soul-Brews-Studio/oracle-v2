@@ -7,9 +7,10 @@
 
 import path from 'path';
 import fs from 'fs';
-import { oracleDocuments } from '../db/schema.js';
-import { detectProject } from '../server/project-detect.js';
-import type { ToolContext, ToolResponse, OracleLearnInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import { detectProject } from '../server/project-detect.ts';
+import { getVaultPsiRoot } from '../vault/handler.ts';
+import type { ToolContext, ToolResponse, OracleLearnInput } from './types.ts';
 
 export const learnToolDef = {
   name: 'oracle_learn',
@@ -107,7 +108,30 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     .replace(/^-|-$/g, '');
 
   const filename = `${dateStr}_${slug}.md`;
-  const filePath = path.join(ctx.repoRoot, 'ψ/memory/learnings', filename);
+
+  // Resolve vault root for central writes
+  const vault = getVaultPsiRoot();
+  if ('needsInit' in vault) console.error(`[Vault] ${vault.hint}`);
+  const vaultRoot = 'path' in vault ? vault.path : null;
+
+  const project = normalizeProject(projectInput)
+    || extractProjectFromSource(source)
+    || detectProject(ctx.repoRoot);
+  const projectDir = (project || '_universal').toLowerCase();
+
+  let filePath: string;
+  let sourceFileRel: string;
+  if (vaultRoot) {
+    const dir = path.join(vaultRoot, 'ψ/memory/learnings', projectDir);
+    fs.mkdirSync(dir, { recursive: true });
+    filePath = path.join(dir, filename);
+    sourceFileRel = `ψ/memory/learnings/${projectDir}/${filename}`;
+  } else {
+    const dir = path.join(ctx.repoRoot, 'ψ/memory/learnings');
+    fs.mkdirSync(dir, { recursive: true });
+    filePath = path.join(dir, filename);
+    sourceFileRel = `ψ/memory/learnings/${filename}`;
+  }
 
   if (fs.existsSync(filePath)) {
     throw new Error(`File already exists: ${filename}`);
@@ -121,6 +145,7 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     conceptsList.length > 0 ? `tags: [${conceptsList.join(', ')}]` : 'tags: []',
     `created: ${dateStr}`,
     `source: ${source || 'Oracle Learn'}`,
+    ...(project ? [`project: ${project}`] : []),
     '---',
     '',
     `# ${title}`,
@@ -135,14 +160,11 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
   fs.writeFileSync(filePath, frontmatter, 'utf-8');
 
   const id = `learning_${dateStr}_${slug}`;
-  const project = normalizeProject(projectInput)
-    || extractProjectFromSource(source)
-    || detectProject(ctx.repoRoot);
 
   ctx.db.insert(oracleDocuments).values({
     id,
     type: 'learning',
-    sourceFile: `ψ/memory/learnings/${filename}`,
+    sourceFile: sourceFileRel,
     concepts: JSON.stringify(conceptsList),
     createdAt: now.getTime(),
     updatedAt: now.getTime(),
@@ -162,9 +184,9 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
       type: 'text',
       text: JSON.stringify({
         success: true,
-        file: `ψ/memory/learnings/${filename}`,
+        file: sourceFileRel,
         id,
-        message: `Pattern added to Oracle knowledge base`
+        message: `Pattern added to Oracle knowledge base${vaultRoot ? ' (vault)' : ''}`
       }, null, 2)
     }]
   };

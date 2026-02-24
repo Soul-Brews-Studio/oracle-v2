@@ -5,8 +5,8 @@
  */
 
 import { eq, sql } from 'drizzle-orm';
-import { oracleDocuments } from '../db/schema.js';
-import type { ToolContext, ToolResponse, OracleListInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import type { ToolContext, ToolResponse, OracleListInput } from './types.ts';
 
 export const listToolDef = {
   name: 'oracle_list',

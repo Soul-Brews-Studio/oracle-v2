@@ -6,7 +6,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import type { ToolContext, ToolResponse, OracleInboxInput } from './types.js';
+import type { ToolContext, ToolResponse, OracleInboxInput } from './types.ts';
 
 export const inboxToolDef = {
   name: 'oracle_inbox',

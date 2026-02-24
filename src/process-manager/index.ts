@@ -6,7 +6,7 @@
  */
 
 // Logger (replaceable)
-export { logger, setLogger, getLogger, type Logger, type LogLevel } from './logger.js';
+export { logger, setLogger, getLogger, type Logger, type LogLevel } from './logger.ts';
 
 // Process Management
 export {
@@ -28,7 +28,7 @@ export {
   registerSignalHandlers,
   type PidInfo,
   type SpawnDaemonOptions
-} from './ProcessManager.js';
+} from './ProcessManager.ts';
 
 // Health Monitoring
 export {
@@ -39,7 +39,7 @@ export {
   getWorkerStatus,
   getWorkerVersion,
   type HealthCheckOptions
-} from './HealthMonitor.js';
+} from './HealthMonitor.ts';
 
 // Graceful Shutdown
 export {
@@ -48,4 +48,4 @@ export {
   type GracefulShutdownConfig,
   type ShutdownableService,
   type CloseableResource
-} from './GracefulShutdown.js';
+} from './GracefulShutdown.ts';

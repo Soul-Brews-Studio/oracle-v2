@@ -18,12 +18,13 @@ import fs from 'fs';
 import path from 'path';
 import { Database } from 'bun:sqlite';
 import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
-import { eq, and, or, isNull, inArray, sql } from 'drizzle-orm';
-import * as schema from './db/schema.js';
-import { oracleDocuments, indexingStatus } from './db/schema.js';
-import { ChromaMcpClient } from './chroma-mcp.js';
-import { detectProject } from './server/project-detect.js';
-import type { OracleDocument, OracleMetadata, IndexerConfig } from './types.js';
+import { eq, or, isNull, inArray } from 'drizzle-orm';
+import * as schema from './db/schema.ts';
+import { oracleDocuments, indexingStatus } from './db/schema.ts';
+import { ChromaMcpClient } from './chroma-mcp.ts';
+import { detectProject } from './server/project-detect.ts';
+import { getVaultPsiRoot } from './vault/handler.ts';
+import type { OracleDocument, OracleMetadata, IndexerConfig } from './types.ts';
 
 export class OracleIndexer {
   private sqlite: Database;  // Raw bun:sqlite for FTS and schema operations
@@ -218,24 +219,19 @@ export class OracleIndexer {
     // SAFETY: Backup before clearing (Nothing is Deleted)
     this.backupDatabase();
 
-    // Smart deletion: Only delete indexer-created docs from current project
-    // Preserves oracle_learn documents and docs from other projects
-    const docsToDelete = this.db.select({ id: oracleDocuments.id })
+    // Smart deletion: delete indexer-created docs whose source file no longer exists on disk.
+    // Safe for multi-project vault: only removes docs with missing files, preserves oracle_learn docs.
+    const allIndexerDocs = this.db.select({ id: oracleDocuments.id, sourceFile: oracleDocuments.sourceFile })
       .from(oracleDocuments)
       .where(
-        and(
-          // Match current project OR universal (null)
-          this.project
-            ? or(eq(oracleDocuments.project, this.project), isNull(oracleDocuments.project))
-            : isNull(oracleDocuments.project),
-          // Only delete indexer-created OR legacy (null) docs
-          or(eq(oracleDocuments.createdBy, 'indexer'), isNull(oracleDocuments.createdBy))
-        )
+        or(eq(oracleDocuments.createdBy, 'indexer'), isNull(oracleDocuments.createdBy))
       )
       .all();
 
-    const idsToDelete = docsToDelete.map(d => d.id);
-    console.log(`Smart delete: ${idsToDelete.length} docs (preserving oracle_learn)`);
+    const idsToDelete = allIndexerDocs
+      .filter(d => !fs.existsSync(path.join(this.config.repoRoot, d.sourceFile)))
+      .map(d => d.id);
+    console.log(`Smart delete: ${idsToDelete.length} stale docs (preserving oracle_learn)`);
 
     if (idsToDelete.length > 0) {
       // Delete from oracle_documents (Drizzle)
@@ -395,8 +391,26 @@ export class OracleIndexer {
   }
 
   /**
+   * Infer project from a vault-nested path.
+   * e.g. "ψ/memory/learnings/github.com/org/repo/file.md" → "github.com/org/repo"
+   * Works for any category: learnings, retrospectives, inbox/handoff.
+   */
+  private inferProjectFromPath(relativePath: string): string | null {
+    // Match: ψ/memory/{category}/github.com/org/repo/...
+    // or:    ψ/inbox/handoff/github.com/org/repo/...
+    const match = relativePath.match(
+      /^ψ\/(?:memory\/(?:learnings|retrospectives)|inbox\/handoff)\/(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+\/[^/]+)\//
+    );
+    if (match) {
+      return `${match[1]}/${match[2]}`;
+    }
+    return null;
+  }
+
+  /**
    * Parse learning markdown into documents
-   * Now reads frontmatter tags and project, inherits them to all chunks
+   * Now reads frontmatter tags and project, inherits them to all chunks.
+   * Falls back to path-based project inference for vault-nested files.
    */
   private parseLearningFile(filename: string, content: string): OracleDocument[] {
     const documents: OracleDocument[] = [];
@@ -405,7 +419,8 @@ export class OracleIndexer {
 
     // Extract file-level tags and project from frontmatter
     const fileTags = this.parseFrontmatterTags(content);
-    const fileProject = this.parseFrontmatterProject(content);
+    const fileProject = this.parseFrontmatterProject(content)
+      || this.inferProjectFromPath(sourceFile);
 
     // Extract title from frontmatter or filename
     const titleMatch = content.match(/^title:\s*(.+)$/m);
@@ -497,7 +512,8 @@ export class OracleIndexer {
 
   /**
    * Parse retrospective markdown
-   * Now reads frontmatter tags and inherits them to all chunks
+   * Now reads frontmatter tags and inherits them to all chunks.
+   * Falls back to path-based project inference for vault-nested files.
    */
   private parseRetroFile(relativePath: string, content: string): OracleDocument[] {
     const documents: OracleDocument[] = [];
@@ -505,6 +521,10 @@ export class OracleIndexer {
 
     // Extract file-level tags from frontmatter
     const fileTags = this.parseFrontmatterTags(content);
+
+    // Infer project from frontmatter or path
+    const fileProject = this.parseFrontmatterProject(content)
+      || this.inferProjectFromPath(relativePath);
 
     // Extract key sections (AI Diary, What I Learned, etc.)
     const sections = content.split(/^##\s+/m).filter(s => s.trim());
@@ -527,7 +547,8 @@ export class OracleIndexer {
         content: `${sectionTitle}: ${body}`,
         concepts: this.mergeConceptsWithTags(extractedConcepts, fileTags),
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        project: fileProject || undefined
       });
     });
 
@@ -752,11 +773,16 @@ if (isMain) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
   const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle-v2');
 
-  // Use same ψ/-aware detection as the server (src/server/db.ts)
+  // Prefer vault repo for centralized indexing, fall back to local ψ/ detection
   const scriptDir = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
   const projectRoot = path.resolve(scriptDir, '..');
+
+  const vaultResult = getVaultPsiRoot();
+  const vaultRoot = 'path' in vaultResult ? vaultResult.path : null;
+
   const repoRoot = process.env.ORACLE_REPO_ROOT ||
-    (fs.existsSync(path.join(projectRoot, 'ψ')) ? projectRoot : process.cwd());
+    (vaultRoot && fs.existsSync(path.join(vaultRoot, 'ψ')) ? vaultRoot :
+     fs.existsSync(path.join(projectRoot, 'ψ')) ? projectRoot : process.cwd());
 
   const config: IndexerConfig = {
     repoRoot,

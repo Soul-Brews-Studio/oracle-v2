@@ -13,15 +13,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { Database } from 'bun:sqlite';
 import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
-import * as schema from './db/schema.js';
-import { ChromaMcpClient } from './chroma-mcp.js';
+import * as schema from './db/schema.ts';
+import { ChromaMcpClient } from './chroma-mcp.ts';
 import path from 'path';
 import fs from 'fs';
 
-import { ensureServerRunning } from './ensure-server.js';
+import { ensureServerRunning } from './ensure-server.ts';
 
 // Tool handlers (all extracted to src/tools/)
-import type { ToolContext } from './tools/types.js';
+import type { ToolContext } from './tools/types.ts';
 import {
   searchToolDef, handleSearch,
   learnToolDef, handleLearn,
@@ -37,7 +37,7 @@ import {
   handleThread, handleThreads, handleThreadRead, handleThreadUpdate,
   traceToolDefs,
   handleTrace, handleTraceList, handleTraceGet, handleTraceLink, handleTraceUnlink, handleTraceChain,
-} from './tools/index.js';
+} from './tools/index.ts';
 
 import type {
   OracleSearchInput,
@@ -54,13 +54,13 @@ import type {
   OracleThreadsInput,
   OracleThreadReadInput,
   OracleThreadUpdateInput,
-} from './tools/index.js';
+} from './tools/index.ts';
 
 import type {
   CreateTraceInput,
   ListTracesInput,
   GetTraceInput,
-} from './trace/types.js';
+} from './trace/types.ts';
 
 // Write tools that should be disabled in read-only mode
 const WRITE_TOOLS = [

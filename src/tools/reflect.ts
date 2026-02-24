@@ -5,8 +5,8 @@
  */
 
 import { sql, inArray } from 'drizzle-orm';
-import { oracleDocuments } from '../db/schema.js';
-import type { ToolContext, ToolResponse, OracleReflectInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import type { ToolContext, ToolResponse, OracleReflectInput } from './types.ts';
 
 export const reflectToolDef = {
   name: 'oracle_reflect',

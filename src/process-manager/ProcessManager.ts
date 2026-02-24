@@ -15,7 +15,7 @@ import { homedir } from 'os';
 import { existsSync, writeFileSync, readFileSync, unlinkSync, mkdirSync } from 'fs';
 import { exec, execSync, spawn, type SpawnOptions } from 'child_process';
 import { promisify } from 'util';
-import { logger } from './logger.js';
+import { logger } from './logger.ts';
 
 const execAsync = promisify(exec);
 

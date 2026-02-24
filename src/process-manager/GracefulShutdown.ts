@@ -11,13 +11,13 @@
  */
 
 import http from 'http';
-import { logger } from './logger.js';
+import { logger } from './logger.ts';
 import {
   getChildProcesses,
   forceKillProcess,
   waitForProcessesExit,
   removePidFile
-} from './ProcessManager.js';
+} from './ProcessManager.ts';
 
 export interface ShutdownableService {
   shutdown(): Promise<void>;

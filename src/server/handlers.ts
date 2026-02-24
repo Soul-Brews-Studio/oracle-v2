@@ -8,12 +8,12 @@
 import fs from 'fs';
 import path from 'path';
 import { eq, sql, or, inArray } from 'drizzle-orm';
-import { db, sqlite, oracleDocuments, indexingStatus } from '../db/index.js';
-import { REPO_ROOT } from './db.js';
-import { logSearch, logDocumentAccess, logLearning } from './logging.js';
-import type { SearchResult, SearchResponse } from './types.js';
-import { ChromaMcpClient } from '../chroma-mcp.js';
-import { detectProject } from './project-detect.js';
+import { db, sqlite, oracleDocuments, indexingStatus } from '../db/index.ts';
+import { REPO_ROOT } from './db.ts';
+import { logSearch, logDocumentAccess, logLearning } from './logging.ts';
+import type { SearchResult, SearchResponse } from './types.ts';
+import { ChromaMcpClient } from '../chroma-mcp.ts';
+import { detectProject } from './project-detect.ts';
 
 // Singleton ChromaMcpClient for vector search
 // HTTP server can use this because it's NOT an MCP server (no stdio conflict)

@@ -11,9 +11,9 @@ import {
   getFullThread,
   getMessages,
   updateThreadStatus,
-} from '../forum/handler.js';
+} from '../forum/handler.ts';
 
-import type { ToolResponse } from './types.js';
+import type { ToolResponse } from './types.ts';
 
 // ============================================================================
 // Input interfaces

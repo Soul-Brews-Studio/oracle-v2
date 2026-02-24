@@ -4,8 +4,8 @@
 
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import type { Database } from 'bun:sqlite';
-import type * as schema from '../db/schema.js';
-import type { ChromaMcpClient } from '../chroma-mcp.js';
+import type * as schema from '../db/schema.ts';
+import type { ChromaMcpClient } from '../chroma-mcp.ts';
 
 /**
  * Context object passed to all tool handlers.

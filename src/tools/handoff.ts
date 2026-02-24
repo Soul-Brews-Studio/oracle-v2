@@ -2,11 +2,14 @@
  * Oracle Handoff Handler
  *
  * Write session context to ψ/inbox/handoff/ for future sessions.
+ * When vault is configured, writes to vault repo with project-nested paths.
  */
 
 import path from 'path';
 import fs from 'fs';
-import type { ToolContext, ToolResponse, OracleHandoffInput } from './types.js';
+import { getVaultPsiRoot } from '../vault/handler.ts';
+import { detectProject } from '../server/project-detect.ts';
+import type { ToolContext, ToolResponse, OracleHandoffInput } from './types.ts';
 
 export const handoffToolDef = {
   name: 'oracle_handoff',
@@ -43,21 +46,36 @@ export async function handleHandoff(ctx: ToolContext, input: OracleHandoffInput)
     .replace(/^-|-$/g, '') || 'handoff';
 
   const filename = `${dateStr}_${timeStr}_${slug}.md`;
-  const dirPath = path.join(ctx.repoRoot, 'ψ/inbox/handoff');
-  const filePath = path.join(dirPath, filename);
+
+  // Resolve vault root for central writes
+  const vault = getVaultPsiRoot();
+  if ('needsInit' in vault) console.error(`[Vault] ${vault.hint}`);
+  const vaultRoot = 'path' in vault ? vault.path : null;
+
+  const project = detectProject(ctx.repoRoot)?.toLowerCase() || '_universal';
+
+  let dirPath: string;
+  let sourceFileRel: string;
+  if (vaultRoot) {
+    dirPath = path.join(vaultRoot, 'ψ/inbox/handoff', project);
+    sourceFileRel = `ψ/inbox/handoff/${project}/${filename}`;
+  } else {
+    dirPath = path.join(ctx.repoRoot, 'ψ/inbox/handoff');
+    sourceFileRel = `ψ/inbox/handoff/${filename}`;
+  }
 
   fs.mkdirSync(dirPath, { recursive: true });
-  fs.writeFileSync(filePath, content, 'utf-8');
+  fs.writeFileSync(path.join(dirPath, filename), content, 'utf-8');
 
-  console.error(`[MCP:HANDOFF] Written: ${filename}`);
+  console.error(`[MCP:HANDOFF] Written: ${sourceFileRel}`);
 
   return {
     content: [{
       type: 'text',
       text: JSON.stringify({
         success: true,
-        file: `ψ/inbox/handoff/${filename}`,
-        message: `Handoff written. Next session can read it with oracle_inbox().`
+        file: sourceFileRel,
+        message: `Handoff written${vaultRoot ? ' (vault)' : ''}. Next session can read it with oracle_inbox().`
       }, null, 2)
     }]
   };

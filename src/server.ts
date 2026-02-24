@@ -19,7 +19,7 @@ import {
   removePidFile,
   registerSignalHandlers,
   performGracefulShutdown,
-} from './process-manager/index.js';
+} from './process-manager/index.ts';
 
 // Import from modular components
 import {
@@ -31,7 +31,7 @@ import {
   DASHBOARD_PATH,
   initLoggingTables,
   closeDb
-} from './server/db.js';
+} from './server/db.ts';
 
 import { eq, desc, gt, and, sql } from 'drizzle-orm';
 import {
@@ -43,7 +43,7 @@ import {
   supersedeLog,
   indexingStatus,
   settings
-} from './db/index.js';
+} from './db/index.ts';
 
 import {
   handleSearch,
@@ -52,15 +52,15 @@ import {
   handleStats,
   handleGraph,
   handleLearn
-} from './server/handlers.js';
+} from './server/handlers.ts';
 
 import {
   handleDashboardSummary,
   handleDashboardActivity,
   handleDashboardGrowth
-} from './server/dashboard.js';
+} from './server/dashboard.ts';
 
-import { handleContext } from './server/context.js';
+import { handleContext } from './server/context.ts';
 
 import {
   handleThreadMessage,
@@ -68,14 +68,14 @@ import {
   getFullThread,
   getMessages,
   updateThreadStatus
-} from './forum/handler.js';
+} from './forum/handler.ts';
 
 
 import {
   listTraces,
   getTrace,
   getTraceChain
-} from './trace/handler.js';
+} from './trace/handler.ts';
 
 // Frontend static file serving
 const FRONTEND_DIST = path.join(import.meta.dirname || __dirname, '..', 'frontend', 'dist');

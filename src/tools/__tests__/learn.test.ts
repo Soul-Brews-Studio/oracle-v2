@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { normalizeProject, extractProjectFromSource } from '../learn.js';
+import { normalizeProject, extractProjectFromSource } from '../learn.ts';
 
 // ============================================================================
 // normalizeProject

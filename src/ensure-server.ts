@@ -14,8 +14,8 @@ import {
   configure,
   removePidFile,
   getDataDir,
-} from './process-manager/index.js';
-import { waitForHealth, isPortInUse } from './process-manager/HealthMonitor.js';
+} from './process-manager/index.ts';
+import { waitForHealth, isPortInUse } from './process-manager/HealthMonitor.ts';
 
 // Simple file-based lock to prevent race conditions
 const LOCK_FILE = () => path.join(getDataDir(), 'oracle-http.lock');

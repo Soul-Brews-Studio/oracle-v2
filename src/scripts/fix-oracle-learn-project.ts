@@ -3,8 +3,8 @@
  * Uses Drizzle ORM - not direct SQL!
  */
 
-import { db, sqlite } from '../db/index.js';
-import { oracleDocuments } from '../db/schema.js';
+import { db, sqlite } from '../db/index.ts';
+import { oracleDocuments } from '../db/schema.ts';
 import { eq, isNull, or, and } from 'drizzle-orm';
 import { homedir } from 'os';
 import path from 'path';

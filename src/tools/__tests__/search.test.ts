@@ -9,7 +9,7 @@ import {
   normalizeFtsScore,
   parseConceptsFromMetadata,
   combineResults,
-} from '../search.js';
+} from '../search.ts';
 
 // ============================================================================
 // sanitizeFtsQuery

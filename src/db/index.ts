@@ -5,7 +5,7 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import path from 'path';
-import * as schema from './schema.js';
+import * as schema from './schema.ts';
 
 // Configuration - central location: ~/.oracle-v2/
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/tmp';
@@ -19,7 +19,7 @@ const sqlite = new Database(DB_PATH);
 export const db = drizzle(sqlite, { schema });
 
 // Export schema for use in queries
-export * from './schema.js';
+export * from './schema.ts';
 
 // Raw SQLite connection for FTS5 operations
 export { sqlite };

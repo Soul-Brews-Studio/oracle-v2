@@ -5,7 +5,7 @@
  */
 
 // Types
-export type { ToolContext, ToolResponse } from './types.js';
+export type { ToolContext, ToolResponse } from './types.ts';
 export type {
   OracleSearchInput,
   OracleReflectInput,
@@ -17,7 +17,7 @@ export type {
   OracleHandoffInput,
   OracleInboxInput,
   OracleVerifyInput,
-} from './types.js';
+} from './types.ts';
 
 // Search (+ pure helpers)
 export {
@@ -28,7 +28,7 @@ export {
   parseConceptsFromMetadata,
   combineResults,
   vectorSearch,
-} from './search.js';
+} from './search.ts';
 
 // Learn (+ pure helpers)
 export {
@@ -36,31 +36,31 @@ export {
   handleLearn,
   normalizeProject,
   extractProjectFromSource,
-} from './learn.js';
+} from './learn.ts';
 
 // Reflect
-export { reflectToolDef, handleReflect } from './reflect.js';
+export { reflectToolDef, handleReflect } from './reflect.ts';
 
 // List
-export { listToolDef, handleList } from './list.js';
+export { listToolDef, handleList } from './list.ts';
 
 // Stats
-export { statsToolDef, handleStats } from './stats.js';
+export { statsToolDef, handleStats } from './stats.ts';
 
 // Concepts
-export { conceptsToolDef, handleConcepts } from './concepts.js';
+export { conceptsToolDef, handleConcepts } from './concepts.ts';
 
 // Supersede
-export { supersedeToolDef, handleSupersede } from './supersede.js';
+export { supersedeToolDef, handleSupersede } from './supersede.ts';
 
 // Handoff
-export { handoffToolDef, handleHandoff } from './handoff.js';
+export { handoffToolDef, handleHandoff } from './handoff.ts';
 
 // Inbox
-export { inboxToolDef, handleInbox } from './inbox.js';
+export { inboxToolDef, handleInbox } from './inbox.ts';
 
 // Verify (bridge to verify/handler.ts)
-export { verifyToolDef, handleVerify } from './verify.js';
+export { verifyToolDef, handleVerify } from './verify.ts';
 
 // Forum
 export type {
@@ -68,14 +68,14 @@ export type {
   OracleThreadsInput,
   OracleThreadReadInput,
   OracleThreadUpdateInput,
-} from './forum.js';
+} from './forum.ts';
 export {
   forumToolDefs,
   handleThread,
   handleThreads,
   handleThreadRead,
   handleThreadUpdate,
-} from './forum.js';
+} from './forum.ts';
 
 // Trace
 export {
@@ -86,5 +86,5 @@ export {
   handleTraceLink,
   handleTraceUnlink,
   handleTraceChain,
-} from './trace.js';
+} from './trace.ts';
 

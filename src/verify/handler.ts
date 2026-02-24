@@ -10,7 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import { eq } from 'drizzle-orm';
-import { db, oracleDocuments } from '../db/index.js';
+import { db, oracleDocuments } from '../db/index.ts';
 
 export interface VerifyResult {
   counts: {

@@ -13,15 +13,15 @@ import {
   linkTraces,
   unlinkTraces,
   getTraceLinkedChain,
-} from '../trace/handler.js';
+} from '../trace/handler.ts';
 
 import type {
   CreateTraceInput,
   ListTracesInput,
   GetTraceInput,
-} from '../trace/types.js';
+} from '../trace/types.ts';
 
-import type { ToolResponse } from './types.js';
+import type { ToolResponse } from './types.ts';
 
 // ============================================================================
 // Tool definitions

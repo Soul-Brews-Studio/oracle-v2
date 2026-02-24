@@ -5,8 +5,8 @@
  */
 
 import { eq, and, ne, isNotNull } from 'drizzle-orm';
-import { oracleDocuments } from '../db/schema.js';
-import type { ToolContext, ToolResponse, OracleConceptsInput } from './types.js';
+import { oracleDocuments } from '../db/schema.ts';
+import type { ToolContext, ToolResponse, OracleConceptsInput } from './types.ts';
 
 export const conceptsToolDef = {
   name: 'oracle_concepts',

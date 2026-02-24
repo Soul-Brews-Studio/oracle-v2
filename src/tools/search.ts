@@ -6,8 +6,8 @@
  * combineResults, vectorSearch) for testability.
  */
 
-import { logSearch } from '../server/logging.js';
-import type { ToolContext, ToolResponse, OracleSearchInput } from './types.js';
+import { logSearch } from '../server/logging.ts';
+import type { ToolContext, ToolResponse, OracleSearchInput } from './types.ts';
 
 export const searchToolDef = {
   name: 'oracle_search',

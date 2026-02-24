@@ -24,7 +24,7 @@ import {
   removePidFile,
   registerSignalHandlers,
   performGracefulShutdown,
-} from './process-manager/index.js';
+} from './process-manager/index.ts';
 
 // Import from modular components
 import {
@@ -37,7 +37,7 @@ import {
   db,
   initLoggingTables,
   closeDb
-} from './server/db.js';
+} from './server/db.ts';
 
 import {
   handleSearch,
@@ -46,15 +46,15 @@ import {
   handleStats,
   handleGraph,
   handleLearn
-} from './server/handlers.js';
+} from './server/handlers.ts';
 
 import {
   handleDashboardSummary,
   handleDashboardActivity,
   handleDashboardGrowth
-} from './server/dashboard.js';
+} from './server/dashboard.ts';
 
-import { handleContext } from './server/context.js';
+import { handleContext } from './server/context.ts';
 
 import {
   handleThreadMessage,
@@ -62,7 +62,7 @@ import {
   getFullThread,
   getMessages,
   updateThreadStatus
-} from './forum/handler.js';
+} from './forum/handler.ts';
 
 import path from 'path';
 
