@@ -1,18 +1,19 @@
 /**
  * Oracle Vault Handler
  *
- * Backs up ψ/ to a private GitHub repo with project-nested paths.
+ * Backs up ψ/ to a private GitHub repo with project-first paths.
  * No manifest, no hashing — git is the diff engine.
  *
  * Local → Vault mapping:
- *   ψ/memory/learnings/file.md       → ψ/memory/learnings/{project}/file.md
- *   ψ/memory/retrospectives/2026/... → ψ/memory/retrospectives/{project}/2026/...
- *   ψ/inbox/handoff/file.md          → ψ/inbox/handoff/{project}/file.md
+ *   ψ/memory/learnings/file.md       → {project}/ψ/memory/learnings/file.md
+ *   ψ/memory/retrospectives/2026/... → {project}/ψ/memory/retrospectives/2026/...
+ *   ψ/inbox/handoff/file.md          → {project}/ψ/inbox/handoff/file.md
  *   ψ/memory/resonance/file.md       → ψ/memory/resonance/file.md  (universal)
  */
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execSync } from 'child_process';
 import { eq } from 'drizzle-orm';
 import { db, settings } from '../db/index.ts';
@@ -98,34 +99,30 @@ const UNIVERSAL_CATEGORIES = [
 
 /**
  * Map a local ψ/ relative path to its vault destination.
- * Project-nested categories get a project prefix inserted after the category dir.
- * Universal categories (resonance) stay flat.
+ * Project-first layout: {project}/ψ/memory/learnings/file.md
+ * Universal categories (resonance) stay flat at vault root.
  */
 export function mapToVaultPath(relativePath: string, project: string | null): string {
   if (!project) return relativePath;
 
-  for (const category of PROJECT_CATEGORIES) {
-    if (relativePath.startsWith(category)) {
-      const rest = relativePath.slice(category.length);
-      return `${category}${project}/${rest}`;
-    }
+  // Universal categories stay flat (no project prefix)
+  for (const category of UNIVERSAL_CATEGORIES) {
+    if (relativePath.startsWith(category)) return relativePath;
   }
 
-  // Universal or unknown — keep as-is
-  return relativePath;
+  // Everything else: prefix with project
+  return `${project}/${relativePath}`;
 }
 
 /**
  * Reverse: map a vault path back to local ψ/ path.
- * Strips the project prefix from project-nested categories.
+ * Strips {project}/ prefix to get the local relative path.
  */
 export function mapFromVaultPath(vaultRelativePath: string, project: string): string | null {
-  for (const category of PROJECT_CATEGORIES) {
-    const prefix = `${category}${project}/`;
-    if (vaultRelativePath.startsWith(prefix)) {
-      const rest = vaultRelativePath.slice(prefix.length);
-      return `${category}${rest}`;
-    }
+  // Check project prefix: {project}/ψ/... → ψ/...
+  const prefix = `${project}/`;
+  if (vaultRelativePath.startsWith(prefix)) {
+    return vaultRelativePath.slice(prefix.length);
   }
 
   // Universal categories — keep as-is
@@ -241,6 +238,20 @@ export function initVault(repo: string): InitResult {
   setSetting('vault_repo', repo);
   setSetting('vault_enabled', 'true');
 
+  // 3. Create ~/.oracle/ψ symlink → vault repo's ψ/
+  const oracleHome = path.join(os.homedir(), '.oracle');
+  const psiSymlink = path.join(oracleHome, 'ψ');
+  const vaultPsiDir = path.join(vaultPath, 'ψ');
+
+  if (!fs.existsSync(oracleHome)) {
+    fs.mkdirSync(oracleHome, { recursive: true });
+  }
+
+  if (!fs.existsSync(psiSymlink) && fs.existsSync(vaultPsiDir)) {
+    fs.symlinkSync(vaultPsiDir, psiSymlink);
+    console.error(`[Vault] Symlink: ${psiSymlink} → ${vaultPsiDir}`);
+  }
+
   console.error(`[Vault] Initialized: ${repo} → ${vaultPath}`);
   return { repo, vaultPath, created };
 }
@@ -298,15 +309,13 @@ export function syncVault(opts: {
 
   // 3. Clean up: remove vault files for THIS project that no longer exist locally
   if (project) {
-    for (const category of PROJECT_CATEGORIES) {
-      const vaultCategoryDir = path.join(vaultPath, category, project);
-      if (!fs.existsSync(vaultCategoryDir)) continue;
-
-      const vaultFiles = walkFiles(vaultCategoryDir, vaultPath);
+    const vaultProjectDir = path.join(vaultPath, project, 'ψ');
+    if (fs.existsSync(vaultProjectDir)) {
+      const vaultFiles = walkFiles(vaultProjectDir, vaultPath);
       for (const { relativePath: vaultRelPath, fullPath: vaultFullPath } of vaultFiles) {
         if (!vaultDestPaths.has(vaultRelPath)) {
           fs.unlinkSync(vaultFullPath);
-          cleanEmptyDirs(path.dirname(vaultFullPath), path.join(vaultPath, 'ψ'));
+          cleanEmptyDirs(path.dirname(vaultFullPath), path.join(vaultPath, project));
         }
       }
     }
@@ -400,14 +409,13 @@ export function pullVault(opts: {
 
   let fileCount = 0;
 
-  // Copy project-nested files from vault → local
-  for (const category of PROJECT_CATEGORIES) {
-    const vaultCategoryDir = path.join(vaultPath, category, project);
-    if (!fs.existsSync(vaultCategoryDir)) continue;
-
-    const vaultFiles = walkFiles(vaultCategoryDir, path.join(vaultPath, category, project));
+  // Copy project files from vault → local: {project}/ψ/... → ψ/...
+  const vaultProjectPsi = path.join(vaultPath, project, 'ψ');
+  if (fs.existsSync(vaultProjectPsi)) {
+    const vaultFiles = walkFiles(vaultProjectPsi, vaultProjectPsi);
     for (const { relativePath, fullPath: vaultFullPath } of vaultFiles) {
-      const localDest = path.join(repoRoot, category, relativePath);
+      if (path.basename(relativePath) === '.gitkeep') continue;
+      const localDest = path.join(repoRoot, 'ψ', relativePath);
       fs.mkdirSync(path.dirname(localDest), { recursive: true });
       fs.copyFileSync(vaultFullPath, localDest);
       fileCount++;
@@ -421,7 +429,6 @@ export function pullVault(opts: {
 
     const vaultFiles = walkFiles(vaultCategoryDir, path.join(vaultPath, category));
     for (const { relativePath, fullPath: vaultFullPath } of vaultFiles) {
-      // Skip .gitkeep
       if (relativePath === '.gitkeep') continue;
       const localDest = path.join(repoRoot, category, relativePath);
       fs.mkdirSync(path.dirname(localDest), { recursive: true });

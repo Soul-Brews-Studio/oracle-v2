@@ -77,7 +77,7 @@ claude mcp add oracle-v2 -- bun run ~/.local/share/oracle-v2/src/index.ts
 
 # Common issues:
 # - "bun not found" → export PATH="$HOME/.bun/bin:$PATH"
-# - "directory does not exist" → mkdir -p ~/.oracle-v2
+# - "directory does not exist" → mkdir -p ~/.oracle
 # - ChromaDB hangs → ignore it, SQLite works without vectors
 ```
 
@@ -117,7 +117,7 @@ Always clone first: `git clone ... && bun install`
 |---|---------|-------|-----|
 | 1 | `bun: command not found` | PATH not updated after install | `export PATH="$HOME/.bun/bin:$PATH"` |
 | 2 | `bunx: command not found` | Same PATH issue | Use full path: `~/.bun/bin/bunx` |
-| 3 | `directory does not exist` | Missing data dir | `mkdir -p ~/.oracle-v2` |
+| 3 | `directory does not exist` | Missing data dir | `mkdir -p ~/.oracle` |
 | 4 | ChromaDB hangs/timeout | uv not installed | Skip it — SQLite FTS5 works fine without vectors |
 | 5 | `uv: command not found` | Not in prerequisites | Optional: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | 6 | MCP config not loading | Wrong file location | Use `.mcp.json` (project) or `~/.claude.json` (global) |

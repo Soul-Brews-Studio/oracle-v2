@@ -15,7 +15,7 @@ import { homedir } from "os";
 import * as schema from "../db/schema";
 
 // Test database (separate from production)
-const TEST_DB_PATH = join(homedir(), ".oracle-v2", "test-integration.db");
+const TEST_DB_PATH = join(homedir(), ".oracle", "test-integration.db");
 const PROJECT_ROOT = join(import.meta.dir, "../..");
 
 let sqlite: Database;
@@ -24,7 +24,7 @@ let db: ReturnType<typeof drizzle>;
 describe("Database Integration (Drizzle ORM)", () => {
   beforeAll(async () => {
     // Ensure directory exists
-    const dir = join(homedir(), ".oracle-v2");
+    const dir = join(homedir(), ".oracle");
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }

@@ -122,10 +122,10 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
   let filePath: string;
   let sourceFileRel: string;
   if (vaultRoot) {
-    const dir = path.join(vaultRoot, 'ψ/memory/learnings', projectDir);
+    const dir = path.join(vaultRoot, projectDir, 'ψ', 'memory', 'learnings');
     fs.mkdirSync(dir, { recursive: true });
     filePath = path.join(dir, filename);
-    sourceFileRel = `ψ/memory/learnings/${projectDir}/${filename}`;
+    sourceFileRel = `${projectDir}/ψ/memory/learnings/${filename}`;
   } else {
     const dir = path.join(ctx.repoRoot, 'ψ/memory/learnings');
     fs.mkdirSync(dir, { recursive: true });

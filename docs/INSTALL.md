@@ -20,7 +20,7 @@ This one-liner will:
 ### Installation Directory
 ```
 ~/.local/share/oracle-v2/    # Code
-~/.oracle-v2/                 # Data
+~/.oracle/                 # Data
 ├── oracle.db                 # SQLite database
 └── seed/                     # Seed philosophy files
     └── ψ/memory/
@@ -101,7 +101,7 @@ bun run db:push
 ./scripts/seed.sh
 
 # 5. Index seed data
-ORACLE_REPO_ROOT=~/.oracle-v2/seed bun run index
+ORACLE_REPO_ROOT=~/.oracle/seed bun run index
 
 # 6. Start server
 bun run server
@@ -149,10 +149,10 @@ bun run server
 Directory structure must be `ψ/memory/` not just `memory/`:
 ```bash
 # Wrong
-~/.oracle-v2/seed/memory/resonance/
+~/.oracle/seed/memory/resonance/
 
 # Correct
-~/.oracle-v2/seed/ψ/memory/resonance/
+~/.oracle/seed/ψ/memory/resonance/
 ```
 
 ### Vector search unavailable warning
@@ -166,7 +166,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 rm -rf ~/.local/share/oracle-v2
-rm -rf ~/.oracle-v2
+rm -rf ~/.oracle
 ```
 
 ---

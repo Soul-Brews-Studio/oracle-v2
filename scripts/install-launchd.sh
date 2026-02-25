@@ -8,7 +8,7 @@ PLIST_NAME="com.oracle.server.plist"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLIST_SRC="$SCRIPT_DIR/$PLIST_NAME"
 PLIST_DST="$HOME/Library/LaunchAgents/$PLIST_NAME"
-LOG_DIR="$HOME/.oracle-v2"
+LOG_DIR="$HOME/.oracle"
 
 echo "🔮 Oracle Server LaunchAgent Installer"
 echo "======================================="
@@ -45,7 +45,7 @@ if launchctl list | grep -q "com.oracle.server"; then
     echo "   Stop:    launchctl unload ~/Library/LaunchAgents/$PLIST_NAME"
     echo "   Start:   launchctl load ~/Library/LaunchAgents/$PLIST_NAME"
     echo "   Status:  launchctl list | grep oracle"
-    echo "   Logs:    tail -f ~/.oracle-v2/oracle-server.log"
+    echo "   Logs:    tail -f ~/.oracle/oracle-server.log"
 else
     echo "⚠ Service may not have started. Check logs:"
     echo "   tail -f $LOG_DIR/oracle-server.error.log"

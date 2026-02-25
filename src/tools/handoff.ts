@@ -57,8 +57,8 @@ export async function handleHandoff(ctx: ToolContext, input: OracleHandoffInput)
   let dirPath: string;
   let sourceFileRel: string;
   if (vaultRoot) {
-    dirPath = path.join(vaultRoot, 'ψ/inbox/handoff', project);
-    sourceFileRel = `ψ/inbox/handoff/${project}/${filename}`;
+    dirPath = path.join(vaultRoot, project, 'ψ', 'inbox', 'handoff');
+    sourceFileRel = `${project}/ψ/inbox/handoff/${filename}`;
   } else {
     dirPath = path.join(ctx.repoRoot, 'ψ/inbox/handoff');
     sourceFileRel = `ψ/inbox/handoff/${filename}`;

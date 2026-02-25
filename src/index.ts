@@ -101,7 +101,7 @@ class OracleMCPServer {
       { capabilities: { tools: {} } }
     );
 
-    const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle-v2');
+    const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle');
     const dbPath = process.env.ORACLE_DB_PATH || path.join(oracleDataDir, 'oracle.db');
     this.sqlite = new Database(dbPath);
     this.db = drizzle(this.sqlite, { schema });
