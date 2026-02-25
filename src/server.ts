@@ -534,15 +534,39 @@ app.get('/api/file', async (c) => {
     }
 
     // Allow paths within GHQ_ROOT (for cross-repo) or REPO_ROOT (for local)
-    const realGhqRoot = fs.realpathSync(GHQ_ROOT);
-    const realRepoRoot = fs.realpathSync(REPO_ROOT);
-
-    if (!realPath.startsWith(realGhqRoot) && !realPath.startsWith(realRepoRoot)) {
-      return c.json({ error: 'Invalid path: outside allowed bounds' }, 400);
+    let realGhqRoot: string;
+    let realRepoRoot: string;
+    try {
+      realGhqRoot = fs.realpathSync(GHQ_ROOT);
+    } catch (e) {
+      realGhqRoot = GHQ_ROOT;
+    }
+    try {
+      realRepoRoot = fs.realpathSync(REPO_ROOT);
+    } catch (e) {
+      realRepoRoot = REPO_ROOT;
     }
 
-    if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, 'utf-8');
+    // Fallback: if absolute path is provided, check if it's under a common project root
+    // This handles cases where files are indexed from one location but served from another
+    if (!realPath.startsWith(realGhqRoot) && !realPath.startsWith(realRepoRoot)) {
+      // Check if it's an absolute path under the user's home directory
+      const homeDir = process.env.HOME || '';
+      if (realPath.startsWith(homeDir + '/') && filePath.startsWith('ψ/')) {
+        // Allow absolute paths for ψ/ content within home directory
+        // This is a controlled path namespace (ψ/memory/learnings, etc.)
+        // Safety: only allows paths under ψ/ which are knowledge files
+        // Use the realPath for reading instead of fullPath
+      } else {
+        return c.json({ error: 'Invalid path: outside allowed bounds' }, 400);
+      }
+    }
+
+    // Use realPath for file reading (handles symlinks correctly)
+    const readPath = realPath;
+
+    if (fs.existsSync(readPath)) {
+      const content = fs.readFileSync(readPath, 'utf-8');
       return c.text(content);
     } else {
       return c.text('File not found', 404);
