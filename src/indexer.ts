@@ -36,6 +36,8 @@ export class OracleIndexer {
   constructor(config: IndexerConfig) {
     this.config = config;
     this.sqlite = new Database(config.dbPath);  // Raw connection for FTS and schema
+    this.sqlite.exec('PRAGMA journal_mode = WAL');
+    this.sqlite.exec('PRAGMA busy_timeout = 5000');
     this.db = drizzle(this.sqlite, { schema });  // Drizzle wrapper for type-safe queries
     this.project = detectProject(config.repoRoot);
     console.log(`[Indexer] Detected project: ${this.project || '(universal)'}`);
@@ -751,52 +753,60 @@ export class OracleIndexer {
     const contents: string[] = [];
     const metadatas: any[] = [];
 
-    for (const doc of documents) {
-      // SQLite metadata - use doc.project if available, fall back to repo project
-      const docProject = doc.project || this.project;
+    // Wrap SQLite inserts in a transaction for performance + atomicity
+    this.sqlite.exec('BEGIN');
+    try {
+      for (const doc of documents) {
+        // SQLite metadata - use doc.project if available, fall back to repo project
+        const docProject = doc.project || this.project;
 
-      // Drizzle upsert with createdBy: 'indexer'
-      this.db.insert(oracleDocuments)
-        .values({
-          id: doc.id,
-          type: doc.type,
-          sourceFile: doc.source_file,
-          concepts: JSON.stringify(doc.concepts),
-          createdAt: doc.created_at,
-          updatedAt: doc.updated_at,
-          indexedAt: now,
-          project: docProject,
-          createdBy: 'indexer',  // Mark as indexer-created
-        })
-        .onConflictDoUpdate({
-          target: oracleDocuments.id,
-          set: {
+        // Drizzle upsert with createdBy: 'indexer'
+        this.db.insert(oracleDocuments)
+          .values({
+            id: doc.id,
             type: doc.type,
             sourceFile: doc.source_file,
             concepts: JSON.stringify(doc.concepts),
+            createdAt: doc.created_at,
             updatedAt: doc.updated_at,
             indexedAt: now,
             project: docProject,
-            // Don't update createdBy - preserve original
-          }
-        })
-        .run();
+            createdBy: 'indexer',  // Mark as indexer-created
+          })
+          .onConflictDoUpdate({
+            target: oracleDocuments.id,
+            set: {
+              type: doc.type,
+              sourceFile: doc.source_file,
+              concepts: JSON.stringify(doc.concepts),
+              updatedAt: doc.updated_at,
+              indexedAt: now,
+              project: docProject,
+              // Don't update createdBy - preserve original
+            }
+          })
+          .run();
 
-      // SQLite FTS (raw SQL required for FTS5)
-      insertFts.run(
-        doc.id,
-        doc.content,
-        doc.concepts.join(' ')
-      );
+        // SQLite FTS (raw SQL required for FTS5)
+        insertFts.run(
+          doc.id,
+          doc.content,
+          doc.concepts.join(' ')
+        );
 
-      // Chroma vector (metadata must be primitives, not arrays)
-      ids.push(doc.id);
-      contents.push(doc.content);
-      metadatas.push({
-        type: doc.type,
-        source_file: doc.source_file,
-        concepts: doc.concepts.join(',')  // Convert array to string for ChromaDB
-      });
+        // Chroma vector (metadata must be primitives, not arrays)
+        ids.push(doc.id);
+        contents.push(doc.content);
+        metadatas.push({
+          type: doc.type,
+          source_file: doc.source_file,
+          concepts: doc.concepts.join(',')  // Convert array to string for ChromaDB
+        });
+      }
+      this.sqlite.exec('COMMIT');
+    } catch (e) {
+      this.sqlite.exec('ROLLBACK');
+      throw e;
     }
 
     // Batch insert to Chroma in chunks of 100 (skip if no client)
@@ -857,8 +867,13 @@ if (isMain) {
   const vaultResult = getVaultPsiRoot();
   const vaultRoot = 'path' in vaultResult ? vaultResult.path : null;
 
+  // Vault may have project-first layout (github.com/org/repo/ψ/) without a root ψ/
+  const vaultHasContent = vaultRoot && (
+    fs.existsSync(path.join(vaultRoot, 'ψ')) ||
+    fs.existsSync(path.join(vaultRoot, 'github.com'))
+  );
   const repoRoot = process.env.ORACLE_REPO_ROOT ||
-    (vaultRoot && fs.existsSync(path.join(vaultRoot, 'ψ')) ? vaultRoot :
+    (vaultHasContent ? vaultRoot :
      fs.existsSync(path.join(projectRoot, 'ψ')) ? projectRoot : process.cwd());
 
   const config: IndexerConfig = {

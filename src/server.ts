@@ -20,6 +20,7 @@ import {
   registerSignalHandlers,
   performGracefulShutdown,
 } from './process-manager/index.ts';
+import { getVaultPsiRoot } from './vault/handler.ts';
 
 // Import from modular components
 import {
@@ -523,7 +524,13 @@ app.get('/api/file', async (c) => {
       basePath = REPO_ROOT;
     }
 
-    const fullPath = path.join(basePath, filePath);
+    // Strip project prefix if source_file already contains it (vault-indexed docs)
+    let resolvedFilePath = filePath;
+    if (project && filePath.startsWith(project + '/')) {
+      resolvedFilePath = filePath.slice(project.length + 1); // e.g. "ψ/memory/learnings/file.md"
+    }
+
+    const fullPath = path.join(basePath, resolvedFilePath);
 
     // Security: resolve symlinks and verify path is within allowed bounds
     let realPath: string;
@@ -544,9 +551,19 @@ app.get('/api/file', async (c) => {
     if (fs.existsSync(fullPath)) {
       const content = fs.readFileSync(fullPath, 'utf-8');
       return c.text(content);
-    } else {
-      return c.text('File not found', 404);
     }
+
+    // Fallback: try vault repo (project-first layout)
+    const vault = getVaultPsiRoot();
+    if ('path' in vault) {
+      const vaultFullPath = path.join(vault.path, filePath);
+      if (fs.existsSync(vaultFullPath)) {
+        const content = fs.readFileSync(vaultFullPath, 'utf-8');
+        return c.text(content);
+      }
+    }
+
+    return c.text('File not found', 404);
   } catch (e: any) {
     return c.text(e.message, 500);
   }
