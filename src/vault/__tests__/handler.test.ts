@@ -73,19 +73,19 @@ describe('parseGitStatus', () => {
 describe('mapToVaultPath', () => {
   const project = 'github.com/soul-brews-studio/oracle-v2';
 
-  it('nests learnings under project', () => {
+  it('prefixes learnings with project', () => {
     expect(mapToVaultPath('ψ/memory/learnings/file.md', project))
-      .toBe('ψ/memory/learnings/github.com/soul-brews-studio/oracle-v2/file.md');
+      .toBe('github.com/soul-brews-studio/oracle-v2/ψ/memory/learnings/file.md');
   });
 
-  it('nests retrospectives under project', () => {
+  it('prefixes retrospectives with project', () => {
     expect(mapToVaultPath('ψ/memory/retrospectives/2026-01/15/session.md', project))
-      .toBe('ψ/memory/retrospectives/github.com/soul-brews-studio/oracle-v2/2026-01/15/session.md');
+      .toBe('github.com/soul-brews-studio/oracle-v2/ψ/memory/retrospectives/2026-01/15/session.md');
   });
 
-  it('nests inbox/handoff under project', () => {
+  it('prefixes inbox/handoff with project', () => {
     expect(mapToVaultPath('ψ/inbox/handoff/context.md', project))
-      .toBe('ψ/inbox/handoff/github.com/soul-brews-studio/oracle-v2/context.md');
+      .toBe('github.com/soul-brews-studio/oracle-v2/ψ/inbox/handoff/context.md');
   });
 
   it('keeps resonance universal (no project prefix)', () => {
@@ -100,7 +100,7 @@ describe('mapToVaultPath', () => {
 
   it('handles nested learning files', () => {
     expect(mapToVaultPath('ψ/memory/learnings/deep/nested/file.md', project))
-      .toBe('ψ/memory/learnings/github.com/soul-brews-studio/oracle-v2/deep/nested/file.md');
+      .toBe('github.com/soul-brews-studio/oracle-v2/ψ/memory/learnings/deep/nested/file.md');
   });
 });
 
@@ -111,16 +111,16 @@ describe('mapToVaultPath', () => {
 describe('mapFromVaultPath', () => {
   const project = 'github.com/soul-brews-studio/oracle-v2';
 
-  it('strips project from learnings path', () => {
+  it('strips project prefix from learnings path', () => {
     expect(mapFromVaultPath(
-      'ψ/memory/learnings/github.com/soul-brews-studio/oracle-v2/file.md',
+      'github.com/soul-brews-studio/oracle-v2/ψ/memory/learnings/file.md',
       project
     )).toBe('ψ/memory/learnings/file.md');
   });
 
-  it('strips project from retrospectives path', () => {
+  it('strips project prefix from retrospectives path', () => {
     expect(mapFromVaultPath(
-      'ψ/memory/retrospectives/github.com/soul-brews-studio/oracle-v2/2026-01/15/session.md',
+      'github.com/soul-brews-studio/oracle-v2/ψ/memory/retrospectives/2026-01/15/session.md',
       project
     )).toBe('ψ/memory/retrospectives/2026-01/15/session.md');
   });
@@ -136,7 +136,7 @@ describe('mapFromVaultPath', () => {
 
   it('returns null for different project paths', () => {
     expect(mapFromVaultPath(
-      'ψ/memory/learnings/github.com/other-org/other-repo/file.md',
+      'github.com/other-org/other-repo/ψ/memory/learnings/file.md',
       project
     )).toBeNull();
   });

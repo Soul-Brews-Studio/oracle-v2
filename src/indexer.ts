@@ -392,18 +392,26 @@ export class OracleIndexer {
 
   /**
    * Infer project from a vault-nested path.
-   * e.g. "ψ/memory/learnings/github.com/org/repo/file.md" → "github.com/org/repo"
-   * Works for any category: learnings, retrospectives, inbox/handoff.
+   * Project-first layout: "github.com/org/repo/ψ/..." → "github.com/org/repo"
+   * Also supports legacy layout: "ψ/memory/{category}/github.com/org/repo/..."
    */
   private inferProjectFromPath(relativePath: string): string | null {
-    // Match: ψ/memory/{category}/github.com/org/repo/...
-    // or:    ψ/inbox/handoff/github.com/org/repo/...
-    const match = relativePath.match(
+    // Project-first layout: github.com/org/repo/ψ/...
+    const projectFirst = relativePath.match(
+      /^(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+\/[^/]+)\/ψ\//
+    );
+    if (projectFirst) {
+      return `${projectFirst[1]}/${projectFirst[2]}`;
+    }
+
+    // Legacy layout: ψ/memory/{category}/github.com/org/repo/...
+    const legacy = relativePath.match(
       /^ψ\/(?:memory\/(?:learnings|retrospectives)|inbox\/handoff)\/(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+\/[^/]+)\//
     );
-    if (match) {
-      return `${match[1]}/${match[2]}`;
+    if (legacy) {
+      return `${legacy[1]}/${legacy[2]}`;
     }
+
     return null;
   }
 

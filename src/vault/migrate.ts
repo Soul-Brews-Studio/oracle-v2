@@ -2,7 +2,7 @@
  * Oracle Vault Migration Tool
  *
  * Scans ghq repos for ψ/ directories and copies knowledge
- * to the central brain vault with project-nested paths.
+ * to the central brain vault with project-first paths.
  *
  * Usage:
  *   bun run vault:migrate              # scan + copy all ψ/ to vault
