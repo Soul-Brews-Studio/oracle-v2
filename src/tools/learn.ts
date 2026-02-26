@@ -53,20 +53,20 @@ export function normalizeProject(input?: string): string | null {
 
   // Already normalized
   if (input.match(/^github\.com\/[^\/]+\/[^\/]+$/)) {
-    return input;
+    return input.toLowerCase();
   }
 
   // GitHub URL
   const urlMatch = input.match(/https?:\/\/github\.com\/([^\/]+\/[^\/]+)/);
-  if (urlMatch) return `github.com/${urlMatch[1].replace(/\.git$/, '')}`;
+  if (urlMatch) return `github.com/${urlMatch[1].replace(/\.git$/, '')}`.toLowerCase();
 
   // Local path with github.com
   const pathMatch = input.match(/github\.com\/([^\/]+\/[^\/]+)/);
-  if (pathMatch) return `github.com/${pathMatch[1]}`;
+  if (pathMatch) return `github.com/${pathMatch[1]}`.toLowerCase();
 
   // Short format: owner/repo
   const shortMatch = input.match(/^([^\/\s]+\/[^\/\s]+)$/);
-  if (shortMatch) return `github.com/${shortMatch[1]}`;
+  if (shortMatch) return `github.com/${shortMatch[1]}`.toLowerCase();
 
   return null;
 }
@@ -79,13 +79,13 @@ export function extractProjectFromSource(source?: string): string | null {
   if (!source) return null;
 
   const oracleLearnMatch = source.match(/from\s+(github\.com\/[^\/\s]+\/[^\/\s]+)/);
-  if (oracleLearnMatch) return oracleLearnMatch[1];
+  if (oracleLearnMatch) return oracleLearnMatch[1].toLowerCase();
 
   const rrrMatch = source.match(/^rrr:\s*([^\/\s]+\/[^\/\s]+)/);
-  if (rrrMatch) return `github.com/${rrrMatch[1]}`;
+  if (rrrMatch) return `github.com/${rrrMatch[1]}`.toLowerCase();
 
   const directMatch = source.match(/(github\.com\/[^\/\s]+\/[^\/\s]+)/);
-  if (directMatch) return directMatch[1];
+  if (directMatch) return directMatch[1].toLowerCase();
 
   return null;
 }

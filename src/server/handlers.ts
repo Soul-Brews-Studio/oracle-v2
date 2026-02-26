@@ -42,7 +42,7 @@ export async function handleSearch(
   cwd?: string       // Auto-detect project from cwd if project not specified
 ): Promise<SearchResponse & { mode?: string; warning?: string }> {
   // Auto-detect project from cwd if not explicitly specified
-  const resolvedProject = project ?? detectProject(cwd);
+  const resolvedProject = (project ?? detectProject(cwd))?.toLowerCase() ?? null;
   const startTime = Date.now();
   // Remove FTS5 special characters: ? * + - ( ) ^ ~ " ' : (colon is column prefix)
   const safeQuery = query.replace(/[?*+\-()^~"':]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -574,7 +574,7 @@ export function handleLearn(
   cwd?: string
 ) {
   // Auto-detect project from cwd if not explicitly specified
-  const resolvedProject = project ?? detectProject(cwd);
+  const resolvedProject = (project ?? detectProject(cwd))?.toLowerCase() ?? null;
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
 
