@@ -491,7 +491,7 @@ export function handleStats(dbPath: string) {
  * Accepts `limit` per type (default 200, max 500).
  * Links capped at 5000 (frontend caps at 3000 anyway).
  */
-export function handleGraph(limitPerType = 30) {
+export function handleGraph(limitPerType = 310) {
   const perType = Math.min(Math.max(limitPerType, 10), 500);
 
   const selectFields = {
@@ -546,7 +546,7 @@ export function handleGraph(limitPerType = 30) {
     for (let j = i + 1; j < nodes.length && links.length < MAX_LINKS; j++) {
       const sharedCount = nodes[j].concepts.filter((c: string) => conceptSets[i].has(c)).length;
 
-      if (sharedCount >= 2) {
+      if (sharedCount >= 1) {
         links.push({
           source: nodes[i].id,
           target: nodes[j].id,

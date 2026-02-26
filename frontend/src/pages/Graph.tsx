@@ -425,33 +425,9 @@ interface LightningData {
   speed: number;
 }
 
-// Create jagged lightning path between two points
-function createLightningPath(start: THREE.Vector3, end: THREE.Vector3, segments = 8): THREE.Vector3[] {
-  const points: THREE.Vector3[] = [];
-  const direction = end.clone().sub(start);
-  const length = direction.length();
-  direction.normalize();
-
-  const up = new THREE.Vector3(0, 1, 0);
-  const perp1 = direction.clone().cross(up).normalize();
-  // Handle edge case where direction is parallel to up
-  if (perp1.length() < 0.001) {
-    perp1.set(1, 0, 0);
-  }
-  const perp2 = direction.clone().cross(perp1).normalize();
-
-  points.push(start.clone());
-  for (let i = 1; i < segments; i++) {
-    const t = i / segments;
-    const basePoint = start.clone().lerp(end, t);
-    const displacement = (Math.random() - 0.5) * length * 0.15;
-    const displacement2 = (Math.random() - 0.5) * length * 0.15;
-    basePoint.add(perp1.clone().multiplyScalar(displacement));
-    basePoint.add(perp2.clone().multiplyScalar(displacement2));
-    points.push(basePoint);
-  }
-  points.push(end.clone());
-  return points;
+// Straight line between two points
+function createLightningPath(start: THREE.Vector3, end: THREE.Vector3, _segments = 8): THREE.Vector3[] {
+  return [start.clone(), end.clone()];
 }
 
 // 3D Canvas Component
