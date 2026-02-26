@@ -488,9 +488,12 @@ export function handleStats(dbPath: string) {
 
 /**
  * Get knowledge graph data
- * Samples from all types to avoid O(n²) explosion (~300 nodes max)
+ * Accepts `limit` per type (default 200, max 500).
+ * Links capped at 5000 (frontend caps at 3000 anyway).
  */
-export function handleGraph() {
+export function handleGraph(limitPerType = 200) {
+  const perType = Math.min(Math.max(limitPerType, 10), 500);
+
   const selectFields = {
     id: oracleDocuments.id,
     type: oracleDocuments.type,
@@ -499,28 +502,26 @@ export function handleGraph() {
     project: oracleDocuments.project
   };
 
-  // Get random principles (limited)
+  // Get random sample from each type
   const principles = db.select(selectFields)
     .from(oracleDocuments)
     .where(eq(oracleDocuments.type, 'principle'))
     .orderBy(sql`RANDOM()`)
-    .limit(100)
+    .limit(perType)
     .all();
 
-  // Get random learnings (limited)
   const learnings = db.select(selectFields)
     .from(oracleDocuments)
     .where(eq(oracleDocuments.type, 'learning'))
     .orderBy(sql`RANDOM()`)
-    .limit(100)
+    .limit(perType)
     .all();
 
-  // Get random retros (limited)
   const retros = db.select(selectFields)
     .from(oracleDocuments)
     .where(eq(oracleDocuments.type, 'retro'))
     .orderBy(sql`RANDOM()`)
-    .limit(100)
+    .limit(perType)
     .all();
 
   const docs = [...principles, ...learnings, ...retros];
@@ -530,33 +531,27 @@ export function handleGraph() {
     id: doc.id,
     type: doc.type,
     source_file: doc.sourceFile,
-    project: doc.project,  // ghq-style path for cross-repo file access
+    project: doc.project,
     concepts: JSON.parse(doc.concepts || '[]')
   }));
 
-  // Build links based on shared concepts
+  // Build links based on shared concepts (require 2+ shared for stronger connections)
   const links: { source: string; target: string; weight: number }[] = [];
-  const processed = new Set<string>();
+  const MAX_LINKS = 5000;
 
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const nodeA = nodes[i];
-      const nodeB = nodes[j];
-      const key = `${nodeA.id}-${nodeB.id}`;
+  // Pre-compute concept sets
+  const conceptSets = nodes.map(n => new Set(n.concepts));
 
-      if (processed.has(key)) continue;
+  for (let i = 0; i < nodes.length && links.length < MAX_LINKS; i++) {
+    for (let j = i + 1; j < nodes.length && links.length < MAX_LINKS; j++) {
+      const sharedCount = nodes[j].concepts.filter((c: string) => conceptSets[i].has(c)).length;
 
-      // Count shared concepts
-      const conceptsA = new Set(nodeA.concepts);
-      const sharedCount = nodeB.concepts.filter((c: string) => conceptsA.has(c)).length;
-
-      if (sharedCount > 0) {
+      if (sharedCount >= 2) {
         links.push({
-          source: nodeA.id,
-          target: nodeB.id,
+          source: nodes[i].id,
+          target: nodes[j].id,
           weight: sharedCount
         });
-        processed.add(key);
       }
     }
   }

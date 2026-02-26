@@ -475,7 +475,8 @@ app.get('/api/list', (c) => {
 
 // Graph
 app.get('/api/graph', (c) => {
-  return c.json(handleGraph());
+  const limit = parseInt(c.req.query('limit') || '200', 10);
+  return c.json(handleGraph(limit));
 });
 
 // Context
