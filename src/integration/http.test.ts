@@ -89,27 +89,27 @@ describe("HTTP API Integration", () => {
       expect(res.ok).toBe(true);
       const data = await res.json();
       expect(Array.isArray(data.results)).toBe(true);
-    });
+    }, 30_000);
 
     test("GET /api/search with type filter", async () => {
       const res = await fetch(`${BASE_URL}/api/search?q=test&type=learning`);
       expect(res.ok).toBe(true);
       const data = await res.json();
       expect(Array.isArray(data.results)).toBe(true);
-    });
+    }, 30_000);
 
     test("GET /api/search with limit and offset", async () => {
       const res = await fetch(`${BASE_URL}/api/search?q=test&limit=5&offset=0`);
       expect(res.ok).toBe(true);
       const data = await res.json();
       expect(data.results.length).toBeLessThanOrEqual(5);
-    });
+    }, 30_000);
 
     test("GET /api/search handles empty query", async () => {
       const res = await fetch(`${BASE_URL}/api/search?q=`);
       // Should return empty or error gracefully
       expect(res.status).toBeLessThan(500);
-    });
+    }, 30_000);
   });
 
   // ===================

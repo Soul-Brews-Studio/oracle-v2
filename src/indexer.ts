@@ -32,6 +32,7 @@ export class OracleIndexer {
   private chromaClient: ChromaMcpClient | null = null;
   private config: IndexerConfig;
   private project: string | null;
+  private seenContentHashes: Set<string> = new Set();  // Content dedup across projects
 
   constructor(config: IndexerConfig) {
     this.config = config;
@@ -215,6 +216,9 @@ export class OracleIndexer {
   async index(): Promise<void> {
     console.log('Starting Oracle indexing...');
 
+    // Reset dedup for fresh index run
+    this.seenContentHashes.clear();
+
     // Set indexing status for tray app
     this.setIndexingStatus(true, 0, 100);
 
@@ -390,6 +394,7 @@ export class OracleIndexer {
     }
 
     // 2. Project-first vault dirs: github.com/*/*/ψ/memory/learnings/
+    let skippedDupes = 0;
     const projectDirs = this.discoverProjectPsiDirs();
     for (const projectDir of projectDirs) {
       const projectLearnings = path.join(projectDir, 'memory', 'learnings');
@@ -397,6 +402,12 @@ export class OracleIndexer {
       const files = this.getAllMarkdownFiles(projectLearnings);
       for (const filePath of files) {
         const content = fs.readFileSync(filePath, 'utf-8');
+        const contentHash = Bun.hash(content).toString(36);
+        if (this.seenContentHashes.has(contentHash)) {
+          skippedDupes++;
+          continue;
+        }
+        this.seenContentHashes.add(contentHash);
         const relPath = path.relative(this.config.repoRoot, filePath);
         const docs = this.parseLearningFile(relPath, content, relPath);
         documents.push(...docs);
@@ -404,7 +415,7 @@ export class OracleIndexer {
       totalFiles += files.length;
     }
 
-    console.log(`Indexed ${documents.length} learning documents from ${totalFiles} files`);
+    console.log(`Indexed ${documents.length} learning documents from ${totalFiles} files (skipped ${skippedDupes} duplicate files)`);
     return documents;
   }
 
@@ -550,6 +561,7 @@ export class OracleIndexer {
     }
 
     // 2. Project-first vault dirs
+    let skippedDupes = 0;
     const projectDirs = this.discoverProjectPsiDirs();
     for (const projectDir of projectDirs) {
       const projectRetros = path.join(projectDir, 'memory', 'retrospectives');
@@ -557,6 +569,12 @@ export class OracleIndexer {
       const files = this.getAllMarkdownFiles(projectRetros);
       for (const filePath of files) {
         const content = fs.readFileSync(filePath, 'utf-8');
+        const contentHash = Bun.hash(content).toString(36);
+        if (this.seenContentHashes.has(contentHash)) {
+          skippedDupes++;
+          continue;
+        }
+        this.seenContentHashes.add(contentHash);
         const relativePath = path.relative(this.config.repoRoot, filePath);
         const docs = this.parseRetroFile(relativePath, content);
         documents.push(...docs);
@@ -564,7 +582,7 @@ export class OracleIndexer {
       totalFiles += files.length;
     }
 
-    console.log(`Indexed ${documents.length} retrospective documents from ${totalFiles} files`);
+    console.log(`Indexed ${documents.length} retrospective documents from ${totalFiles} files (skipped ${skippedDupes} duplicate files)`);
     return documents;
   }
 
