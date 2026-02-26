@@ -401,7 +401,7 @@ export function Graph3D() {
     }
 
     // Create node meshes
-    const geometry = new THREE.SphereGeometry(0.08, 16, 16);
+    const geometry = new THREE.SphereGeometry(0.08, 8, 6);
     sharedGeometryRef.current = geometry;  // Store for cleanup
     const meshes: THREE.Mesh[] = [];
     const nodeMap = new Map<string, number>();
@@ -453,7 +453,7 @@ export function Graph3D() {
     adjacencyRef.current = adjacency;
 
     // Create individual link lines (for per-link visibility control)
-    const maxLinks = Math.min(links.length, 3000);
+    const maxLinks = Math.min(links.length, 1000);
     const linkLines: THREE.Line[] = [];
 
     interface LinkData {
@@ -498,7 +498,7 @@ export function Graph3D() {
     linkMeshesRef.current = linkLines;
 
     // Traveling particles (hidden by default)
-    const particleCount = Math.min(maxLinks, 1500);
+    const particleCount = Math.min(maxLinks, 500);
     const particleGeometry = new THREE.BufferGeometry();
     particleGeometryRef.current = particleGeometry;  // Store for cleanup
     const particlePositions = new Float32Array(particleCount * 3);
@@ -583,36 +583,44 @@ export function Graph3D() {
         const mat = linkData.line.material as THREE.LineBasicMaterial;
         const isConnected = activeId && (linkData.sourceId === activeId || linkData.targetId === activeId);
 
+        // Fast path: if no active node and not showing all links, hide everything
+        if (!activeId && !showAll) {
+          if (mat.opacity !== 0) mat.opacity = 0;
+          linkData.line.visible = false;
+          return;
+        }
+
         // Check if both source and target nodes are visible (based on type filter)
         const sourceNode = meshes[linkData.sourceIdx]?.userData?.node as Node | undefined;
         const targetNode = meshes[linkData.targetIdx]?.userData?.node as Node | undefined;
-        const sourceVisible = sourceNode ? (currentTypeFilter[sourceNode.type] ?? true) : true;
-        const targetVisible = targetNode ? (currentTypeFilter[targetNode.type] ?? true) : true;
-        const linkVisible = sourceVisible && targetVisible;
+        const linkVisible = (currentTypeFilter[sourceNode?.type || ''] ?? true) &&
+                           (currentTypeFilter[targetNode?.type || ''] ?? true);
 
-        // Get current node positions
-        const srcPos = meshes[linkData.sourceIdx].position;
-        const tgtPos = meshes[linkData.targetIdx].position;
-
-        // Update line geometry to follow nodes
-        const linePositions = linkData.line.geometry.attributes.position.array as Float32Array;
-        linePositions[0] = srcPos.x; linePositions[1] = srcPos.y; linePositions[2] = srcPos.z;
-        linePositions[3] = tgtPos.x; linePositions[4] = tgtPos.y; linePositions[5] = tgtPos.z;
-        linkData.line.geometry.attributes.position.needsUpdate = true;
-
-        // Only show link if both nodes are visible
         if (!linkVisible) {
-          mat.opacity = 0;
-        } else if (showAll) {
-          mat.opacity = 0.04;
-        } else if (isConnected) {
-          mat.opacity = hudRef.current.linkOpacity;
-        } else {
-          mat.opacity = 0;
+          if (mat.opacity !== 0) mat.opacity = 0;
+          linkData.line.visible = false;
+          return;
         }
 
-        // Animate particles only for connected links (and visible)
-        if (isConnected && linkVisible && particleIndex < 1500) {
+        // Determine opacity
+        const targetOpacity = showAll ? 0.04 : isConnected ? hudRef.current.linkOpacity : 0;
+        linkData.line.visible = targetOpacity > 0;
+        mat.opacity = targetOpacity;
+
+        // Only update geometry for visible links
+        if (linkData.line.visible) {
+          const srcPos = meshes[linkData.sourceIdx].position;
+          const tgtPos = meshes[linkData.targetIdx].position;
+          const linePositions = linkData.line.geometry.attributes.position.array as Float32Array;
+          linePositions[0] = srcPos.x; linePositions[1] = srcPos.y; linePositions[2] = srcPos.z;
+          linePositions[3] = tgtPos.x; linePositions[4] = tgtPos.y; linePositions[5] = tgtPos.z;
+          linkData.line.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Animate particles only for connected links
+        if (isConnected && particleIndex < 500) {
+          const srcPos = meshes[linkData.sourceIdx].position;
+          const tgtPos = meshes[linkData.targetIdx].position;
           const t = ((time * linkData.speed * hudRef.current.particleSpeed + linkData.offset) % 1);
           positions[particleIndex * 3] = srcPos.x + (tgtPos.x - srcPos.x) * t;
           positions[particleIndex * 3 + 1] = srcPos.y + (tgtPos.y - srcPos.y) * t;
@@ -622,7 +630,7 @@ export function Graph3D() {
       });
 
       // Hide remaining particles
-      for (let i = particleIndex; i < 1500; i++) {
+      for (let i = particleIndex; i < 500; i++) {
         positions[i * 3] = 0;
         positions[i * 3 + 1] = -1000;  // Move off screen
         positions[i * 3 + 2] = 0;
