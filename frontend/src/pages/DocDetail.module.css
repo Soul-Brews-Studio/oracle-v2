@@ -349,6 +349,32 @@
   text-decoration: none;
 }
 
+.vaultLink {
+  font-size: 11px;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.vaultLink:hover {
+  background: rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+}
+
+
+.universalBadge {
+  font-size: 11px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
 .loading,
 .error {
   text-align: center;

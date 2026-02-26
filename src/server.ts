@@ -22,7 +22,7 @@ import {
 } from './process-manager/index.ts';
 import { getVaultPsiRoot } from './vault/handler.ts';
 
-// Import from modular components
+// Config constants (no DB dependency)
 import {
   PORT,
   REPO_ROOT,
@@ -30,15 +30,13 @@ import {
   UI_PATH,
   ARTHUR_UI_PATH,
   DASHBOARD_PATH,
-  initLoggingTables,
-  closeDb
-} from './server/db.ts';
+} from './config.ts';
 
-import { eq, desc, gt, and, sql } from 'drizzle-orm';
+import { eq, desc, gt, sql } from 'drizzle-orm';
 import {
   db,
   sqlite,
-  oracleDocuments,
+  closeDb,
   searchLog,
   learnLog,
   supersedeLog,
@@ -80,13 +78,6 @@ import {
 
 // Frontend static file serving
 const FRONTEND_DIST = path.join(import.meta.dirname || __dirname, '..', 'frontend', 'dist');
-
-// Initialize logging tables on startup
-try {
-  initLoggingTables();
-} catch (e) {
-  console.error('Failed to initialize logging tables:', e);
-}
 
 // Reset stale indexing status on startup using Drizzle
 try {

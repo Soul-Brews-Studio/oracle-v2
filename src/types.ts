@@ -17,7 +17,7 @@ export interface OracleDocument {
   concepts: string[];   // Tags for filtering: ['trust', 'patterns', 'mirror']
   created_at: number;   // Unix timestamp
   updated_at: number;   // Unix timestamp
-  project?: string;     // Source project (from frontmatter or repo detection)
+  project?: string | null; // Source project (null = universal, undefined = inherit)
 }
 
 /**
