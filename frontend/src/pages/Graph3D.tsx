@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { getGraph, getFile } from '../api/oracle';
 import { useHandTracking } from '../hooks/useHandTracking';
 import styles from './Graph3D.module.css';
@@ -452,23 +455,19 @@ export function Graph3D() {
     });
     adjacencyRef.current = adjacency;
 
-    // Create individual link lines (for per-link visibility control)
+    // Create anti-aliased fat lines using Line2
     const maxLinks = Math.min(links.length, 1000);
-    const linkLines: THREE.Line[] = [];
+    const linkLines: Line2[] = [];
 
     interface LinkData {
       sourceIdx: number; targetIdx: number;
       sourceId: string; targetId: string;
       offset: number; speed: number;
-      line: THREE.Line;
+      line: Line2;
+      geo: LineGeometry;
+      mat: LineMaterial;
     }
     const linkDataArray: LinkData[] = [];
-
-    const linkMaterial = new THREE.LineBasicMaterial({
-      color: 0xa78bfa,
-      opacity: 0,
-      transparent: true
-    });
 
     for (let i = 0; i < maxLinks; i++) {
       const link = links[i];
@@ -479,8 +478,19 @@ export function Graph3D() {
       const sourcePos = meshes[srcIdx].position;
       const targetPos = meshes[tgtIdx].position;
 
-      const geometry = new THREE.BufferGeometry().setFromPoints([sourcePos.clone(), targetPos.clone()]);
-      const line = new THREE.Line(geometry, linkMaterial.clone());
+      const geo = new LineGeometry();
+      geo.setPositions([sourcePos.x, sourcePos.y, sourcePos.z, targetPos.x, targetPos.y, targetPos.z]);
+
+      const mat = new LineMaterial({
+        color: 0xa78bfa,
+        linewidth: 1.5,  // pixels
+        opacity: 0,
+        transparent: true,
+        resolution: new THREE.Vector2(width, height),
+      });
+
+      const line = new Line2(geo, mat);
+      line.computeLineDistances();
       line.userData = { sourceIdx: srcIdx, targetIdx: tgtIdx, sourceId: link.source, targetId: link.target };
       scene.add(line);
       linkLines.push(line);
@@ -492,10 +502,10 @@ export function Graph3D() {
         targetId: link.target,
         offset: xxhash(42, i + 5000),
         speed: 0.2 + xxhash(42, i + 6000) * 0.3,
-        line
+        line, geo, mat
       });
     }
-    linkMeshesRef.current = linkLines;
+    linkMeshesRef.current = linkLines as any;
 
     // Traveling particles (hidden by default)
     const particleCount = Math.min(maxLinks, 500);
@@ -580,12 +590,11 @@ export function Graph3D() {
       const positions = travelingParticles.geometry.attributes.position.array as Float32Array;
 
       linkDataArray.forEach((linkData) => {
-        const mat = linkData.line.material as THREE.LineBasicMaterial;
+        const mat = linkData.mat;
         const isConnected = activeId && (linkData.sourceId === activeId || linkData.targetId === activeId);
 
         // Fast path: if no active node and not showing all links, hide everything
         if (!activeId && !showAll) {
-          if (mat.opacity !== 0) mat.opacity = 0;
           linkData.line.visible = false;
           return;
         }
@@ -597,7 +606,6 @@ export function Graph3D() {
                            (currentTypeFilter[targetNode?.type || ''] ?? true);
 
         if (!linkVisible) {
-          if (mat.opacity !== 0) mat.opacity = 0;
           linkData.line.visible = false;
           return;
         }
@@ -607,20 +615,18 @@ export function Graph3D() {
         linkData.line.visible = targetOpacity > 0;
         mat.opacity = targetOpacity;
 
-        // Only update geometry for visible links — use stable currentPos (no breathing jitter)
+        // Only update geometry for visible links
         if (linkData.line.visible) {
-          const srcPos = meshes[linkData.sourceIdx].userData.currentPos as THREE.Vector3;
-          const tgtPos = meshes[linkData.targetIdx].userData.currentPos as THREE.Vector3;
-          const linePositions = linkData.line.geometry.attributes.position.array as Float32Array;
-          linePositions[0] = srcPos.x; linePositions[1] = srcPos.y; linePositions[2] = srcPos.z;
-          linePositions[3] = tgtPos.x; linePositions[4] = tgtPos.y; linePositions[5] = tgtPos.z;
-          linkData.line.geometry.attributes.position.needsUpdate = true;
+          const srcPos = meshes[linkData.sourceIdx].position;
+          const tgtPos = meshes[linkData.targetIdx].position;
+          linkData.geo.setPositions([srcPos.x, srcPos.y, srcPos.z, tgtPos.x, tgtPos.y, tgtPos.z]);
+          linkData.line.computeLineDistances();
         }
 
-        // Animate particles only for connected links — also use stable positions
+        // Animate particles only for connected links
         if (isConnected && particleIndex < 500) {
-          const srcPos = meshes[linkData.sourceIdx].userData.currentPos as THREE.Vector3;
-          const tgtPos = meshes[linkData.targetIdx].userData.currentPos as THREE.Vector3;
+          const srcPos = meshes[linkData.sourceIdx].position;
+          const tgtPos = meshes[linkData.targetIdx].position;
           const t = ((time * linkData.speed * hudRef.current.particleSpeed + linkData.offset) % 1);
           positions[particleIndex * 3] = srcPos.x + (tgtPos.x - srcPos.x) * t;
           positions[particleIndex * 3 + 1] = srcPos.y + (tgtPos.y - srcPos.y) * t;
@@ -765,6 +771,8 @@ export function Graph3D() {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      // Update LineMaterial resolution
+      linkDataArray.forEach(ld => ld.mat.resolution.set(w, h));
     }
     window.addEventListener('resize', onResize);
 
@@ -795,10 +803,10 @@ export function Graph3D() {
       }
 
       // Dispose link lines
-      linkLines.forEach(line => {
-        line.geometry.dispose();
-        (line.material as THREE.Material).dispose();
-        scene.remove(line);
+      linkDataArray.forEach(ld => {
+        ld.geo.dispose();
+        ld.mat.dispose();
+        scene.remove(ld.line);
       });
       linkMeshesRef.current = [];
 
