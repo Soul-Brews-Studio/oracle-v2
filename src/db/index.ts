@@ -51,7 +51,11 @@ function initializeDatabase(sqliteDb: Database, drizzleDb: BunSQLiteDatabase<typ
   sqliteDb.exec('INSERT OR IGNORE INTO indexing_status (id, is_indexing) VALUES (1, 0)');
 
   // One-time migration: normalize project casing to lowercase
-  sqliteDb.exec("UPDATE oracle_documents SET project = LOWER(project) WHERE project <> LOWER(project)");
+  const migrated = sqliteDb.prepare("SELECT value FROM settings WHERE key = 'migration_lowercase_projects'").get() as { value: string } | undefined;
+  if (!migrated) {
+    sqliteDb.exec("UPDATE oracle_documents SET project = LOWER(project) WHERE project <> LOWER(project)");
+    sqliteDb.exec("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('migration_lowercase_projects', '1', unixepoch() * 1000)");
+  }
 }
 
 /**
