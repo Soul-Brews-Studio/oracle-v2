@@ -17,10 +17,11 @@
 import fs from 'fs';
 import path from 'path';
 import { Database } from 'bun:sqlite';
-import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import { type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { eq, or, isNull, inArray } from 'drizzle-orm';
 import * as schema from './db/schema.ts';
 import { oracleDocuments, indexingStatus } from './db/schema.ts';
+import { createDatabase } from './db/index.ts';
 import { ChromaMcpClient } from './chroma-mcp.ts';
 import { detectProject } from './server/project-detect.ts';
 import { getVaultPsiRoot } from './vault/handler.ts';
@@ -35,69 +36,11 @@ export class OracleIndexer {
 
   constructor(config: IndexerConfig) {
     this.config = config;
-    this.sqlite = new Database(config.dbPath);  // Raw connection for FTS and schema
-    this.sqlite.exec('PRAGMA journal_mode = WAL');
-    this.sqlite.exec('PRAGMA busy_timeout = 5000');
-    this.db = drizzle(this.sqlite, { schema });  // Drizzle wrapper for type-safe queries
+    const { sqlite, db } = createDatabase(config.dbPath);
+    this.sqlite = sqlite;
+    this.db = db;
     this.project = detectProject(config.repoRoot);
     console.log(`[Indexer] Detected project: ${this.project || '(universal)'}`);
-    this.initDatabase();
-  }
-
-  /**
-   * Initialize SQLite schema
-   */
-  private initDatabase(): void {
-    this.sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS oracle_documents (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        source_file TEXT NOT NULL,
-        concepts TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        indexed_at INTEGER NOT NULL,
-        project TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_type ON oracle_documents(type);
-      CREATE INDEX IF NOT EXISTS idx_source ON oracle_documents(source_file);
-
-      -- FTS5 for keyword search (with Porter stemmer for tire/tired matching)
-      CREATE VIRTUAL TABLE IF NOT EXISTS oracle_fts USING fts5(
-        id UNINDEXED,
-        content,
-        concepts,
-        tokenize='porter unicode61'
-      );
-
-      -- Consult log for tracking oracle_consult queries
-      CREATE TABLE IF NOT EXISTS consult_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        decision TEXT NOT NULL,
-        context TEXT,
-        principles_found INTEGER NOT NULL,
-        patterns_found INTEGER NOT NULL,
-        guidance TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_consult_created ON consult_log(created_at);
-
-      -- Indexing status for tray app
-      CREATE TABLE IF NOT EXISTS indexing_status (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        is_indexing INTEGER NOT NULL DEFAULT 0,
-        progress_current INTEGER DEFAULT 0,
-        progress_total INTEGER DEFAULT 0,
-        started_at INTEGER,
-        completed_at INTEGER,
-        error TEXT
-      );
-
-      -- Ensure single row exists
-      INSERT OR IGNORE INTO indexing_status (id, is_indexing) VALUES (1, 0);
-    `);
   }
 
   /**
@@ -285,25 +228,45 @@ export class OracleIndexer {
    * Index ψ/memory/resonance/ files (identity, principles)
    */
   private async indexResonance(): Promise<OracleDocument[]> {
-    const resonancePath = path.join(this.config.repoRoot, this.config.sourcePaths.resonance);
-    if (!fs.existsSync(resonancePath)) {
-      console.log(`Skipping resonance: ${resonancePath} not found`);
-      return [];
-    }
-    const files = fs.readdirSync(resonancePath).filter(f => f.endsWith('.md'));
-    if (files.length === 0) {
-      console.log(`Warning: ${resonancePath} exists but contains no .md files`);
-    }
     const documents: OracleDocument[] = [];
+    let totalFiles = 0;
 
-    for (const file of files) {
-      const filePath = path.join(resonancePath, file);
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const docs = this.parseResonanceFile(file, content);
-      documents.push(...docs);
+    // 1. Root ψ/memory/resonance/
+    const resonancePath = path.join(this.config.repoRoot, this.config.sourcePaths.resonance);
+    if (fs.existsSync(resonancePath)) {
+      const files = fs.readdirSync(resonancePath).filter(f => f.endsWith('.md'));
+      if (files.length === 0) {
+        console.log(`Warning: ${resonancePath} exists but contains no .md files`);
+      }
+      for (const file of files) {
+        const filePath = path.join(resonancePath, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const relPath = `ψ/memory/resonance/${file}`;
+        const docs = this.parseResonanceFile(relPath, content);
+        // Root resonance = universal knowledge, explicitly no project
+        for (const d of docs) d.project = null;
+        documents.push(...docs);
+      }
+      totalFiles += files.length;
     }
 
-    console.log(`Indexed ${documents.length} resonance documents from ${files.length} files`);
+    // 2. Project-first vault dirs: github.com/*/*/ψ/memory/resonance/
+    const projectDirs = this.discoverProjectPsiDirs();
+    for (const projectDir of projectDirs) {
+      const projectResonance = path.join(projectDir, 'memory', 'resonance');
+      if (!fs.existsSync(projectResonance)) continue;
+      const files = fs.readdirSync(projectResonance).filter(f => f.endsWith('.md'));
+      for (const file of files) {
+        const filePath = path.join(projectResonance, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const relPath = path.relative(this.config.repoRoot, filePath);
+        const docs = this.parseResonanceFile(relPath, content);
+        documents.push(...docs);
+      }
+      totalFiles += files.length;
+    }
+
+    console.log(`Indexed ${documents.length} resonance documents from ${totalFiles} files`);
     return documents;
   }
 
@@ -312,13 +275,16 @@ export class OracleIndexer {
    * Following claude-mem's pattern of splitting by sections
    * Now reads frontmatter tags and inherits them to all chunks
    */
-  private parseResonanceFile(filename: string, content: string): OracleDocument[] {
+  private parseResonanceFile(relativePath: string, content: string): OracleDocument[] {
     const documents: OracleDocument[] = [];
-    const sourceFile = `ψ/memory/resonance/${filename}`;
     const now = Date.now();
 
     // Extract file-level tags from frontmatter
     const fileTags = this.parseFrontmatterTags(content);
+    const fileProject = this.inferProjectFromPath(relativePath);
+
+    // Use relative path for unique IDs (handles per-project resonance)
+    const idBase = relativePath.replace(/[/\\]/g, '_').replace('.md', '');
 
     // Split by ### headers (principles, sections)
     const sections = content.split(/^###\s+/m).filter(s => s.trim());
@@ -331,16 +297,17 @@ export class OracleIndexer {
       if (!body) return;
 
       // Main document for this principle/section
-      const id = `resonance_${filename.replace('.md', '')}_${index}`;
+      const id = `resonance_${idBase}_${index}`;
       const extractedConcepts = this.extractConcepts(title, body);
       documents.push({
         id,
         type: 'principle',
-        source_file: sourceFile,
+        source_file: relativePath,
         content: `${title}: ${body}`,
         concepts: this.mergeConceptsWithTags(extractedConcepts, fileTags),
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        project: fileProject || undefined
       });
 
       // Split bullet points into sub-documents (granular pattern)
@@ -352,11 +319,12 @@ export class OracleIndexer {
           documents.push({
             id: `${id}_sub_${bulletIndex}`,
             type: 'principle',
-            source_file: sourceFile,
+            source_file: relativePath,
             content: bulletText,
             concepts: this.mergeConceptsWithTags(bulletConcepts, fileTags),
             created_at: now,
-            updated_at: now
+            updated_at: now,
+            project: fileProject || undefined
           });
         });
       }
@@ -758,7 +726,8 @@ export class OracleIndexer {
     try {
       for (const doc of documents) {
         // SQLite metadata - use doc.project if available, fall back to repo project
-        const docProject = doc.project || this.project;
+        // null = explicitly universal, undefined = inherit from repo
+        const docProject = doc.project !== undefined ? doc.project : this.project;
 
         // Drizzle upsert with createdBy: 'indexer'
         this.db.insert(oracleDocuments)

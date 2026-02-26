@@ -346,40 +346,58 @@ export function DocDetail() {
           </div>
         )}
         <div className={styles.footerLinks}>
-          {doc.project && (
-            <div className={styles.footerLinksRow}>
-              <a
-                href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.repoLink}
-                title="View repository"
-              >
-                🔗 {doc.project.replace('github.com/', '')}
-              </a>
-              <a
-                href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}/blob/main/${doc.source_file}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.githubLink}
-                title="View on GitHub"
-              >
-                View on GitHub ↗
-              </a>
-            </div>
-          )}
-          {!fileNotFound && (
-            <button
-              onClick={handleShowRawFile}
-              className={styles.sourcePath}
-              title="View raw file"
-            >
-              📁 {doc.source_file}
-            </button>
-          )}
-          {fileNotFound && (
-            <span className={styles.sourcePathMuted}>📁 {doc.source_file}</span>
-          )}
+          {(() => {
+            const displayPath = doc.source_file.startsWith('github.com/')
+              ? doc.source_file.replace(/^github\.com\/[^/]+\/[^/]+\//, '')
+              : doc.source_file;
+
+            return (
+              <>
+                <div className={styles.footerLinksRow}>
+                  {doc.project ? (
+                    <a
+                      href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.repoLink}
+                    >
+                      🔗 {doc.project.replace('github.com/', '')}
+                    </a>
+                  ) : (
+                    <span className={styles.universalBadge}>✦ universal</span>
+                  )}
+                  {doc.project && (
+                    <a
+                      href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}/blob/main/${displayPath}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.githubLink}
+                    >
+                      View on GitHub ↗
+                    </a>
+                  )}
+                  <a
+                    href={`https://github.com/Soul-Brews-Studio/oracle-vault/blob/main/${doc.source_file}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.vaultLink}
+                  >
+                    🏛️ vault
+                  </a>
+                </div>
+                {!fileNotFound ? (
+                  <button
+                    onClick={handleShowRawFile}
+                    className={styles.sourcePath}
+                  >
+                    📁 {displayPath}
+                  </button>
+                ) : (
+                  <span className={styles.sourcePathMuted}>📁 {displayPath}</span>
+                )}
+              </>
+            );
+          })()}
         </div>
       </footer>
 

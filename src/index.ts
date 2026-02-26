@@ -11,9 +11,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
-import { drizzle, BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import * as schema from './db/schema.ts';
+import { createDatabase } from './db/index.ts';
 import { ChromaMcpClient } from './chroma-mcp.ts';
 import path from 'path';
 import fs from 'fs';
@@ -103,8 +104,9 @@ class OracleMCPServer {
 
     const oracleDataDir = process.env.ORACLE_DATA_DIR || path.join(homeDir, '.oracle');
     const dbPath = process.env.ORACLE_DB_PATH || path.join(oracleDataDir, 'oracle.db');
-    this.sqlite = new Database(dbPath);
-    this.db = drizzle(this.sqlite, { schema });
+    const { sqlite, db } = createDatabase(dbPath);
+    this.sqlite = sqlite;
+    this.db = db;
 
     this.setupHandlers();
     this.setupErrorHandling();

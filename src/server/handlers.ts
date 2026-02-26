@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { eq, sql, or, inArray } from 'drizzle-orm';
 import { db, sqlite, oracleDocuments, indexingStatus } from '../db/index.ts';
-import { REPO_ROOT } from './db.ts';
+import { REPO_ROOT } from '../config.ts';
 import { logSearch, logDocumentAccess, logLearning } from './logging.ts';
 import type { SearchResult, SearchResponse } from './types.ts';
 import { ChromaMcpClient } from '../chroma-mcp.ts';

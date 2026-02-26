@@ -26,7 +26,7 @@ import {
   performGracefulShutdown,
 } from './process-manager/index.ts';
 
-// Import from modular components
+// Config constants (no DB dependency)
 import {
   PORT,
   REPO_ROOT,
@@ -34,10 +34,8 @@ import {
   UI_PATH,
   ARTHUR_UI_PATH,
   DASHBOARD_PATH,
-  db,
-  initLoggingTables,
-  closeDb
-} from './server/db.ts';
+} from './config.ts';
+import { sqlite as db, closeDb } from './db/index.ts';
 
 import {
   handleSearch,
@@ -99,13 +97,6 @@ function serveStatic(res: http.ServerResponse, filePath: string): boolean {
     return true;
   }
   return false;
-}
-
-// Initialize logging tables on startup
-try {
-  initLoggingTables();
-} catch (e) {
-  console.error('Failed to initialize logging tables:', e);
 }
 
 // Reset stale indexing status on startup
