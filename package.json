@@ -49,6 +49,7 @@
     "vault:pull": "bun src/vault/cli.ts pull",
     "vault:status": "bun src/vault/cli.ts status",
     "vault:migrate": "bun src/vault/cli.ts migrate",
+    "vault:rsync": "./scripts/vault-rsync.sh",
     "frontend:build": "cd frontend && bun install && bun run build",
     "frontend:dev": "cd frontend && bun run dev"
   },

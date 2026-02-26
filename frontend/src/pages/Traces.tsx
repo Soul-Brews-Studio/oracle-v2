@@ -489,7 +489,7 @@ export function Traces() {
                                     ? `${t.project.includes('github.com') ? '' : 'github.com/'}${t.project}/${f.path}`
                                     : f.path;
                                   const fInfo = getDocDisplayInfo(sourceFile, t.project);
-                                  return (
+                                  return fInfo.vaultUrl ? (
                                     <a
                                       href={fInfo.vaultUrl}
                                       target="_blank"
@@ -498,7 +498,7 @@ export function Traces() {
                                     >
                                       🏛️ vault
                                     </a>
-                                  );
+                                  ) : null;
                                 })()}
                               </div>
                             )}

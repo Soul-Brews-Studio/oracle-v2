@@ -40,3 +40,8 @@ test-results/
 # Oracle instance data (per-user, not shared in generic software)
 ψ/*
 !ψ/.gitkeep
+
+# Generated report files (use oracle-vault-report repo instead)
+vault-report.html
+vault-repos.html
+vault-data.json

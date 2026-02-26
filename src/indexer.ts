@@ -451,7 +451,7 @@ export class OracleIndexer {
       /^(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+\/[^/]+)\/ψ\//
     );
     if (projectFirst) {
-      return `${projectFirst[1]}/${projectFirst[2]}`;
+      return `${projectFirst[1]}/${projectFirst[2]}`.toLowerCase();
     }
 
     // Legacy layout: ψ/memory/{category}/github.com/org/repo/...
@@ -459,7 +459,7 @@ export class OracleIndexer {
       /^ψ\/(?:memory\/(?:learnings|retrospectives)|inbox\/handoff)\/(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+\/[^/]+)\//
     );
     if (legacy) {
-      return `${legacy[1]}/${legacy[2]}`;
+      return `${legacy[1]}/${legacy[2]}`.toLowerCase();
     }
 
     return null;

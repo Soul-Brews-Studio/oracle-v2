@@ -2,24 +2,20 @@
  * Shared helper for computing document display info (project links, vault URLs, paths).
  * Used across DocDetail, Traces, Superseded, and LogCard (search results).
  *
- * All project links point to oracle-vault on GitHub:
- * - projectVaultUrl: vault directory for the project (e.g. vault/github.com/owner/repo/)
- * - vaultUrl: vault path for the specific file
- * - fileUrl: "View on GitHub" links to the file in the project's own repo
+ * Vault repo is read from /api/stats (configured via `oracle-vault init`).
+ * No hardcoded defaults — each subscriber has their own vault.
  */
 
-/** Default vault repo — used when stats haven't loaded yet */
-const DEFAULT_VAULT_REPO = 'Soul-Brews-Studio/oracle-vault';
-
-/** Cached vault repo from /api/stats */
-let _vaultRepo: string = DEFAULT_VAULT_REPO;
+/** Cached vault repo from /api/stats — null until loaded */
+let _vaultRepo: string | null = null;
 
 /** Call once on app init to set the vault repo from /api/stats */
 export function setVaultRepo(repo: string) {
   _vaultRepo = repo;
 }
 
-function getVaultBase(): string {
+function getVaultBase(): string | null {
+  if (!_vaultRepo) return null;
   return `https://github.com/${_vaultRepo}/blob/main`;
 }
 
@@ -30,8 +26,8 @@ export interface DocDisplayInfo {
   projectVaultUrl: string | null;
   /** Short display name for the project (e.g. "soul-brews-studio/shrimp-oracle") */
   projectDisplay: string | null;
-  /** URL to the specific file in oracle-vault */
-  vaultUrl: string;
+  /** URL to the specific file in oracle-vault, or null if no vault configured */
+  vaultUrl: string | null;
   /** URL to the file on the project's own GitHub repo (for "View on GitHub"), or null */
   fileUrl: string | null;
   /** True if no project is associated (universal doc) */
@@ -54,15 +50,16 @@ export function getDocDisplayInfo(sourceFile: string, project?: string | null): 
   let projectVaultUrl: string | null = null;
   let projectDisplay: string | null = null;
   let fileUrl: string | null = null;
+  let vaultUrl: string | null = null;
 
   if (project) {
     const ghProject = project.includes('github.com') ? project : `github.com/${project}`;
-    projectVaultUrl = `${vaultBase}/${ghProject}`;
+    if (vaultBase) projectVaultUrl = `${vaultBase}/${ghProject}`;
     projectDisplay = project.replace('github.com/', '');
     fileUrl = `https://${ghProject}/blob/main/${displayPath}`;
   }
 
-  const vaultUrl = `${vaultBase}/${sourceFile}`;
+  if (vaultBase) vaultUrl = `${vaultBase}/${sourceFile}`;
 
   return { displayPath, projectVaultUrl, projectDisplay, vaultUrl, fileUrl, isUniversal };
 }

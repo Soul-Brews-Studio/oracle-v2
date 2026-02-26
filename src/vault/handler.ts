@@ -198,7 +198,7 @@ export function getVaultPsiRoot(): { path: string } | { needsInit: true; hint: s
   if (!repo) {
     return {
       needsInit: true,
-      hint: 'Run: oracle-vault init <owner/repo> to set up central knowledge vault.\nExample: oracle-vault init Soul-Brews-Studio/oracle-vault',
+      hint: 'Run: oracle-vault init <owner/repo> to set up central knowledge vault.\nExample: oracle-vault init your-org/oracle-vault',
     };
   }
   try {

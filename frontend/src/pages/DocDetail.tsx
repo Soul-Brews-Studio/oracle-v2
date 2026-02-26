@@ -375,14 +375,16 @@ export function DocDetail() {
                       View on GitHub ↗
                     </a>
                   )}
-                  <a
-                    href={info.vaultUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.vaultLink}
-                  >
-                    🏛️ vault
-                  </a>
+                  {info.vaultUrl && (
+                    <a
+                      href={info.vaultUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.vaultLink}
+                    >
+                      🏛️ vault
+                    </a>
+                  )}
                 </div>
                 {!fileNotFound ? (
                   <button

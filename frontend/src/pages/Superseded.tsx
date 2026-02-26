@@ -163,7 +163,7 @@ export function Superseded() {
                         ) : (
                           <span className={styles.universalBadge}>✦ universal</span>
                         )}
-                        {log.old_path && (
+                        {log.old_path && info.vaultUrl && (
                           <a
                             href={info.vaultUrl}
                             target="_blank"
