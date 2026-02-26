@@ -491,7 +491,7 @@ export function handleStats(dbPath: string) {
  * Accepts `limit` per type (default 200, max 500).
  * Links capped at 5000 (frontend caps at 3000 anyway).
  */
-export function handleGraph(limitPerType = 200) {
+export function handleGraph(limitPerType = 30) {
   const perType = Math.min(Math.max(limitPerType, 10), 500);
 
   const selectFields = {

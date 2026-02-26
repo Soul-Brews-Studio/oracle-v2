@@ -475,7 +475,7 @@ app.get('/api/list', (c) => {
 
 // Graph
 app.get('/api/graph', (c) => {
-  const limit = parseInt(c.req.query('limit') || '200', 10);
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!, 10) : undefined;
   return c.json(handleGraph(limit));
 });
 

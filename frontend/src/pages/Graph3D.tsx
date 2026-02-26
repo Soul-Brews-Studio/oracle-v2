@@ -229,6 +229,7 @@ export function Graph3D() {
   // Active node ref for animation loop
   const activeNodeRef = useRef<string | null>(null);
   const adjacencyRef = useRef<Map<string, Set<string>>>(new Map());
+  const handModeRef = useRef(false);
 
   // Reset camera function
   const resetCamera = () => {
@@ -312,6 +313,9 @@ export function Graph3D() {
     activeNodeRef.current = selectedNode?.id || hoveredNode?.id || null;
   }, [hoveredNode, selectedNode]);
 
+  // Sync hand mode to ref
+  useEffect(() => { handModeRef.current = handMode; }, [handMode]);
+
   useEffect(() => {
     loadGraph();
     return () => {
@@ -392,7 +396,7 @@ export function Graph3D() {
     const maxCluster = Math.max(...nodes.map(n => n.cluster || 0));
 
     for (let i = 0; i <= maxCluster; i++) {
-      const pos = hashInSphere(42, i * 1000).multiplyScalar(6);
+      const pos = hashOnSphere(42, i * 1000).multiplyScalar(6);  // Centers on surface
       clusterCenters.set(i, pos);
     }
 
@@ -421,8 +425,10 @@ export function Graph3D() {
       const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
 
-      // Sphere mode — distributed from surface inward
-      const spherePos = hashInSphere(42, i).multiplyScalar(6);
+      // Sphere mode — on surface with some depth inward
+      const raw = xxhash(77, i + 0x20000000);
+      const sphereR = (0.7 + 0.3 * raw) * 6;  // 70–100% of radius = surface layer
+      const spherePos = hashOnSphere(42, i).multiplyScalar(sphereR);
 
       mesh.position.copy(clusterPos);
       mesh.userData = {
@@ -520,6 +526,7 @@ export function Graph3D() {
     travelingParticlesRef.current = travelingParticles;
 
     // Animation
+    const handRaycaster = new THREE.Raycaster();
     let time = 0;
     const dt = 1/60;
 
@@ -623,6 +630,25 @@ export function Graph3D() {
 
       travelingParticles.visible = !!activeId;
       travelingParticles.geometry.attributes.position.needsUpdate = true;
+
+      // Hand mode: raycast from screen center (hand controls camera, center = pointer)
+      if (handModeRef.current) {
+        handRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const hits = handRaycaster.intersectObjects(meshes);
+        if (hits.length > 0) {
+          const hovered = hits[0].object.userData.node as Node;
+          setHoveredNode(hovered);
+          meshes.forEach(m => {
+            const mat = m.material as THREE.MeshStandardMaterial;
+            mat.emissiveIntensity = m === hits[0].object ? 0.5 : 0.1;
+          });
+        } else {
+          setHoveredNode(null);
+          meshes.forEach(m => {
+            (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.1;
+          });
+        }
+      }
 
       renderer.render(scene, camera);
       animationRef.current = requestAnimationFrame(animate);

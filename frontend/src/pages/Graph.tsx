@@ -707,7 +707,7 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
 
     const clusterCenters = new Map<number, THREE.Vector3>();
     const maxCluster = Math.max(...nodes.map(n => n.cluster || 0));
-    for (let i = 0; i <= maxCluster; i++) clusterCenters.set(i, hashInSphere(42, i * 1000).multiplyScalar(6));
+    for (let i = 0; i <= maxCluster; i++) clusterCenters.set(i, hashOnSphere(42, i * 1000).multiplyScalar(6));
 
     const geometry = new THREE.SphereGeometry(0.08, 16, 16);
     const meshes: THREE.Mesh[] = [];
@@ -723,7 +723,8 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
       const clusterCenter = clusterCenters.get(cluster) || new THREE.Vector3();
       const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
-      const spherePos = hashInSphere(42, i).multiplyScalar(6);
+      const sphereR = (0.7 + 0.3 * xxhash(77, i + 0x20000000)) * 6;
+      const spherePos = hashOnSphere(42, i).multiplyScalar(sphereR);
       mesh.position.copy(clusterPos);
       mesh.userData = { node, index: i, clusterPos: clusterPos.clone(), spherePos: spherePos.clone(), currentPos: clusterPos.clone() };
       scene.add(mesh);
