@@ -314,11 +314,13 @@ app.get('/api/settings', (c) => {
   const authEnabled = getSetting('auth_enabled') === 'true';
   const localBypass = getSetting('auth_local_bypass') !== 'false';
   const hasPassword = !!getSetting('auth_password_hash');
+  const vaultRepo = getSetting('vault_repo');
 
   return c.json({
     authEnabled,
     localBypass,
-    hasPassword
+    hasPassword,
+    vaultRepo
   });
 });
 
@@ -526,7 +528,7 @@ app.get('/api/file', async (c) => {
 
     // Strip project prefix if source_file already contains it (vault-indexed docs)
     let resolvedFilePath = filePath;
-    if (project && filePath.startsWith(project + '/')) {
+    if (project && filePath.toLowerCase().startsWith(project.toLowerCase() + '/')) {
       resolvedFilePath = filePath.slice(project.length + 1); // e.g. "ψ/memory/learnings/file.md"
     }
 

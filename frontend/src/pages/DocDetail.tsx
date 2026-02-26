@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { list, getFile, getDoc } from '../api/oracle';
+import { list, getFile, getDoc, getSettings, stripProjectPrefix, isVaultDoc } from '../api/oracle';
 import type { Document } from '../api/oracle';
 import { SidebarLayout } from '../components/SidebarLayout';
 import styles from './DocDetail.module.css';
@@ -25,7 +25,13 @@ export function DocDetail() {
   const [neighbors, setNeighbors] = useState<{ prev: Document | null; next: Document | null }>({ prev: null, next: null });
   const [showRawModal, setShowRawModal] = useState(false);
   const [rawContent, setRawContent] = useState<string | null>(null);
+  const [vaultRepo, setVaultRepo] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Load vault repo setting
+  useEffect(() => {
+    getSettings().then(s => setVaultRepo(s.vaultRepo ?? null)).catch(() => {});
+  }, []);
 
   // Navigate to a document
   const goToDoc = useCallback((targetDoc: Document) => {
@@ -346,7 +352,14 @@ export function DocDetail() {
           </div>
         )}
         <div className={styles.footerLinks}>
-          {doc.project && (
+          {doc.project && (() => {
+            const vault = isVaultDoc(doc.source_file, doc.project);
+            const relPath = stripProjectPrefix(doc.source_file, doc.project);
+            const ghRepo = vault && vaultRepo
+              ? `github.com/${vaultRepo}`
+              : (doc.project.includes('github.com') ? doc.project : `github.com/${doc.project}`);
+            const ghFilePath = vault && vaultRepo ? doc.source_file : relPath;
+            return (
             <div className={styles.footerLinksRow}>
               <a
                 href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}`}
@@ -358,27 +371,28 @@ export function DocDetail() {
                 🔗 {doc.project.replace('github.com/', '')}
               </a>
               <a
-                href={`https://${doc.project.includes('github.com') ? '' : 'github.com/'}${doc.project}/blob/main/${doc.source_file}`}
+                href={`https://${ghRepo}/blob/main/${ghFilePath}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.githubLink}
-                title="View on GitHub"
+                title={vault && vaultRepo ? `View in ${vaultRepo}` : 'View on GitHub'}
               >
-                View on GitHub ↗
+                {vault && vaultRepo ? 'View in central memory ↗' : 'View on GitHub ↗'}
               </a>
             </div>
-          )}
+            );
+          })()}
           {!fileNotFound && (
             <button
               onClick={handleShowRawFile}
               className={styles.sourcePath}
               title="View raw file"
             >
-              📁 {doc.source_file}
+              📁 {stripProjectPrefix(doc.source_file, doc.project)} {doc.project && <span className={styles.projectBadge}>{doc.project.replace('github.com/', '')}</span>}{isVaultDoc(doc.source_file, doc.project) && <> <span className={styles.centralBadge}>central</span></>}
             </button>
           )}
           {fileNotFound && (
-            <span className={styles.sourcePathMuted}>📁 {doc.source_file}</span>
+            <span className={styles.sourcePathMuted}>📁 {stripProjectPrefix(doc.source_file, doc.project)}{isVaultDoc(doc.source_file, doc.project) && <> <span className={styles.centralBadge}>central</span></>}</span>
           )}
         </div>
       </footer>
@@ -388,7 +402,7 @@ export function DocDetail() {
         <div className={styles.modalOverlay} onClick={() => setShowRawModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()} ref={modalRef}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📁 {doc.source_file}</span>
+              <span className={styles.modalTitle}>📁 {stripProjectPrefix(doc.source_file, doc.project)}</span>
               <button className={styles.modalClose} onClick={() => setShowRawModal(false)}>×</button>
             </div>
             <pre className={styles.modalContent}>{rawContent.split('\n').map((line, i) => (

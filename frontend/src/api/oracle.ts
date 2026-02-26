@@ -2,6 +2,19 @@
 // Always use /api prefix (backend routes are under /api/*)
 const API_BASE = '/api';
 
+/** Strip project prefix from source_file for display (vault-indexed cross-project docs) */
+export function stripProjectPrefix(sourceFile: string, project?: string): string {
+  if (project && sourceFile.toLowerCase().startsWith(project.toLowerCase() + '/')) {
+    return sourceFile.slice(project.length + 1);
+  }
+  return sourceFile;
+}
+
+/** Check if a doc is a cross-project vault doc */
+export function isVaultDoc(sourceFile: string, project?: string): boolean {
+  return !!project && sourceFile.toLowerCase().startsWith(project.toLowerCase() + '/');
+}
+
 export interface Document {
   id: string;
   type: 'principle' | 'learning' | 'retro';
@@ -160,6 +173,7 @@ export interface Settings {
   authEnabled: boolean;
   localBypass: boolean;
   hasPassword: boolean;
+  vaultRepo?: string | null;
 }
 
 // Get auth status

@@ -40,7 +40,8 @@ Commands:
   status               Show vault configuration and pending changes
   migrate [options]    Seed vault repo from all ghq repos with ψ/ directories
     --dry-run            Preview what would be copied
-    --list               List repos with ψ/ directories
+    --list               List repos with ψ/ directories (shows symlink status)
+    --symlink            After copying, replace local ψ/ with symlink to vault
 
 Options:
   -h, --help           Show this help message
@@ -100,32 +101,37 @@ switch (command) {
 
   case 'migrate': {
     if (args.includes('--list')) {
+      const fs = await import('fs');
       const repos = findPsiRepos();
       console.log(`Found ${repos.length} repos with ψ/ directories:\n`);
-      for (const { repoPath } of repos) {
+      for (const { repoPath, psiDir } of repos) {
         const project = detectProject(repoPath)?.toLowerCase() ?? '(unknown)';
-        // Walk files inline to show count
-        const fs = await import('fs');
-        const psiDir = path.join(repoPath, 'ψ');
-        let count = 0;
-        const walk = (dir: string) => {
-          if (!fs.existsSync(dir)) return;
-          for (const item of fs.readdirSync(dir)) {
-            const full = path.join(dir, item);
-            const stat = fs.lstatSync(full);
-            if (stat.isSymbolicLink()) continue;
-            if (stat.isDirectory()) walk(full);
-            else count++;
-          }
-        };
-        walk(psiDir);
-        console.log(`  ${project} (${count} files)`);
+        const isSymlink = fs.lstatSync(psiDir).isSymbolicLink();
+        if (isSymlink) {
+          console.log(`  ${project} ✓ symlinked`);
+        } else {
+          let count = 0;
+          const walk = (dir: string) => {
+            if (!fs.existsSync(dir)) return;
+            for (const item of fs.readdirSync(dir)) {
+              const full = path.join(dir, item);
+              const stat = fs.lstatSync(full);
+              if (stat.isSymbolicLink()) continue;
+              if (stat.isDirectory()) walk(full);
+              else count++;
+            }
+          };
+          walk(psiDir);
+          console.log(`  ${project} (${count} files) ← local`);
+        }
         console.log(`    ${repoPath}`);
       }
     } else {
       const dryRun = args.includes('--dry-run');
+      const symlink = args.includes('--symlink');
       if (dryRun) console.error('[Vault] DRY RUN — no files will be copied\n');
-      const result = migrate({ dryRun });
+      if (symlink) console.error('[Vault] SYMLINK MODE — local ψ/ will be replaced with symlinks\n');
+      const result = migrate({ dryRun, symlink });
       console.log(JSON.stringify(result, null, 2));
     }
     break;

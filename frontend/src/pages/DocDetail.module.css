@@ -295,6 +295,28 @@
   opacity: 0.7;
 }
 
+.projectBadge {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.centralBadge {
+  font-size: 9px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
 .repoLink {
   font-size: 12px;
   color: var(--text-secondary);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getStats, reflect } from '../api/oracle';
+import { getStats, reflect, stripProjectPrefix } from '../api/oracle';
 import type { Document, Stats } from '../api/oracle';
 import styles from './Overview.module.css';
 
@@ -80,12 +80,16 @@ export function Overview() {
           <div className={styles.statLabel}>Documents</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{stats?.by_type?.principle || 0}</div>
-          <div className={styles.statLabel}>Principles</div>
+          <div className={styles.statValue}>{(stats?.by_type?.learning || 0).toLocaleString()}</div>
+          <div className={styles.statLabel}>Learnings</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{stats?.by_type?.learning || 0}</div>
-          <div className={styles.statLabel}>Learnings</div>
+          <div className={styles.statValue}>{(stats?.by_type?.retro || 0).toLocaleString()}</div>
+          <div className={styles.statLabel}>Retros</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue}>{stats?.by_type?.principle || 0}</div>
+          <div className={styles.statLabel}>Principles</div>
         </div>
         <div className={`${styles.statCard} ${stats?.is_stale ? '' : styles.healthy}`}>
           <div className={styles.statValue}>{stats?.is_stale ? 'Stale' : 'Healthy'}</div>
@@ -169,7 +173,7 @@ export function Overview() {
                   {wisdom.source_file && (
                     <div className={styles.sourceFile}>
                       <span className={styles.sourceLabel}>Source:</span>
-                      <code>{wisdom.source_file}</code>
+                      <code>{stripProjectPrefix(wisdom.source_file, wisdom.project)}</code>
                     </div>
                   )}
                 </div>

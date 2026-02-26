@@ -79,6 +79,7 @@ interface MigrateResult {
   filesCopied: number;
   repos: RepoInfo[];
   skipped: string[];
+  symlinked: string[];
 }
 
 /**
@@ -110,8 +111,8 @@ function findPsiRepos(): Array<{ repoPath: string; psiDir: string }> {
 /**
  * Migrate all ψ/ directories to the central vault
  */
-function migrate(opts: { dryRun: boolean }): MigrateResult {
-  const { dryRun } = opts;
+function migrate(opts: { dryRun: boolean; symlink?: boolean }): MigrateResult {
+  const { dryRun, symlink } = opts;
 
   const repo = getSetting('vault_repo');
   if (!repo) throw new Error('Vault not initialized. Run vault:init first.');
@@ -123,12 +124,27 @@ function migrate(opts: { dryRun: boolean }): MigrateResult {
     filesCopied: 0,
     repos: [],
     skipped: [],
+    symlinked: [],
   };
 
   // Skip the vault repo itself
   const vaultRealPath = fs.realpathSync(vaultPath);
 
   for (const { repoPath, psiDir } of psiRepos) {
+    // Skip worktrees
+    if (repoPath.match(/\.wt[-/]/)) {
+      result.skipped.push(`${repoPath} (worktree)`);
+      continue;
+    }
+
+    // Skip already-symlinked repos (nothing to copy)
+    try {
+      if (fs.lstatSync(psiDir).isSymbolicLink()) {
+        result.skipped.push(`${repoPath} (already symlinked)`);
+        continue;
+      }
+    } catch { /* doesn't exist, continue */ }
+
     const repoRealPath = fs.realpathSync(repoPath);
     if (repoRealPath === vaultRealPath) {
       result.skipped.push(`${repoPath} (vault repo itself)`);
@@ -167,6 +183,20 @@ function migrate(opts: { dryRun: boolean }): MigrateResult {
 
     result.repos.push({ repoPath, project, fileCount });
     result.filesCopied += fileCount;
+
+    // Create symlink if requested
+    if (symlink) {
+      const vaultPsiDir = path.join(vaultPath, project, 'ψ');
+      if (!dryRun) {
+        // Ensure vault destination exists
+        fs.mkdirSync(vaultPsiDir, { recursive: true });
+        // Remove local ψ/ directory
+        fs.rmSync(psiDir, { recursive: true });
+        // Create symlink: repo/ψ → vault/{project}/ψ
+        fs.symlinkSync(vaultPsiDir, psiDir);
+      }
+      result.symlinked.push(project);
+    }
   }
 
   // Git commit if not dry-run and there are changes
@@ -212,17 +242,24 @@ if (import.meta.main) {
   if (args.includes('--list')) {
     const repos = findPsiRepos();
     console.log(`Found ${repos.length} repos with ψ/ directories:\n`);
-    for (const { repoPath } of repos) {
+    for (const { repoPath, psiDir } of repos) {
       const project = detectProject(repoPath)?.toLowerCase() ?? '(unknown)';
-      const files = walkFiles(path.join(repoPath, 'ψ'), repoPath);
-      console.log(`  ${project} (${files.length} files)`);
+      const isSymlink = fs.lstatSync(psiDir).isSymbolicLink();
+      if (isSymlink) {
+        console.log(`  ${project} ✓ symlinked`);
+      } else {
+        const files = walkFiles(psiDir, repoPath);
+        console.log(`  ${project} (${files.length} files) ← local`);
+      }
       console.log(`    ${repoPath}`);
     }
   } else {
     const dryRun = args.includes('--dry-run');
+    const symlink = args.includes('--symlink');
     if (dryRun) console.error('[Vault] DRY RUN — no files will be copied\n');
+    if (symlink) console.error('[Vault] SYMLINK MODE — local ψ/ will be replaced with symlinks\n');
 
-    const result = migrate({ dryRun });
+    const result = migrate({ dryRun, symlink });
     console.log(JSON.stringify(result, null, 2));
   }
 }

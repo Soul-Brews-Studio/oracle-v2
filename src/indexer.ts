@@ -758,7 +758,7 @@ export class OracleIndexer {
     try {
       for (const doc of documents) {
         // SQLite metadata - use doc.project if available, fall back to repo project
-        const docProject = doc.project || this.project;
+        const docProject = (doc.project || this.project)?.toLowerCase();
 
         // Drizzle upsert with createdBy: 'indexer'
         this.db.insert(oracleDocuments)
