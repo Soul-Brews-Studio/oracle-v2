@@ -38,14 +38,14 @@ export function detectProject(cwd?: string): string | null {
 
     if (match) {
       const [, host, ownerRepo] = match;
-      return `${host}/${ownerRepo}`;
+      return `${host}/${ownerRepo}`.toLowerCase();
     }
 
     // 3. Fallback: check for ghq root pattern without known host
     // Pattern: ~/Code/*/owner/repo or similar
     const ghqMatch = realPath.match(/\/Code\/([^/]+\/[^/]+\/[^/]+)/);
     if (ghqMatch) {
-      return ghqMatch[1];
+      return ghqMatch[1].toLowerCase();
     }
 
     return null;

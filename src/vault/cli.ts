@@ -105,7 +105,7 @@ switch (command) {
       const repos = findPsiRepos();
       console.log(`Found ${repos.length} repos with ψ/ directories:\n`);
       for (const { repoPath, psiDir } of repos) {
-        const project = detectProject(repoPath)?.toLowerCase() ?? '(unknown)';
+        const project = detectProject(repoPath) ?? '(unknown)';
         const isSymlink = fs.lstatSync(psiDir).isSymbolicLink();
         if (isSymlink) {
           console.log(`  ${project} ✓ symlinked`);

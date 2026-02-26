@@ -151,7 +151,7 @@ function migrate(opts: { dryRun: boolean; symlink?: boolean }): MigrateResult {
       continue;
     }
 
-    const project = detectProject(repoPath)?.toLowerCase() ?? null;
+    const project = detectProject(repoPath) ?? null;
     if (!project) {
       result.skipped.push(`${repoPath} (cannot detect project)`);
       continue;
@@ -243,7 +243,7 @@ if (import.meta.main) {
     const repos = findPsiRepos();
     console.log(`Found ${repos.length} repos with ψ/ directories:\n`);
     for (const { repoPath, psiDir } of repos) {
-      const project = detectProject(repoPath)?.toLowerCase() ?? '(unknown)';
+      const project = detectProject(repoPath) ?? '(unknown)';
       const isSymlink = fs.lstatSync(psiDir).isSymbolicLink();
       if (isSymlink) {
         console.log(`  ${project} ✓ symlinked`);

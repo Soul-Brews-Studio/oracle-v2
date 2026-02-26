@@ -281,7 +281,7 @@ export function syncVault(opts: {
   }
 
   // Detect project for nested paths
-  const project = detectProject(repoRoot)?.toLowerCase() ?? null;
+  const project = detectProject(repoRoot) ?? null;
   console.error(`[Vault] Project: ${project || '(universal)'}`);
 
   // 1. Walk ψ/ recursively (skip symlinks)
@@ -395,7 +395,7 @@ export function pullVault(opts: {
   if (!repo) throw new Error('Vault not initialized. Run vault:init first.');
 
   const vaultPath = resolveVaultPath(repo);
-  const project = detectProject(repoRoot)?.toLowerCase() ?? null;
+  const project = detectProject(repoRoot) ?? null;
   if (!project) {
     throw new Error('Cannot detect project from repoRoot. Pull requires project context.');
   }
