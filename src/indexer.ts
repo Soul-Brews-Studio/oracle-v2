@@ -289,25 +289,48 @@ export class OracleIndexer {
    * Index ψ/memory/resonance/ files (identity, principles)
    */
   private async indexResonance(): Promise<OracleDocument[]> {
-    const resonancePath = path.join(this.config.repoRoot, this.config.sourcePaths.resonance);
-    if (!fs.existsSync(resonancePath)) {
-      console.log(`Skipping resonance: ${resonancePath} not found`);
-      return [];
-    }
-    const files = fs.readdirSync(resonancePath).filter(f => f.endsWith('.md'));
-    if (files.length === 0) {
-      console.log(`Warning: ${resonancePath} exists but contains no .md files`);
-    }
     const documents: OracleDocument[] = [];
+    let totalFiles = 0;
 
-    for (const file of files) {
-      const filePath = path.join(resonancePath, file);
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const docs = this.parseResonanceFile(file, content);
-      documents.push(...docs);
+    // 1. Root ψ/memory/resonance/
+    const resonancePath = path.join(this.config.repoRoot, this.config.sourcePaths.resonance);
+    if (fs.existsSync(resonancePath)) {
+      const files = this.getAllMarkdownFiles(resonancePath);
+      if (files.length === 0) {
+        console.log(`Warning: ${resonancePath} exists but contains no .md files`);
+      }
+      for (const filePath of files) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const relPath = path.relative(this.config.repoRoot, filePath);
+        const docs = this.parseResonanceFile(relPath, content, relPath);
+        documents.push(...docs);
+      }
+      totalFiles += files.length;
     }
 
-    console.log(`Indexed ${documents.length} resonance documents from ${files.length} files`);
+    // 2. Project-first vault dirs: github.com/*/*/ψ/memory/resonance/
+    let skippedDupes = 0;
+    const projectDirs = this.discoverProjectPsiDirs();
+    for (const projectDir of projectDirs) {
+      const projectResonance = path.join(projectDir, 'memory', 'resonance');
+      if (!fs.existsSync(projectResonance)) continue;
+      const files = this.getAllMarkdownFiles(projectResonance);
+      for (const filePath of files) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const contentHash = Bun.hash(content).toString(36);
+        if (this.seenContentHashes.has(contentHash)) {
+          skippedDupes++;
+          continue;
+        }
+        this.seenContentHashes.add(contentHash);
+        const relPath = path.relative(this.config.repoRoot, filePath);
+        const docs = this.parseResonanceFile(relPath, content, relPath);
+        documents.push(...docs);
+      }
+      totalFiles += files.length;
+    }
+
+    console.log(`Indexed ${documents.length} resonance documents from ${totalFiles} files (skipped ${skippedDupes} duplicate files)`);
     return documents;
   }
 
@@ -316,13 +339,17 @@ export class OracleIndexer {
    * Following claude-mem's pattern of splitting by sections
    * Now reads frontmatter tags and inherits them to all chunks
    */
-  private parseResonanceFile(filename: string, content: string): OracleDocument[] {
+  private parseResonanceFile(filename: string, content: string, sourceFileOverride?: string): OracleDocument[] {
     const documents: OracleDocument[] = [];
-    const sourceFile = `ψ/memory/resonance/${filename}`;
+    const sourceFile = sourceFileOverride || `ψ/memory/resonance/${filename}`;
     const now = Date.now();
 
     // Extract file-level tags from frontmatter
     const fileTags = this.parseFrontmatterTags(content);
+
+    // Infer project from path
+    const fileProject = this.parseFrontmatterProject(content)
+      || this.inferProjectFromPath(sourceFile);
 
     // Split by ### headers (principles, sections)
     const sections = content.split(/^###\s+/m).filter(s => s.trim());
@@ -344,7 +371,8 @@ export class OracleIndexer {
         content: `${title}: ${body}`,
         concepts: this.mergeConceptsWithTags(extractedConcepts, fileTags),
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        project: fileProject || undefined
       });
 
       // Split bullet points into sub-documents (granular pattern)
@@ -360,7 +388,8 @@ export class OracleIndexer {
             content: bulletText,
             concepts: this.mergeConceptsWithTags(bulletConcepts, fileTags),
             created_at: now,
-            updated_at: now
+            updated_at: now,
+            project: fileProject || undefined
           });
         });
       }

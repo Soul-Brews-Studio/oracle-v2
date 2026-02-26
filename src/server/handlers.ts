@@ -488,39 +488,42 @@ export function handleStats(dbPath: string) {
 
 /**
  * Get knowledge graph data
- * Limited to principles + sample learnings to avoid O(n²) explosion
+ * Samples from all types to avoid O(n²) explosion (~300 nodes max)
  */
 export function handleGraph() {
-  // Only get principles (always) + sample learnings (limited)
-  // This keeps graph manageable: ~163 principles + ~100 learnings = ~263 nodes max
-
-  // Get all principles using Drizzle
-  const principles = db.select({
+  const selectFields = {
     id: oracleDocuments.id,
     type: oracleDocuments.type,
     sourceFile: oracleDocuments.sourceFile,
     concepts: oracleDocuments.concepts,
     project: oracleDocuments.project
-  })
+  };
+
+  // Get random principles (limited)
+  const principles = db.select(selectFields)
     .from(oracleDocuments)
     .where(eq(oracleDocuments.type, 'principle'))
+    .orderBy(sql`RANDOM()`)
+    .limit(100)
     .all();
 
-  // Get random learnings using Drizzle
-  const learnings = db.select({
-    id: oracleDocuments.id,
-    type: oracleDocuments.type,
-    sourceFile: oracleDocuments.sourceFile,
-    concepts: oracleDocuments.concepts,
-    project: oracleDocuments.project
-  })
+  // Get random learnings (limited)
+  const learnings = db.select(selectFields)
     .from(oracleDocuments)
     .where(eq(oracleDocuments.type, 'learning'))
     .orderBy(sql`RANDOM()`)
     .limit(100)
     .all();
 
-  const docs = [...principles, ...learnings];
+  // Get random retros (limited)
+  const retros = db.select(selectFields)
+    .from(oracleDocuments)
+    .where(eq(oracleDocuments.type, 'retro'))
+    .orderBy(sql`RANDOM()`)
+    .limit(100)
+    .all();
+
+  const docs = [...principles, ...learnings, ...retros];
 
   // Build nodes
   const nodes = docs.map(doc => ({
