@@ -49,6 +49,9 @@ function initializeDatabase(sqliteDb: Database, drizzleDb: BunSQLiteDatabase<typ
 
   // Ensure indexing_status has its single row
   sqliteDb.exec('INSERT OR IGNORE INTO indexing_status (id, is_indexing) VALUES (1, 0)');
+
+  // One-time migration: normalize project casing to lowercase
+  sqliteDb.exec("UPDATE oracle_documents SET project = LOWER(project) WHERE project <> LOWER(project)");
 }
 
 /**
