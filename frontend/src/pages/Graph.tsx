@@ -61,6 +61,12 @@ function hashOnSphere(seed: number, data: number): THREE.Vector3 {
   return new THREE.Vector3(sinTheta * Math.cos(phi), sinTheta * Math.sin(phi), cosTheta);
 }
 
+function hashInSphere(seed: number, data: number): THREE.Vector3 {
+  const dir = hashOnSphere(seed, data);
+  const r = Math.cbrt(xxhash(seed + 77, data + 0x20000000));
+  return dir.multiplyScalar(r);
+}
+
 function cdsTween(state: { x: number; v: number }, target: number, speed: number, dt: number) {
   const n1 = state.v - (state.x - target) * (speed * speed * dt);
   const n2 = 1 + speed * dt;
@@ -700,7 +706,7 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
 
     const clusterCenters = new Map<number, THREE.Vector3>();
     const maxCluster = Math.max(...nodes.map(n => n.cluster || 0));
-    for (let i = 0; i <= maxCluster; i++) clusterCenters.set(i, hashOnSphere(42, i * 1000).multiplyScalar(6));
+    for (let i = 0; i <= maxCluster; i++) clusterCenters.set(i, hashInSphere(42, i * 1000).multiplyScalar(6));
 
     const geometry = new THREE.SphereGeometry(0.08, 16, 16);
     const meshes: THREE.Mesh[] = [];
@@ -714,9 +720,9 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
       const mesh = new THREE.Mesh(geometry, material);
       const cluster = node.cluster || 0;
       const clusterCenter = clusterCenters.get(cluster) || new THREE.Vector3();
-      const localPos = hashOnSphere(cluster + 100, i).multiplyScalar(1.5 + xxhash(42, i));
+      const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
-      const spherePos = hashOnSphere(42, i).multiplyScalar(6);
+      const spherePos = hashInSphere(42, i).multiplyScalar(7);
       mesh.position.copy(clusterPos);
       mesh.userData = { node, index: i, clusterPos: clusterPos.clone(), spherePos: spherePos.clone(), currentPos: clusterPos.clone() };
       scene.add(mesh);

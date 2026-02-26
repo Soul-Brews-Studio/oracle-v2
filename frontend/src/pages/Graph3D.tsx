@@ -52,6 +52,13 @@ function hashOnSphere(seed: number, data: number): THREE.Vector3 {
   );
 }
 
+// Uniform distribution inside a sphere (cube-root radius for volume uniformity)
+function hashInSphere(seed: number, data: number): THREE.Vector3 {
+  const dir = hashOnSphere(seed, data);
+  const r = Math.cbrt(xxhash(seed + 77, data + 0x20000000));  // cube-root for uniform volume
+  return dir.multiplyScalar(r);
+}
+
 // KlakMath: CdsTween spring
 function cdsTween(state: { x: number; v: number }, target: number, speed: number, dt: number) {
   const n1 = state.v - (state.x - target) * (speed * speed * dt);
@@ -384,7 +391,7 @@ export function Graph3D() {
     const maxCluster = Math.max(...nodes.map(n => n.cluster || 0));
 
     for (let i = 0; i <= maxCluster; i++) {
-      const pos = hashOnSphere(42, i * 1000).multiplyScalar(6);
+      const pos = hashInSphere(42, i * 1000).multiplyScalar(6);
       clusterCenters.set(i, pos);
     }
 
@@ -407,14 +414,14 @@ export function Graph3D() {
 
       const mesh = new THREE.Mesh(geometry, material);
 
-      // Cluster position
+      // Cluster position — distributed inside volume
       const cluster = node.cluster || 0;
       const clusterCenter = clusterCenters.get(cluster) || new THREE.Vector3();
-      const localPos = hashOnSphere(cluster + 100, i).multiplyScalar(1.5 + xxhash(42, i) * 1);
+      const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
 
-      // Sphere position (all on one sphere)
-      const spherePos = hashOnSphere(42, i).multiplyScalar(6);
+      // Sphere mode — distributed inside the sphere, not just on surface
+      const spherePos = hashInSphere(42, i).multiplyScalar(7);
 
       mesh.position.copy(clusterPos);
       mesh.userData = {
