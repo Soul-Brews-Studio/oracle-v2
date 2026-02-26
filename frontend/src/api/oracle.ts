@@ -42,6 +42,7 @@ export interface Stats {
   };
   last_indexed?: string;
   is_stale?: boolean;
+  vault_repo?: string;
 }
 
 // Search the knowledge base

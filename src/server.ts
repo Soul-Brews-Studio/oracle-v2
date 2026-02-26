@@ -406,7 +406,9 @@ app.get('/api/reflect', (c) => {
 
 // Stats
 app.get('/api/stats', (c) => {
-  return c.json(handleStats(DB_PATH));
+  const stats = handleStats(DB_PATH);
+  const vaultRepo = getSetting('vault_repo');
+  return c.json({ ...stats, vault_repo: vaultRepo });
 });
 
 // Logs

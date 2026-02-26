@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
+import { getDocDisplayInfo } from '../utils/docDisplay';
 import styles from './Superseded.module.css';
 
 const TYPE_FILTERS = [
@@ -146,7 +147,35 @@ export function Superseded() {
 
                 <div className={styles.meta}>
                   <span>by {log.superseded_by || 'user'}</span>
-                  {log.project && <span className={styles.project}>{log.project}</span>}
+                  {(() => {
+                    const info = getDocDisplayInfo(log.old_path || '', log.project);
+                    return (
+                      <>
+                        {info.projectVaultUrl ? (
+                          <a
+                            href={info.projectVaultUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.projectLink}
+                          >
+                            🔗 {info.projectDisplay}
+                          </a>
+                        ) : (
+                          <span className={styles.universalBadge}>✦ universal</span>
+                        )}
+                        {log.old_path && (
+                          <a
+                            href={info.vaultUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.vaultBadge}
+                          >
+                            🏛️ vault
+                          </a>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ))}

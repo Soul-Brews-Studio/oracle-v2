@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Document } from '../api/oracle';
+import { getDocDisplayInfo } from '../utils/docDisplay';
 import styles from './LogCard.module.css';
 
 interface LogCardProps {
@@ -135,6 +136,7 @@ export function LogCard({ doc }: LogCardProps) {
   const { when, what, how } = parseMetadata(doc);
   const title = getTitle(doc.content);
   const preview = getPreview(doc.content);
+  const info = getDocDisplayInfo(doc.source_file, doc.project);
 
   // Create URL-safe ID
   const docId = encodeURIComponent(doc.id);
@@ -147,6 +149,11 @@ export function LogCard({ doc }: LogCardProps) {
         <span className={styles.what}>{what}</span>
         <span className={styles.dot}>·</span>
         <span className={styles.how}>{how}</span>
+        {info.projectDisplay ? (
+          <span className={styles.projectBadge}>🔗 {info.projectDisplay}</span>
+        ) : (
+          <span className={styles.universalBadge}>✦ universal</span>
+        )}
       </div>
 
       <h2 className={styles.title}>{title}</h2>

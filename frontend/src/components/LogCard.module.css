@@ -76,3 +76,23 @@
   border-radius: 16px;
   font-size: 12px;
 }
+
+.projectBadge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(167, 139, 250, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  margin-left: auto;
+}
+
+.universalBadge {
+  font-size: 11px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-left: auto;
+}

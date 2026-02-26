@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { QuickLearn } from './components/QuickLearn';
@@ -15,6 +16,8 @@ import { Superseded } from './pages/Superseded';
 import { Login } from './pages/Login';
 import { Settings } from './pages/Settings';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { getStats } from './api/oracle';
+import { setVaultRepo } from './utils/docDisplay';
 
 // Protected route wrapper
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -62,6 +65,12 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    getStats().then(stats => {
+      if (stats.vault_repo) setVaultRepo(stats.vault_repo);
+    }).catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

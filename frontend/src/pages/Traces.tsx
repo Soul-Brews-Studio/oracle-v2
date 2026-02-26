@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SidebarLayout, TOOLS_NAV } from '../components/SidebarLayout';
+import { getDocDisplayInfo } from '../utils/docDisplay';
 import styles from './Traces.module.css';
 
 interface TraceSummary {
@@ -416,7 +417,22 @@ export function Traces() {
           <div className={styles.detailMeta}>
             {getStatusBadge(t.status, !!t.awakening)}
             <span className={styles.queryType}>{t.queryType}</span>
-            {t.project && <span className={styles.project}>{t.project}</span>}
+            {(() => {
+              const tInfo = getDocDisplayInfo('', t.project);
+              return tInfo.projectVaultUrl ? (
+                <a
+                  href={tInfo.projectVaultUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.projectLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  🔗 {tInfo.projectDisplay}
+                </a>
+              ) : (
+                <span className={styles.universalBadge}>✦ universal</span>
+              );
+            })()}
             <span className={styles.timestamp}>
               {new Date(t.createdAt).toLocaleString()}
             </span>
@@ -456,16 +472,34 @@ export function Traces() {
                           <div className={styles.previewLoading}>Loading...</div>
                         ) : (
                           <>
-                            {fileGithubUrl && (
+                            {(fileGithubUrl || t.project) && (
                               <div className={styles.githubLink}>
-                                <a
-                                  href={fileGithubUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={styles.viewOnGithub}
-                                >
-                                  View on GitHub →
-                                </a>
+                                {fileGithubUrl && (
+                                  <a
+                                    href={fileGithubUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={styles.viewOnGithub}
+                                  >
+                                    View on GitHub →
+                                  </a>
+                                )}
+                                {(() => {
+                                  const sourceFile = t.project
+                                    ? `${t.project.includes('github.com') ? '' : 'github.com/'}${t.project}/${f.path}`
+                                    : f.path;
+                                  const fInfo = getDocDisplayInfo(sourceFile, t.project);
+                                  return (
+                                    <a
+                                      href={fInfo.vaultUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={styles.vaultBadge}
+                                    >
+                                      🏛️ vault
+                                    </a>
+                                  );
+                                })()}
                               </div>
                             )}
                             {fileConcepts.length > 0 && (
@@ -676,7 +710,21 @@ export function Traces() {
               <h2 className={styles.linkedTraceQuery}>"{trace.query}"</h2>
               <div className={styles.linkedTraceMeta}>
                 <span className={styles.queryType}>{trace.queryType}</span>
-                {trace.project && <span className={styles.project}>{trace.project}</span>}
+                {(() => {
+                  const ltInfo = getDocDisplayInfo('', trace.project);
+                  return ltInfo.projectVaultUrl ? (
+                    <a
+                      href={ltInfo.projectVaultUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.projectLink}
+                    >
+                      🔗 {ltInfo.projectDisplay}
+                    </a>
+                  ) : (
+                    <span className={styles.universalBadge}>✦ universal</span>
+                  );
+                })()}
                 <span className={styles.timestamp}>
                   {new Date(trace.createdAt).toLocaleString()}
                 </span>
