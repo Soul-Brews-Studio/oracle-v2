@@ -607,20 +607,20 @@ export function Graph3D() {
         linkData.line.visible = targetOpacity > 0;
         mat.opacity = targetOpacity;
 
-        // Only update geometry for visible links
+        // Only update geometry for visible links — use stable currentPos (no breathing jitter)
         if (linkData.line.visible) {
-          const srcPos = meshes[linkData.sourceIdx].position;
-          const tgtPos = meshes[linkData.targetIdx].position;
+          const srcPos = meshes[linkData.sourceIdx].userData.currentPos as THREE.Vector3;
+          const tgtPos = meshes[linkData.targetIdx].userData.currentPos as THREE.Vector3;
           const linePositions = linkData.line.geometry.attributes.position.array as Float32Array;
           linePositions[0] = srcPos.x; linePositions[1] = srcPos.y; linePositions[2] = srcPos.z;
           linePositions[3] = tgtPos.x; linePositions[4] = tgtPos.y; linePositions[5] = tgtPos.z;
           linkData.line.geometry.attributes.position.needsUpdate = true;
         }
 
-        // Animate particles only for connected links
+        // Animate particles only for connected links — also use stable positions
         if (isConnected && particleIndex < 500) {
-          const srcPos = meshes[linkData.sourceIdx].position;
-          const tgtPos = meshes[linkData.targetIdx].position;
+          const srcPos = meshes[linkData.sourceIdx].userData.currentPos as THREE.Vector3;
+          const tgtPos = meshes[linkData.targetIdx].userData.currentPos as THREE.Vector3;
           const t = ((time * linkData.speed * hudRef.current.particleSpeed + linkData.offset) % 1);
           positions[particleIndex * 3] = srcPos.x + (tgtPos.x - srcPos.x) * t;
           positions[particleIndex * 3 + 1] = srcPos.y + (tgtPos.y - srcPos.y) * t;
