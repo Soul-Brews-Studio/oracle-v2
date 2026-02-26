@@ -52,10 +52,11 @@ function hashOnSphere(seed: number, data: number): THREE.Vector3 {
   );
 }
 
-// Uniform distribution inside a sphere (cube-root radius for volume uniformity)
+// Volume distribution: surface-biased but with real depth (range 0.2–1.0)
 function hashInSphere(seed: number, data: number): THREE.Vector3 {
   const dir = hashOnSphere(seed, data);
-  const r = Math.cbrt(xxhash(seed + 77, data + 0x20000000));  // cube-root for uniform volume
+  const raw = xxhash(seed + 77, data + 0x20000000);
+  const r = 0.2 + 0.8 * raw * raw;  // quadratic bias toward surface, but goes deep
   return dir.multiplyScalar(r);
 }
 
@@ -420,8 +421,8 @@ export function Graph3D() {
       const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
 
-      // Sphere mode — distributed inside the sphere, not just on surface
-      const spherePos = hashInSphere(42, i).multiplyScalar(7);
+      // Sphere mode — distributed from surface inward
+      const spherePos = hashInSphere(42, i).multiplyScalar(6);
 
       mesh.position.copy(clusterPos);
       mesh.userData = {

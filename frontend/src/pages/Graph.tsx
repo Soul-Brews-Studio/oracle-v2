@@ -63,7 +63,8 @@ function hashOnSphere(seed: number, data: number): THREE.Vector3 {
 
 function hashInSphere(seed: number, data: number): THREE.Vector3 {
   const dir = hashOnSphere(seed, data);
-  const r = Math.cbrt(xxhash(seed + 77, data + 0x20000000));
+  const raw = xxhash(seed + 77, data + 0x20000000);
+  const r = 0.2 + 0.8 * raw * raw;
   return dir.multiplyScalar(r);
 }
 
@@ -722,7 +723,7 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
       const clusterCenter = clusterCenters.get(cluster) || new THREE.Vector3();
       const localPos = hashInSphere(cluster + 100, i).multiplyScalar(2.5);
       const clusterPos = clusterCenter.clone().add(localPos);
-      const spherePos = hashInSphere(42, i).multiplyScalar(7);
+      const spherePos = hashInSphere(42, i).multiplyScalar(6);
       mesh.position.copy(clusterPos);
       mesh.userData = { node, index: i, clusterPos: clusterPos.clone(), spherePos: spherePos.clone(), currentPos: clusterPos.clone() };
       scene.add(mesh);
