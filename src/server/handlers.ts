@@ -177,7 +177,16 @@ export async function handleSearch(
 
   // Combine results using hybrid ranking
   const combined = combineSearchResults(ftsResults, vectorResults);
-  const total = Math.max(ftsTotal, combined.length);
+  // For vector-only mode, ftsTotal is 0 and combined.length is just top-N,
+  // so use the vector collection count as the total for accurate display
+  let total = Math.max(ftsTotal, combined.length);
+  if (mode === 'vector' && vectorResults.length > 0) {
+    try {
+      const client = getChromaClient();
+      const stats = await client.getStats();
+      if (stats.count > 0) total = stats.count;
+    } catch { /* keep combined.length */ }
+  }
 
   // Apply pagination
   const results = combined.slice(offset, offset + limit);

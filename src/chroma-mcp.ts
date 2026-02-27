@@ -303,24 +303,29 @@ export class ChromaMcpClient {
     }
 
     try {
+      // Use chroma_get_collection_count — returns a simple number,
+      // unlike chroma_get_collection_info which includes numpy arrays
+      // that break JSON parsing
       const result = await this.client.callTool({
-        name: 'chroma_get_collection_info',
+        name: 'chroma_get_collection_count',
         arguments: {
           collection_name: this.collectionName
         }
       });
 
       const content = result.content as Array<{ type: string; text?: string }>;
-      const data = content[0];
-      if (data.type !== 'text' || !data.text) {
-        return { count: 0 };
-      }
-
-      const parsed = safeJsonParse(data.text);
-      // chroma-mcp may return count in different field names
-      const count = parsed.count ?? parsed.num_documents ?? parsed.size ?? 0;
+      const text = content[0]?.text ?? '0';
+      // Response may be just a number or a JSON with count field
+      const count = parseInt(text, 10) || (() => {
+        try {
+          return safeJsonParse(text).count ?? 0;
+        } catch {
+          return 0;
+        }
+      })();
       return { count };
-    } catch {
+    } catch (error) {
+      console.warn('[ChromaMCP] getStats failed:', error instanceof Error ? error.message : String(error));
       return { count: 0 };
     }
   }
