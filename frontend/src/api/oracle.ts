@@ -43,11 +43,21 @@ export interface Stats {
   last_indexed?: string;
   is_stale?: boolean;
   vault_repo?: string;
+  vector?: {
+    enabled: boolean;
+    count: number;
+    collection: string;
+  };
 }
 
 // Search the knowledge base
-export async function search(query: string, type: string = 'all', limit: number = 20): Promise<SearchResult> {
-  const params = new URLSearchParams({ q: query, type, limit: String(limit) });
+export async function search(
+  query: string,
+  type: string = 'all',
+  limit: number = 20,
+  mode: 'hybrid' | 'fts' | 'vector' = 'hybrid'
+): Promise<SearchResult & { mode?: string; warning?: string }> {
+  const params = new URLSearchParams({ q: query, type, limit: String(limit), mode });
   const res = await fetch(`${API_BASE}/search?${params}`);
   return res.json();
 }
@@ -114,6 +124,30 @@ export async function getFile(filePath: string, project?: string): Promise<{ con
 // Get document by ID
 export async function getDoc(id: string): Promise<Document & { error?: string }> {
   const res = await fetch(`${API_BASE}/doc/${encodeURIComponent(id)}`);
+  return res.json();
+}
+
+// Get similar documents (vector nearest neighbors)
+export async function getSimilar(docId: string, limit: number = 5): Promise<{ results: Document[]; docId: string }> {
+  const params = new URLSearchParams({ id: docId, limit: String(limit) });
+  const res = await fetch(`${API_BASE}/similar?${params}`);
+  return res.json();
+}
+
+// Get knowledge map data (2D projection)
+export interface MapDocument {
+  id: string;
+  type: string;
+  source_file: string;
+  concepts: string[];
+  project: string | null;
+  x: number;
+  y: number;
+  created_at: string | null;
+}
+
+export async function getMap(): Promise<{ documents: MapDocument[]; total: number }> {
+  const res = await fetch(`${API_BASE}/map`);
   return res.json();
 }
 

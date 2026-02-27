@@ -159,13 +159,11 @@ export async function handleSearch(
               score: similarity
             };
           })
-          // Filter by project: include if project matches OR is universal (null)
+          // Filter by project: match FTS behavior
+          // No project → return ALL docs (same as FTS '1=1')
+          // With project → return project-specific + universal (null)
           .filter(r => {
-            if (!resolvedProject) {
-              // No project filter: only return universal
-              return r.project === null;
-            }
-            // With project: return project-specific + universal
+            if (!resolvedProject) return true;
             return r.project === resolvedProject || r.project === null;
           });
         console.log(`[Hybrid] Mapped ${vectorResults.length} vector results (after project filter), scores: ${vectorResults.slice(0, 3).map(r => r.score?.toFixed(3))}`);
@@ -557,6 +555,197 @@ export function handleGraph(limitPerType = 310) {
   }
 
   return { nodes, links };
+}
+
+/**
+ * Find similar documents by document ID (vector nearest neighbors)
+ */
+export async function handleSimilar(
+  docId: string,
+  limit: number = 5
+): Promise<{ results: SearchResult[]; docId: string }> {
+  try {
+    const client = getChromaClient();
+    const chromaResults = await client.queryById(docId, limit);
+
+    if (!chromaResults.ids || chromaResults.ids.length === 0) {
+      return { results: [], docId };
+    }
+
+    // Enrich with SQLite data (concepts, project)
+    const rows = db.select({
+      id: oracleDocuments.id,
+      type: oracleDocuments.type,
+      sourceFile: oracleDocuments.sourceFile,
+      concepts: oracleDocuments.concepts,
+      project: oracleDocuments.project
+    })
+      .from(oracleDocuments)
+      .where(inArray(oracleDocuments.id, chromaResults.ids))
+      .all();
+
+    const docMap = new Map(rows.map(r => [r.id, r]));
+
+    const results: SearchResult[] = chromaResults.ids.map((id: string, i: number) => {
+      const distance = chromaResults.distances?.[i] || 1;
+      const similarity = Math.max(0, 1 - distance / 2);
+      const doc = docMap.get(id);
+
+      return {
+        id,
+        type: doc?.type || chromaResults.metadatas?.[i]?.type || 'unknown',
+        content: chromaResults.documents?.[i] || '',
+        source_file: doc?.sourceFile || chromaResults.metadatas?.[i]?.source_file || '',
+        concepts: doc?.concepts ? JSON.parse(doc.concepts) : [],
+        project: doc?.project,
+        source: 'vector' as const,
+        score: similarity
+      };
+    });
+
+    return { results, docId };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[Similar Search Error]', msg);
+    throw new Error(`Similar search failed: ${msg}`);
+  }
+}
+
+/**
+ * Compute 2D map coordinates from embeddings using PCA
+ * Caches result in memory to avoid recomputing
+ */
+let mapCache: { data: any; timestamp: number } | null = null;
+const MAP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function handleMap(): Promise<{
+  documents: Array<{
+    id: string;
+    type: string;
+    source_file: string;
+    concepts: string[];
+    project: string | null;
+    x: number;
+    y: number;
+    created_at: string | null;
+  }>;
+  total: number;
+}> {
+  // Return cached result if fresh
+  if (mapCache && (Date.now() - mapCache.timestamp) < MAP_CACHE_TTL) {
+    return mapCache.data;
+  }
+
+  try {
+    // Get all docs from SQLite (no ChromaDB dependency)
+    const allDocs = db.select({
+      id: oracleDocuments.id,
+      type: oracleDocuments.type,
+      sourceFile: oracleDocuments.sourceFile,
+      concepts: oracleDocuments.concepts,
+      project: oracleDocuments.project,
+      createdAt: oracleDocuments.createdAt
+    })
+      .from(oracleDocuments)
+      .limit(5000)
+      .all();
+
+    if (allDocs.length === 0) {
+      return { documents: [], total: 0 };
+    }
+
+    // Group by project for spatial clustering
+    const projectMap = new Map<string, number>();
+    let projectIdx = 0;
+    for (const doc of allDocs) {
+      const proj = doc.project || '_default';
+      if (!projectMap.has(proj)) projectMap.set(proj, projectIdx++);
+    }
+
+    // Place cluster centers using Fibonacci sunflower (fills disk, no donut)
+    const golden = (1 + Math.sqrt(5)) / 2;
+    const totalClusters = projectMap.size;
+    const clusterCenters = new Map<number, { cx: number; cy: number }>();
+    for (let i = 0; i < totalClusters; i++) {
+      const angle = i * golden * Math.PI * 2;
+      const r = Math.sqrt((i + 0.5) / totalClusters) * 0.75;
+      clusterCenters.set(i, { cx: Math.cos(angle) * r, cy: Math.sin(angle) * r });
+    }
+
+    const documents = allDocs.map((doc) => {
+      const proj = doc.project || '_default';
+      const clusterIdx = projectMap.get(proj) || 0;
+      const center = clusterCenters.get(clusterIdx) || { cx: 0, cy: 0 };
+
+      // Hash-based scatter within cluster (box-muller-ish via hash)
+      const h1 = simpleHash(doc.id);
+      const h2 = simpleHash(doc.id + '_y');
+      // Map uniform [0,1) to roughly gaussian spread
+      const localX = (h1 - 0.5) * 0.2;
+      const localY = (h2 - 0.5) * 0.2;
+
+      const x = center.cx + localX;
+      const y = center.cy + localY;
+
+      return {
+        id: doc.id,
+        type: doc.type,
+        source_file: doc.sourceFile,
+        concepts: doc.concepts ? JSON.parse(doc.concepts) : [],
+        project: doc.project || null,
+        x,
+        y,
+        created_at: doc.createdAt ? new Date(doc.createdAt).toISOString() : null
+      };
+    });
+
+    const result = { documents, total: documents.length };
+    mapCache = { data: result, timestamp: Date.now() };
+    return result;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[Map Error]', msg);
+    throw new Error(`Map generation failed: ${msg}`);
+  }
+}
+
+/** Simple deterministic hash → [0,1) float */
+function simpleHash(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return ((hash >>> 0) % 10000) / 10000;
+}
+
+
+/**
+ * Get vector DB stats for the stats endpoint
+ * Uses getStats() which returns the count from the collection
+ */
+export async function handleVectorStats(): Promise<{
+  vector: { enabled: boolean; count: number; collection: string };
+}> {
+  try {
+    const client = getChromaClient();
+    const stats = await client.getStats();
+    return {
+      vector: {
+        enabled: true,
+        count: stats.count,
+        collection: 'oracle_knowledge'
+      }
+    };
+  } catch {
+    return {
+      vector: {
+        enabled: false,
+        count: 0,
+        collection: 'oracle_knowledge'
+      }
+    };
+  }
 }
 
 /**

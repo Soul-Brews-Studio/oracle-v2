@@ -15,6 +15,8 @@ import { Traces } from './pages/Traces';
 import { Superseded } from './pages/Superseded';
 import { Login } from './pages/Login';
 import { Settings } from './pages/Settings';
+import { Playground } from './pages/Playground';
+import { Map } from './pages/Map';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getStats } from './api/oracle';
 import { setVaultRepo } from './utils/docDisplay';
@@ -48,6 +50,8 @@ function AppContent() {
         <Route path="/feed" element={<RequireAuth><Feed /></RequireAuth>} />
         <Route path="/doc/:id" element={<RequireAuth><DocDetail /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><Search /></RequireAuth>} />
+        <Route path="/playground" element={<RequireAuth><Playground /></RequireAuth>} />
+        <Route path="/map" element={<RequireAuth><Map /></RequireAuth>} />
         <Route path="/graph" element={<RequireAuth><Graph /></RequireAuth>} />
         <Route path="/graph3d" element={<Navigate to="/graph" replace />} />
         <Route path="/handoff" element={<RequireAuth><Handoff /></RequireAuth>} />

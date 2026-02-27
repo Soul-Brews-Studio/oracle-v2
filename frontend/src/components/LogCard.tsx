@@ -132,17 +132,44 @@ function getTitle(content: string): string {
   return firstLine.slice(0, 80).trim() + '...';
 }
 
-export function LogCard({ doc }: LogCardProps) {
+interface LogCardOptions {
+  showScore?: boolean;
+}
+
+export function LogCard({ doc, showScore }: LogCardProps & LogCardOptions) {
   const { when, what, how } = parseMetadata(doc);
   const title = getTitle(doc.content);
   const preview = getPreview(doc.content);
   const info = getDocDisplayInfo(doc.source_file, doc.project);
+  const scorePercent = doc.score != null ? Math.round(doc.score * 100) : null;
 
   // Create URL-safe ID
   const docId = encodeURIComponent(doc.id);
 
+  // Card opacity scales subtly with score
+  const cardStyle = showScore && doc.score != null
+    ? { opacity: 0.6 + doc.score * 0.4 } as React.CSSProperties
+    : undefined;
+
   return (
-    <Link to={`/doc/${docId}`} state={{ doc }} className={styles.card}>
+    <Link to={`/doc/${docId}`} state={{ doc }} className={styles.card} style={cardStyle}>
+      {showScore && scorePercent != null && (
+        <div className={styles.scoreRow}>
+          <div className={styles.scoreBar}>
+            <div
+              className={styles.scoreBarFill}
+              style={{ width: `${scorePercent}%` }}
+            />
+          </div>
+          <span className={styles.scoreLabel}>{scorePercent}%</span>
+          {doc.source && (
+            <span className={`${styles.sourceBadge} ${styles[`source_${doc.source}`]}`}>
+              {doc.source.toUpperCase()}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className={styles.meta}>
         <span className={styles.when}>{when}</span>
         <span className={styles.dot}>·</span>

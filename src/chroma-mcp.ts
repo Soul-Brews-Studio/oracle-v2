@@ -10,6 +10,34 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+/** Parse JSON that may contain Python-style single quotes or numpy arrays */
+function safeJsonParse(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Python MCP tools sometimes return single-quoted dicts and numpy arrays
+    let fixed = text;
+
+    // Remove numpy array(...) wrappers → just the inner list
+    // array([[1,2],[3,4]]) → [[1,2],[3,4]]
+    fixed = fixed.replace(/\barray\(/g, '');
+    // Now fix orphan ) after ]] — e.g. ]]), → ]],
+    fixed = fixed.replace(/\]\]\)/g, ']]');
+
+    // Handle numpy truncation ellipsis: [..., 0.1, ..., 0.2] → remove ... entries
+    fixed = fixed.replace(/\.\.\.,\s*/g, '');
+
+    // Python → JSON conversions
+    fixed = fixed
+      .replace(/'/g, '"')
+      .replace(/\bNone\b/g, 'null')
+      .replace(/\bTrue\b/g, 'true')
+      .replace(/\bFalse\b/g, 'false');
+
+    return JSON.parse(fixed);
+  }
+}
+
 interface ChromaDocument {
   id: string;
   document: string;
@@ -254,7 +282,7 @@ export class ChromaMcpClient {
       throw new Error('Unexpected response type');
     }
 
-    const parsed = JSON.parse(data.text);
+    const parsed = safeJsonParse(data.text);
 
     return {
       ids: parsed.ids?.[0] || [],
@@ -288,10 +316,163 @@ export class ChromaMcpClient {
         return { count: 0 };
       }
 
-      const parsed = JSON.parse(data.text);
-      return { count: parsed.count || 0 };
+      const parsed = safeJsonParse(data.text);
+      // chroma-mcp may return count in different field names
+      const count = parsed.count ?? parsed.num_documents ?? parsed.size ?? 0;
+      return { count };
     } catch {
       return { count: 0 };
     }
+  }
+
+  /**
+   * Query by document ID to find similar documents (nearest neighbors)
+   */
+  async queryById(
+    docId: string,
+    nResults: number = 5
+  ): Promise<{ ids: string[]; documents: string[]; distances: number[]; metadatas: any[] }> {
+    // First get the document's embedding, then query by it
+    await this.connect();
+
+    if (!this.client) {
+      throw new Error('Chroma client not initialized');
+    }
+
+    // Get the document's embedding
+    const getResult = await this.client.callTool({
+      name: 'chroma_get_documents',
+      arguments: {
+        collection_name: this.collectionName,
+        ids: [docId],
+        include: ['embeddings', 'documents', 'metadatas']
+      }
+    });
+
+    const getContent = getResult.content as Array<{ type: string; text?: string }>;
+    const getData = getContent[0];
+    if (getData.type !== 'text' || !getData.text) {
+      throw new Error('Failed to get document embedding');
+    }
+
+    const getParsed = safeJsonParse(getData.text);
+    const embeddings = getParsed.embeddings?.[0];
+    if (!embeddings || embeddings.length === 0) {
+      throw new Error(`No embedding found for document: ${docId}`);
+    }
+
+    // Query using the embedding vector (request nResults+1 to exclude self)
+    const queryResult = await this.client.callTool({
+      name: 'chroma_query_documents',
+      arguments: {
+        collection_name: this.collectionName,
+        query_embeddings: [embeddings],
+        n_results: nResults + 1,
+        include: ['documents', 'metadatas', 'distances']
+      }
+    });
+
+    const queryContent = queryResult.content as Array<{ type: string; text?: string }>;
+    const queryData = queryContent[0];
+    if (queryData.type !== 'text' || !queryData.text) {
+      throw new Error('Unexpected response type from query');
+    }
+
+    const queryParsed = safeJsonParse(queryData.text);
+    const ids = queryParsed.ids?.[0] || [];
+    const documents = queryParsed.documents?.[0] || [];
+    const distances = queryParsed.distances?.[0] || [];
+    const metadatas = queryParsed.metadatas?.[0] || [];
+
+    // Filter out the source document itself
+    const filtered = ids.reduce((acc: any, id: string, i: number) => {
+      if (id !== docId) {
+        acc.ids.push(id);
+        acc.documents.push(documents[i]);
+        acc.distances.push(distances[i]);
+        acc.metadatas.push(metadatas[i]);
+      }
+      return acc;
+    }, { ids: [], documents: [], distances: [], metadatas: [] });
+
+    // Trim to requested count
+    return {
+      ids: filtered.ids.slice(0, nResults),
+      documents: filtered.documents.slice(0, nResults),
+      distances: filtered.distances.slice(0, nResults),
+      metadatas: filtered.metadatas.slice(0, nResults)
+    };
+  }
+
+  /**
+   * Get collection info including count and metadata
+   */
+  async getCollectionInfo(): Promise<{ count: number; name: string }> {
+    await this.connect();
+
+    if (!this.client) {
+      throw new Error('Chroma client not initialized');
+    }
+
+    try {
+      const result = await this.client.callTool({
+        name: 'chroma_get_collection_info',
+        arguments: {
+          collection_name: this.collectionName
+        }
+      });
+
+      const content = result.content as Array<{ type: string; text?: string }>;
+      const data = content[0];
+      if (data.type !== 'text' || !data.text) {
+        return { count: 0, name: this.collectionName };
+      }
+
+      const parsed = safeJsonParse(data.text);
+      return {
+        count: parsed.count || 0,
+        name: this.collectionName
+      };
+    } catch {
+      return { count: 0, name: this.collectionName };
+    }
+  }
+
+  /**
+   * Get all document embeddings for PCA/projection
+   * Returns IDs and their embedding vectors
+   */
+  async getAllEmbeddings(limit: number = 5000): Promise<{
+    ids: string[];
+    embeddings: number[][];
+    metadatas: any[];
+  }> {
+    await this.connect();
+
+    if (!this.client) {
+      throw new Error('Chroma client not initialized');
+    }
+
+    const result = await this.client.callTool({
+      name: 'chroma_get_documents',
+      arguments: {
+        collection_name: this.collectionName,
+        limit,
+        include: ['embeddings', 'metadatas']
+      }
+    });
+
+    const content = result.content as Array<{ type: string; text?: string }>;
+    const data = content[0];
+    if (data.type !== 'text' || !data.text) {
+      return { ids: [], embeddings: [], metadatas: [] };
+    }
+
+    const parsed = safeJsonParse(data.text);
+    return {
+      ids: parsed.ids || [],
+      embeddings: parsed.embeddings || [],
+      metadatas: parsed.metadatas || []
+    };
   }
 }

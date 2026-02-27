@@ -95,6 +95,12 @@ export function Overview() {
           <div className={styles.statValue}>{stats?.is_stale ? 'Stale' : 'Healthy'}</div>
           <div className={styles.statLabel}>Status</div>
         </div>
+        {stats?.vector && (
+          <div className={`${styles.statCard} ${stats.vector.enabled ? styles.healthy : ''}`}>
+            <div className={styles.statValue}>{stats.vector.count.toLocaleString()}</div>
+            <div className={styles.statLabel}>Embeddings</div>
+          </div>
+        )}
       </div>
 
       {wisdom && (
@@ -196,10 +202,15 @@ export function Overview() {
             <span className={styles.actionTitle}>Graph</span>
             <span className={styles.actionDesc}>Visualize knowledge</span>
           </a>
-          <a href="/handoff" className={styles.actionCard}>
-            <span className={styles.actionIcon}>📋</span>
-            <span className={styles.actionTitle}>Handoff</span>
-            <span className={styles.actionDesc}>Generate session summary</span>
+          <a href="/playground" className={styles.actionCard}>
+            <span className={styles.actionIcon}>🧪</span>
+            <span className={styles.actionTitle}>Playground</span>
+            <span className={styles.actionDesc}>Compare search modes</span>
+          </a>
+          <a href="/map" className={styles.actionCard}>
+            <span className={styles.actionIcon}>🗺️</span>
+            <span className={styles.actionTitle}>Map</span>
+            <span className={styles.actionDesc}>Full knowledge map</span>
           </a>
         </div>
       </div>

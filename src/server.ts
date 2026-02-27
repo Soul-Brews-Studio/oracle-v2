@@ -50,7 +50,10 @@ import {
   handleList,
   handleStats,
   handleGraph,
-  handleLearn
+  handleLearn,
+  handleSimilar,
+  handleMap,
+  handleVectorStats
 } from './server/handlers.ts';
 
 import {
@@ -404,11 +407,40 @@ app.get('/api/reflect', (c) => {
   return c.json(handleReflect());
 });
 
-// Stats
-app.get('/api/stats', (c) => {
+// Stats (extended with vector metrics)
+app.get('/api/stats', async (c) => {
   const stats = handleStats(DB_PATH);
   const vaultRepo = getSetting('vault_repo');
-  return c.json({ ...stats, vault_repo: vaultRepo });
+  let vectorStats = { vector: { enabled: false, count: 0, collection: 'oracle_knowledge' } };
+  try {
+    vectorStats = await handleVectorStats();
+  } catch { /* vector unavailable */ }
+  return c.json({ ...stats, ...vectorStats, vault_repo: vaultRepo });
+});
+
+// Similar documents (vector nearest neighbors)
+app.get('/api/similar', async (c) => {
+  const id = c.req.query('id');
+  if (!id) {
+    return c.json({ error: 'Missing query parameter: id' }, 400);
+  }
+  const limit = parseInt(c.req.query('limit') || '5');
+  try {
+    const result = await handleSimilar(id, limit);
+    return c.json(result);
+  } catch (e: any) {
+    return c.json({ error: e.message, results: [], docId: id }, 500);
+  }
+});
+
+// Knowledge map (2D projection of all embeddings)
+app.get('/api/map', async (c) => {
+  try {
+    const result = await handleMap();
+    return c.json(result);
+  } catch (e: any) {
+    return c.json({ error: e.message, documents: [], total: 0 }, 500);
+  }
 });
 
 // Logs
