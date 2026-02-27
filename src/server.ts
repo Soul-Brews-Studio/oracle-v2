@@ -641,6 +641,15 @@ app.get('/api/session/stats', (c) => {
 // Schedule Routes
 // ============================================================================
 
+// Serve raw schedule.md for frontend rendering
+app.get('/api/schedule/md', (c) => {
+  const schedulePath = path.join(process.env.HOME || '/tmp', '.oracle', 'ψ/inbox/schedule.md');
+  if (fs.existsSync(schedulePath)) {
+    return c.text(fs.readFileSync(schedulePath, 'utf-8'));
+  }
+  return c.text('', 404);
+});
+
 app.get('/api/schedule', async (c) => {
   const { handleScheduleList } = await import('./tools/schedule.ts');
   const ctx = { db, sqlite, repoRoot: REPO_ROOT } as any;
