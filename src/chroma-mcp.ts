@@ -121,7 +121,7 @@ export class ChromaMcpClient {
       try {
         await this.client.close();
       } catch (e) {
-        // Ignore close errors
+        console.warn('[ChromaMCP] client.close() error:', e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -130,7 +130,7 @@ export class ChromaMcpClient {
       try {
         await this.transport.close();
       } catch (e) {
-        // Ignore close errors
+        console.warn('[ChromaMCP] transport.close() error:', e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -157,8 +157,9 @@ export class ChromaMcpClient {
         }
       });
       console.log(`Collection '${this.collectionName}' exists`);
-    } catch {
-      // Collection doesn't exist, create it
+    } catch (error) {
+      // Collection may not exist — or this could be a connection error
+      console.warn('[ChromaMCP] ensureCollection get failed, attempting create:', error instanceof Error ? error.message : String(error));
       console.log(`Creating collection '${this.collectionName}'...`);
       await this.client.callTool({
         name: 'chroma_create_collection',
@@ -189,8 +190,8 @@ export class ChromaMcpClient {
         }
       });
       console.log(`Collection '${this.collectionName}' deleted`);
-    } catch {
-      // Collection doesn't exist, ignore
+    } catch (error) {
+      console.warn('[ChromaMCP] deleteCollection failed (may not exist):', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -438,7 +439,8 @@ export class ChromaMcpClient {
         count: parsed.count || 0,
         name: this.collectionName
       };
-    } catch {
+    } catch (error) {
+      console.warn('[ChromaMCP] getCollectionInfo failed:', error instanceof Error ? error.message : String(error));
       return { count: 0, name: this.collectionName };
     }
   }

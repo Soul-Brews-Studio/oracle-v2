@@ -185,7 +185,9 @@ export async function handleSearch(
       const client = getChromaClient();
       const stats = await client.getStats();
       if (stats.count > 0) total = stats.count;
-    } catch { /* keep combined.length */ }
+    } catch (error) {
+      console.warn('[Hybrid] getStats for vector-only total failed:', error instanceof Error ? error.message : String(error));
+    }
   }
 
   // Apply pagination
@@ -621,8 +623,21 @@ export async function handleSimilar(
 }
 
 /**
- * Compute 2D map coordinates from embeddings using PCA
- * Caches result in memory to avoid recomputing
+ * Compute 2D map coordinates for the knowledge map visualization.
+ *
+ * NOTE: Despite the function name mentioning PCA, this does NOT use real
+ * vector embeddings from ChromaDB. Instead it uses a deterministic hash-based
+ * layout: projects are placed via Fibonacci sunflower spiral, then docs are
+ * scattered within each project cluster using FNV-1a hash of sourceFile.
+ *
+ * Why not real embeddings?
+ * - getAllEmbeddings() over MCP stdio for 20k+ docs × 384-dim is very slow
+ * - numpy array() wrappers in chroma-mcp responses break JSON parsing
+ * - PCA projection would need a math library not currently in deps
+ *
+ * To upgrade: batch-fetch embeddings, run PCA server-side, cache the projection.
+ *
+ * Caches result in memory to avoid recomputing.
  */
 let mapCache: { data: any; timestamp: number } | null = null;
 const MAP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -784,7 +799,8 @@ export async function handleVectorStats(): Promise<{
         collection: 'oracle_knowledge'
       }
     };
-  } catch {
+  } catch (error) {
+    console.warn('[VectorStats] ChromaDB unavailable:', error instanceof Error ? error.message : String(error));
     return {
       vector: {
         enabled: false,
