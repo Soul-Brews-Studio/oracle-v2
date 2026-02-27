@@ -1,32 +1,119 @@
 /**
- * Oracle Schedule Handler
+ * Oracle Schedule Handler (Drizzle DB)
  *
- * Add appointments to the shared schedule file (~/.oracle/ψ/inbox/schedule.md).
- * Upserts a single document in the DB for search indexing.
+ * Source of truth: `schedule` table in oracle.db
+ * Auto-exports to ~/.oracle/ψ/inbox/schedule.md on write.
+ *
+ * Supports:
+ * - Add/list events with proper YYYY-MM-DD date queries
+ * - Filter by day, range, or keyword
+ * - Status: pending / done / cancelled
+ * - Recurring events (daily/weekly/monthly)
  */
 
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { oracleDocuments } from '../db/schema.ts';
+import { eq, and, gte, lte, like, asc, or } from 'drizzle-orm';
+import { schedule } from '../db/schema.ts';
 import type { ToolContext, ToolResponse, OracleScheduleAddInput, OracleScheduleListInput } from './types.ts';
 
-const SCHEDULE_ID = 'schedule_main';
 const SCHEDULE_REL = 'ψ/inbox/schedule.md';
 
 function getSchedulePath(): string {
   return path.join(os.homedir(), '.oracle', SCHEDULE_REL);
 }
 
+const MONTHS: Record<string, number> = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
+  apr: 4, april: 4, may: 5, jun: 6, june: 6,
+  jul: 7, july: 7, aug: 8, august: 8, sep: 9, september: 9,
+  oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+  // Thai abbreviated months
+  'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6,
+  'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
+};
+
+/**
+ * Parse flexible date input to YYYY-MM-DD.
+ * Handles: "5 Mar", "2026-03-05", "March 5", "5/3", "tomorrow", "today"
+ */
+function parseDate(input: string): string {
+  const trimmed = input.trim();
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const now = new Date();
+  const thisYear = now.getFullYear();
+
+  // Relative: today/tomorrow
+  if (/^today$/i.test(trimmed)) return fmtLocal(now);
+  if (/^tomorrow$/i.test(trimmed)) {
+    now.setDate(now.getDate() + 1);
+    return fmtLocal(now);
+  }
+
+  // "5 Mar", "5 March", "5 Mar 2026", "Mar 5", "March 5 2026"
+  const monthNameMatch = trimmed.match(/^(\d{1,2})\s+([A-Za-zก-๙.]+)(?:\s+(\d{4}))?$/i)
+    || trimmed.match(/^([A-Za-zก-๙.]+)\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i);
+  if (monthNameMatch) {
+    let day: number, monthStr: string, yearStr: string | undefined;
+    if (/^\d/.test(monthNameMatch[1])) {
+      day = parseInt(monthNameMatch[1]);
+      monthStr = monthNameMatch[2];
+      yearStr = monthNameMatch[3];
+    } else {
+      monthStr = monthNameMatch[1];
+      day = parseInt(monthNameMatch[2]);
+      yearStr = monthNameMatch[3];
+    }
+    const month = MONTHS[monthStr.toLowerCase()];
+    if (month && day >= 1 && day <= 31) {
+      const year = yearStr ? parseInt(yearStr) : thisYear;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  // DD/MM or DD/MM/YYYY
+  const slashMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+  if (slashMatch) {
+    const day = parseInt(slashMatch[1]);
+    const month = parseInt(slashMatch[2]);
+    const year = slashMatch[3]
+      ? (slashMatch[3].length === 2 ? 2000 + parseInt(slashMatch[3]) : parseInt(slashMatch[3]))
+      : thisYear;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  // Fallback: store with today's date
+  return fmtLocal(now);
+}
+
+function fmt(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Format date in local timezone (avoids UTC shift issues) */
+function fmtLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// ============================================================================
+// Tool definitions
+// ============================================================================
+
 export const scheduleAddToolDef = {
   name: 'oracle_schedule_add',
-  description: 'Add an appointment or event to the shared schedule. The schedule is per-human (not per-project) and shared across all Oracles via ~/.oracle/ψ/inbox/schedule.md.',
+  description: 'Add an appointment or event to the shared schedule. The schedule is per-human (not per-project) and shared across all Oracles.',
   inputSchema: {
     type: 'object',
     properties: {
       date: {
         type: 'string',
-        description: 'Date of the event (e.g. "5 Mar", "2026-03-05", "28 ก.พ.")'
+        description: 'Date of the event (e.g. "5 Mar", "2026-03-05", "tomorrow", "28 ก.พ.")'
       },
       event: {
         type: 'string',
@@ -39,6 +126,11 @@ export const scheduleAddToolDef = {
       notes: {
         type: 'string',
         description: 'Optional notes about the event'
+      },
+      recurring: {
+        type: 'string',
+        description: 'Optional recurrence: "daily", "weekly", "monthly"',
+        enum: ['daily', 'weekly', 'monthly']
       }
     },
     required: ['date', 'event']
@@ -47,137 +139,199 @@ export const scheduleAddToolDef = {
 
 export const scheduleListToolDef = {
   name: 'oracle_schedule_list',
-  description: 'List upcoming appointments from the shared schedule. Returns the full schedule markdown or filtered by keyword.',
+  description: 'List appointments from the shared schedule. Filter by date, range, or keyword. Defaults to today + 14 days.',
   inputSchema: {
     type: 'object',
     properties: {
+      date: {
+        type: 'string',
+        description: 'Specific date to query (e.g. "2026-03-05", "today", "tomorrow")'
+      },
+      from: {
+        type: 'string',
+        description: 'Range start date (inclusive). Defaults to today.'
+      },
+      to: {
+        type: 'string',
+        description: 'Range end date (inclusive). Defaults to 14 days from now.'
+      },
       filter: {
         type: 'string',
-        description: 'Optional keyword to filter events (e.g. "march", "เศรษฐ์", "workshop")'
+        description: 'Keyword to filter events (e.g. "standup", "เศรษฐ์")'
+      },
+      status: {
+        type: 'string',
+        description: 'Filter by status',
+        enum: ['pending', 'done', 'cancelled', 'all']
+      },
+      limit: {
+        type: 'number',
+        description: 'Max results (default 50)'
       }
     }
   }
 };
 
-export async function handleScheduleList(_ctx: ToolContext, input: OracleScheduleListInput): Promise<ToolResponse> {
-  const schedulePath = getSchedulePath();
-
-  if (!fs.existsSync(schedulePath)) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({ schedule: null, message: 'No schedule file found at ~/.oracle/ψ/inbox/schedule.md' }, null, 2)
-      }]
-    };
-  }
-
-  const content = fs.readFileSync(schedulePath, 'utf-8');
-
-  if (input.filter) {
-    // Filter lines containing the keyword (case-insensitive)
-    const keyword = input.filter.toLowerCase();
-    const lines = content.split('\n');
-    const matched = lines.filter(line =>
-      line.toLowerCase().includes(keyword) || line.startsWith('#') || line.startsWith('|--')
-    );
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          filter: input.filter,
-          results: matched.join('\n'),
-          total_lines: matched.filter(l => l.startsWith('|') && !l.startsWith('|--')).length
-        }, null, 2)
-      }]
-    };
-  }
-
-  return {
-    content: [{
-      type: 'text',
-      text: content
-    }]
-  };
-}
+// ============================================================================
+// Handlers
+// ============================================================================
 
 export async function handleScheduleAdd(ctx: ToolContext, input: OracleScheduleAddInput): Promise<ToolResponse> {
-  const { date, event, time, notes } = input;
-  const schedulePath = getSchedulePath();
-
-  // Ensure directory exists
-  fs.mkdirSync(path.dirname(schedulePath), { recursive: true });
-
-  // Read existing content or create new
-  let content: string;
-  if (fs.existsSync(schedulePath)) {
-    content = fs.readFileSync(schedulePath, 'utf-8');
-  } else {
-    content = `# Schedule\n\n**Updated**: ${new Date().toISOString().slice(0, 10)}\n`;
-  }
-
-  // Build the new row
-  const timeStr = time || 'TBD';
-  const notesStr = notes || '';
-  const newRow = `| ${date} | ${timeStr} | ${event} | ${notesStr} |`;
-
-  // Find the right section to append to, or create one
-  // Look for the most recent month table (pattern: ## Month Year ... | Date | ...)
-  const monthMatch = content.match(/^(## .+\n\n\|[^\n]+\n\|[-| ]+\n)((?:\|[^\n]+\n)*)/m);
-  if (monthMatch) {
-    // Append to existing month table
-    const tableEnd = content.indexOf(monthMatch[0]) + monthMatch[0].length;
-    content = content.slice(0, tableEnd) + newRow + '\n' + content.slice(tableEnd);
-  } else {
-    // No table found — append a new section
-    const now = new Date();
-    const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    const section = `\n## ${monthName}\n\n| Date | Time | Event | Notes |\n|------|------|-------|-------|\n${newRow}\n`;
-    content += section;
-  }
-
-  // Update the "Updated" line
-  const today = new Date().toISOString().slice(0, 10);
-  content = content.replace(/\*\*Updated\*\*:.*/, `**Updated**: ${today}`);
-
-  // Write the file
-  fs.writeFileSync(schedulePath, content, 'utf-8');
-
-  // Upsert into oracle_documents (single row for the whole schedule)
+  const { event, time, notes } = input;
+  const dateCanonical = parseDate(input.date);
   const now = Date.now();
-  ctx.db.insert(oracleDocuments).values({
-    id: SCHEDULE_ID,
-    type: 'schedule',
-    sourceFile: SCHEDULE_REL,
-    concepts: JSON.stringify(['schedule', 'appointments', 'calendar']),
+
+  const result = ctx.db.insert(schedule).values({
+    date: dateCanonical,
+    dateRaw: input.date,
+    time: time || null,
+    event,
+    notes: notes || null,
+    recurring: (input as any).recurring || null,
+    status: 'pending',
     createdAt: now,
     updatedAt: now,
-    indexedAt: now,
-    origin: null,
-    project: null,  // universal, not per-project
-    createdBy: 'oracle_schedule_add',
-  }).onConflictDoUpdate({
-    target: oracleDocuments.id,
-    set: {
-      updatedAt: now,
-      indexedAt: now,
-    }
-  }).run();
+  }).returning({ id: schedule.id }).get();
 
-  // Upsert FTS5 row
-  ctx.sqlite.prepare(`
-    INSERT OR REPLACE INTO oracle_fts (id, content, concepts)
-    VALUES (?, ?, ?)
-  `).run(SCHEDULE_ID, content, 'schedule appointments calendar');
+  // Auto-export to schedule.md
+  exportScheduleToMarkdown(ctx);
 
   return {
     content: [{
       type: 'text',
       text: JSON.stringify({
         success: true,
-        file: schedulePath,
-        added: { date, event, time: timeStr, notes: notesStr },
-        message: 'Appointment added to shared schedule'
+        id: result.id,
+        date: dateCanonical,
+        dateRaw: input.date,
+        event,
+        time: time || 'TBD',
+        notes: notes || '',
+        message: 'Event added to schedule'
       }, null, 2)
     }]
   };
+}
+
+export async function handleScheduleList(ctx: ToolContext, input: OracleScheduleListInput): Promise<ToolResponse> {
+  const limit = (input as any).limit || 50;
+  const statusFilter = (input as any).status || 'pending';
+
+  // Build where conditions
+  const conditions = [];
+
+  if (statusFilter !== 'all') {
+    conditions.push(eq(schedule.status, statusFilter));
+  }
+
+  if ((input as any).date) {
+    // Single day query
+    const day = parseDate((input as any).date);
+    conditions.push(eq(schedule.date, day));
+  } else {
+    // Range query
+    const from = (input as any).from ? parseDate((input as any).from) : fmt(new Date());
+    const to = (input as any).to ? parseDate((input as any).to) : (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 14);
+      return fmt(d);
+    })();
+    conditions.push(gte(schedule.date, from));
+    conditions.push(lte(schedule.date, to));
+  }
+
+  if (input.filter) {
+    conditions.push(or(
+      like(schedule.event, `%${input.filter}%`),
+      like(schedule.notes, `%${input.filter}%`)
+    )!);
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const events = ctx.db.select()
+    .from(schedule)
+    .where(where)
+    .orderBy(asc(schedule.date), asc(schedule.time))
+    .limit(limit)
+    .all();
+
+  // Group by date for calendar-style output
+  const byDate: Record<string, typeof events> = {};
+  for (const ev of events) {
+    if (!byDate[ev.date]) byDate[ev.date] = [];
+    byDate[ev.date].push(ev);
+  }
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        total: events.length,
+        events: events.map(e => ({
+          id: e.id,
+          date: e.date,
+          dateRaw: e.dateRaw,
+          time: e.time || 'TBD',
+          event: e.event,
+          notes: e.notes,
+          recurring: e.recurring,
+          status: e.status,
+        })),
+        byDate,
+      }, null, 2)
+    }]
+  };
+}
+
+// ============================================================================
+// Markdown export (auto-syncs DB → schedule.md)
+// ============================================================================
+
+function exportScheduleToMarkdown(ctx: ToolContext): void {
+  const events = ctx.db.select()
+    .from(schedule)
+    .where(eq(schedule.status, 'pending'))
+    .orderBy(asc(schedule.date), asc(schedule.time))
+    .all();
+
+  // Group by month
+  const byMonth: Record<string, typeof events> = {};
+  for (const ev of events) {
+    const month = ev.date.slice(0, 7); // YYYY-MM
+    if (!byMonth[month]) byMonth[month] = [];
+    byMonth[month].push(ev);
+  }
+
+  let md = `# Schedule\n\n**Updated**: ${fmt(new Date())}\n**Source**: oracle.db (auto-generated)\n`;
+
+  for (const [month, monthEvents] of Object.entries(byMonth).sort()) {
+    const d = new Date(month + '-01');
+    const monthName = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    md += `\n## ${monthName}\n\n`;
+    md += `| Date | Time | Event | Notes |\n`;
+    md += `|------|------|-------|-------|\n`;
+    for (const ev of monthEvents) {
+      const dateDisplay = ev.dateRaw || ev.date;
+      const recur = ev.recurring ? ` (${ev.recurring})` : '';
+      md += `| ${dateDisplay} | ${ev.time || 'TBD'} | ${ev.event}${recur} | ${ev.notes || ''} |\n`;
+    }
+  }
+
+  // Recurring section
+  const recurring = events.filter(e => e.recurring);
+  if (recurring.length > 0) {
+    md += `\n## Recurring\n\n`;
+    md += `| Day | Time | Event |\n`;
+    md += `|-----|------|-------|\n`;
+    for (const ev of recurring) {
+      md += `| ${ev.recurring} | ${ev.time || 'TBD'} | ${ev.event} |\n`;
+    }
+  }
+
+  md += `\n---\n\nManaged by Oracle. Add events via \`oracle_schedule_add\` or the web UI.\n`;
+
+  const schedulePath = getSchedulePath();
+  fs.mkdirSync(path.dirname(schedulePath), { recursive: true });
+  fs.writeFileSync(schedulePath, md, 'utf-8');
 }

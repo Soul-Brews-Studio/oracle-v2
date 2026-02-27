@@ -41,7 +41,8 @@ import {
   learnLog,
   supersedeLog,
   indexingStatus,
-  settings
+  settings,
+  schedule
 } from './db/index.ts';
 
 import {
@@ -642,15 +643,17 @@ app.get('/api/session/stats', (c) => {
 
 app.get('/api/schedule', async (c) => {
   const { handleScheduleList } = await import('./tools/schedule.ts');
-  const filter = c.req.query('filter');
   const ctx = { db, sqlite, repoRoot: REPO_ROOT } as any;
-  const result = await handleScheduleList(ctx, { filter });
-  const text = result.content[0]?.text || '';
-  try {
-    return c.json(JSON.parse(text));
-  } catch {
-    return c.json({ schedule: text });
-  }
+  const result = await handleScheduleList(ctx, {
+    date: c.req.query('date'),
+    from: c.req.query('from'),
+    to: c.req.query('to'),
+    filter: c.req.query('filter'),
+    status: c.req.query('status') as any,
+    limit: c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined,
+  });
+  const text = result.content[0]?.text || '{}';
+  return c.json(JSON.parse(text));
 });
 
 app.post('/api/schedule', async (c) => {
@@ -660,6 +663,19 @@ app.post('/api/schedule', async (c) => {
   const result = await handleScheduleAdd(ctx, body);
   const text = result.content[0]?.text || '{}';
   return c.json(JSON.parse(text));
+
+});
+
+// Update schedule event status
+app.patch('/api/schedule/:id', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const body = await c.req.json();
+  const now = Date.now();
+  db.update(schedule)
+    .set({ ...body, updatedAt: now })
+    .where(eq(schedule.id, id))
+    .run();
+  return c.json({ success: true, id });
 });
 
 // ============================================================================

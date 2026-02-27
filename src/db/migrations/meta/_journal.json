@@ -36,6 +36,13 @@
       "when": 1772064000000,
       "tag": "0004_warm_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1772236800000,
+      "tag": "0005_add_schedule",
+      "breakpoints": true
     }
   ]
 }

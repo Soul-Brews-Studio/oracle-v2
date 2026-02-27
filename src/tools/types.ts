@@ -86,8 +86,14 @@ export interface OracleScheduleAddInput {
   event: string;
   time?: string;
   notes?: string;
+  recurring?: 'daily' | 'weekly' | 'monthly';
 }
 
 export interface OracleScheduleListInput {
+  date?: string;
+  from?: string;
+  to?: string;
   filter?: string;
+  status?: 'pending' | 'done' | 'cancelled' | 'all';
+  limit?: number;
 }

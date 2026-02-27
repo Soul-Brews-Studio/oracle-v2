@@ -28,5 +28,6 @@ export default defineConfig({
     'supersede_log',  // Issue #18
     'activity_log',   // User activity tracking
     'settings',       // Auth & app settings
+    'schedule',       // Appointments & events
   ],
 });
