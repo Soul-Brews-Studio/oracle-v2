@@ -29,9 +29,19 @@ const MONTHS: Record<string, number> = {
   apr: 4, april: 4, may: 5, jun: 6, june: 6,
   jul: 7, july: 7, aug: 8, august: 8, sep: 9, september: 9,
   oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
-  // Thai abbreviated months
-  'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6,
-  'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
+  // Thai abbreviated months (formal: ม.ค., common: มค.)
+  'ม.ค.': 1, 'มค.': 1, 'มค': 1,
+  'ก.พ.': 2, 'กพ.': 2, 'กพ': 2,
+  'มี.ค.': 3, 'มีค.': 3, 'มีค': 3,
+  'เม.ย.': 4, 'เมย.': 4, 'เมย': 4,
+  'พ.ค.': 5, 'พค.': 5, 'พค': 5,
+  'มิ.ย.': 6, 'มิย.': 6, 'มิย': 6,
+  'ก.ค.': 7, 'กค.': 7, 'กค': 7,
+  'ส.ค.': 8, 'สค.': 8, 'สค': 8,
+  'ก.ย.': 9, 'กย.': 9, 'กย': 9,
+  'ต.ค.': 10, 'ตค.': 10, 'ตค': 10,
+  'พ.ย.': 11, 'พย.': 11, 'พย': 11,
+  'ธ.ค.': 12, 'ธค.': 12, 'ธค': 12,
 };
 
 /**
@@ -68,7 +78,7 @@ function parseDate(input: string): string {
       day = parseInt(monthNameMatch[2]);
       yearStr = monthNameMatch[3];
     }
-    const month = MONTHS[monthStr.toLowerCase()];
+    const month = MONTHS[monthStr.toLowerCase()] || MONTHS[monthStr];
     if (month && day >= 1 && day <= 31) {
       const year = yearStr ? parseInt(yearStr) : thisYear;
       return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
