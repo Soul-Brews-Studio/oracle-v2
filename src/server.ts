@@ -637,6 +637,32 @@ app.get('/api/session/stats', (c) => {
 });
 
 // ============================================================================
+// Schedule Routes
+// ============================================================================
+
+app.get('/api/schedule', async (c) => {
+  const { handleScheduleList } = await import('./tools/schedule.ts');
+  const filter = c.req.query('filter');
+  const ctx = { db, sqlite, repoRoot: REPO_ROOT } as any;
+  const result = await handleScheduleList(ctx, { filter });
+  const text = result.content[0]?.text || '';
+  try {
+    return c.json(JSON.parse(text));
+  } catch {
+    return c.json({ schedule: text });
+  }
+});
+
+app.post('/api/schedule', async (c) => {
+  const { handleScheduleAdd } = await import('./tools/schedule.ts');
+  const body = await c.req.json();
+  const ctx = { db, sqlite, repoRoot: REPO_ROOT } as any;
+  const result = await handleScheduleAdd(ctx, body);
+  const text = result.content[0]?.text || '{}';
+  return c.json(JSON.parse(text));
+});
+
+// ============================================================================
 // Thread Routes
 // ============================================================================
 

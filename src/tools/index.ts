@@ -17,6 +17,8 @@ export type {
   OracleHandoffInput,
   OracleInboxInput,
   OracleVerifyInput,
+  OracleScheduleAddInput,
+  OracleScheduleListInput,
 } from './types.ts';
 
 // Search (+ pure helpers)
@@ -61,6 +63,9 @@ export { inboxToolDef, handleInbox } from './inbox.ts';
 
 // Verify (bridge to verify/handler.ts)
 export { verifyToolDef, handleVerify } from './verify.ts';
+
+// Schedule
+export { scheduleAddToolDef, handleScheduleAdd, scheduleListToolDef, handleScheduleList } from './schedule.ts';
 
 // Forum
 export type {

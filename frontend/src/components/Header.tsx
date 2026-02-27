@@ -24,6 +24,7 @@ const toolsItems = [
   { path: '/traces', label: 'Traces' },
   { path: '/superseded', label: 'Superseded' },
   { path: '/handoff', label: 'Handoff' },
+  { path: '/schedule', label: 'Schedule' },
 ] as const;
 
 interface SessionStats {

@@ -80,3 +80,14 @@ export interface OracleVerifyInput {
   check?: boolean;
   type?: string;
 }
+
+export interface OracleScheduleAddInput {
+  date: string;
+  event: string;
+  time?: string;
+  notes?: string;
+}
+
+export interface OracleScheduleListInput {
+  filter?: string;
+}

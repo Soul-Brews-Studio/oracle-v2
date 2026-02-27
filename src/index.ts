@@ -34,6 +34,8 @@ import {
   handoffToolDef, handleHandoff,
   inboxToolDef, handleInbox,
   verifyToolDef, handleVerify,
+  scheduleAddToolDef, handleScheduleAdd,
+  scheduleListToolDef, handleScheduleList,
   forumToolDefs,
   handleThread, handleThreads, handleThreadRead, handleThreadUpdate,
   traceToolDefs,
@@ -51,6 +53,8 @@ import type {
   OracleHandoffInput,
   OracleInboxInput,
   OracleVerifyInput,
+  OracleScheduleAddInput,
+  OracleScheduleListInput,
   OracleThreadInput,
   OracleThreadsInput,
   OracleThreadReadInput,
@@ -71,6 +75,7 @@ const WRITE_TOOLS = [
   'oracle_trace',
   'oracle_supersede',
   'oracle_handoff',
+  'oracle_schedule_add',
 ];
 
 class OracleMCPServer {
@@ -166,7 +171,7 @@ class OracleMCPServer {
         // Meta-documentation tool
         {
           name: '____IMPORTANT',
-          description: `ORACLE WORKFLOW GUIDE (v${this.version}):\n\n1. SEARCH & DISCOVER\n   oracle_search(query) → Find knowledge by keywords/vectors\n   oracle_list() → Browse all documents\n   oracle_concepts() → See topic coverage\n\n2. REFLECT\n   oracle_reflect() → Random wisdom for alignment\n\n3. LEARN & REMEMBER\n   oracle_learn(pattern) → Add new patterns/learnings\n   oracle_thread(message) → Multi-turn discussions\n   ⚠️ BEFORE adding: search for similar topics first!\n   If updating old info → use oracle_supersede(oldId, newId)\n\n4. TRACE & DISTILL\n   oracle_trace(query) → Log discovery sessions with dig points\n   oracle_trace_list() → Find past traces\n   oracle_trace_get(id) → Explore dig points (files, commits, issues)\n   oracle_trace_link(prevId, nextId) → Chain related traces together\n   oracle_trace_chain(id) → View the full linked chain\n\n5. HANDOFF & INBOX\n   oracle_handoff(content) → Save session context for next session\n   oracle_inbox() → List pending handoffs\n\n6. SUPERSEDE (when info changes)\n   oracle_supersede(oldId, newId, reason) → Mark old doc as outdated\n   "Nothing is Deleted" — old preserved, just marked superseded\n\n7. VERIFY (health check)\n   oracle_verify(check?) → Compare ψ/ files vs DB index\n   check=true (default): read-only report\n   check=false: also flag orphaned entries\n\nPhilosophy: "Nothing is Deleted" — All interactions logged.`,
+          description: `ORACLE WORKFLOW GUIDE (v${this.version}):\n\n1. SEARCH & DISCOVER\n   oracle_search(query) → Find knowledge by keywords/vectors\n   oracle_list() → Browse all documents\n   oracle_concepts() → See topic coverage\n\n2. REFLECT\n   oracle_reflect() → Random wisdom for alignment\n\n3. LEARN & REMEMBER\n   oracle_learn(pattern) → Add new patterns/learnings\n   oracle_thread(message) → Multi-turn discussions\n   ⚠️ BEFORE adding: search for similar topics first!\n   If updating old info → use oracle_supersede(oldId, newId)\n\n4. TRACE & DISTILL\n   oracle_trace(query) → Log discovery sessions with dig points\n   oracle_trace_list() → Find past traces\n   oracle_trace_get(id) → Explore dig points (files, commits, issues)\n   oracle_trace_link(prevId, nextId) → Chain related traces together\n   oracle_trace_chain(id) → View the full linked chain\n\n5. HANDOFF & INBOX\n   oracle_handoff(content) → Save session context for next session\n   oracle_inbox() → List pending handoffs\n\n6. SCHEDULE (shared across all Oracles)\n   oracle_schedule_add(date, event) → Add appointment to shared schedule\n   oracle_schedule_list(filter?) → View upcoming events\n   Schedule lives at ~/.oracle/ψ/inbox/schedule.md (per-human, not per-project)\n\n7. SUPERSEDE (when info changes)\n   oracle_supersede(oldId, newId, reason) → Mark old doc as outdated\n   "Nothing is Deleted" — old preserved, just marked superseded\n\n7. VERIFY (health check)\n   oracle_verify(check?) → Compare ψ/ files vs DB index\n   check=true (default): read-only report\n   check=false: also flag orphaned entries\n\nPhilosophy: "Nothing is Deleted" — All interactions logged.`,
           inputSchema: { type: 'object', properties: {} }
         },
         // Core tools (from src/tools/)
@@ -185,6 +190,8 @@ class OracleMCPServer {
         handoffToolDef,
         inboxToolDef,
         verifyToolDef,
+        scheduleAddToolDef,
+        scheduleListToolDef,
       ];
 
       const tools = this.readOnly
@@ -233,6 +240,10 @@ class OracleMCPServer {
             return await handleInbox(ctx, request.params.arguments as unknown as OracleInboxInput);
           case 'oracle_verify':
             return await handleVerify(ctx, request.params.arguments as unknown as OracleVerifyInput);
+          case 'oracle_schedule_add':
+            return await handleScheduleAdd(ctx, request.params.arguments as unknown as OracleScheduleAddInput);
+          case 'oracle_schedule_list':
+            return await handleScheduleList(ctx, request.params.arguments as unknown as OracleScheduleListInput);
 
           // Forum tools (delegated to src/tools/forum.ts)
           case 'oracle_thread':

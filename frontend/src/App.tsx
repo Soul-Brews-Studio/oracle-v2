@@ -17,6 +17,7 @@ import { Login } from './pages/Login';
 import { Settings } from './pages/Settings';
 import { Playground } from './pages/Playground';
 import { Map } from './pages/Map';
+import { Schedule } from './pages/Schedule';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getStats } from './api/oracle';
 import { setVaultRepo } from './utils/docDisplay';
@@ -61,6 +62,7 @@ function AppContent() {
         <Route path="/traces" element={<RequireAuth><Traces /></RequireAuth>} />
         <Route path="/traces/:id" element={<RequireAuth><Traces /></RequireAuth>} />
         <Route path="/superseded" element={<RequireAuth><Superseded /></RequireAuth>} />
+        <Route path="/schedule" element={<RequireAuth><Schedule /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
       </Routes>
       {!isLoginPage && <QuickLearn />}

@@ -383,7 +383,7 @@ export function Map() {
         const basePos = mesh.userData.basePos as THREE.Vector3;
         const baseScale = mesh.userData.baseScale as number;
         const mat = mesh.material as THREE.MeshStandardMaterial;
-        const isMatched = hasSearch && matches.has(doc.id);
+        const isMatched = hasSearch && (matches.has(doc.id) || (doc.chunk_ids?.some(cid => matches.has(cid)) ?? false));
         const isFaded = hasSearch && !isMatched;
 
         // Breathing — gentle per-axis drift (galaxy float, not atomic pulse)

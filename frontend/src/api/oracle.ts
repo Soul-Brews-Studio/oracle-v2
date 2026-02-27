@@ -140,6 +140,7 @@ export interface MapDocument {
   type: string;
   source_file: string;
   concepts: string[];
+  chunk_ids?: string[];
   project: string | null;
   x: number;
   y: number;

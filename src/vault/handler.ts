@@ -95,6 +95,7 @@ const PROJECT_CATEGORIES = [
 // Universal categories — no project prefix
 const UNIVERSAL_CATEGORIES = [
   'ψ/memory/resonance/',
+  'ψ/inbox/schedule.md',
 ];
 
 /**

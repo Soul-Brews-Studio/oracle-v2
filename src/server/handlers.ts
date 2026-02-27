@@ -624,6 +624,7 @@ export async function handleMap(): Promise<{
     type: string;
     source_file: string;
     concepts: string[];
+    chunk_ids: string[];
     project: string | null;
     x: number;
     y: number;
@@ -647,17 +648,50 @@ export async function handleMap(): Promise<{
       createdAt: oracleDocuments.createdAt
     })
       .from(oracleDocuments)
-      .limit(5000)
       .all();
 
     if (allDocs.length === 0) {
       return { documents: [], total: 0 };
     }
 
+    // Deduplicate by source_file — merge concepts and collect chunk IDs
+    const fileMap = new Map<string, {
+      id: string;
+      type: string;
+      sourceFile: string;
+      allConcepts: string[];
+      chunkIds: string[];
+      project: string | null;
+      createdAt: number | null;
+    }>();
+    for (const doc of allDocs) {
+      const key = doc.sourceFile;
+      const existing = fileMap.get(key);
+      if (!existing) {
+        const concepts = doc.concepts ? JSON.parse(doc.concepts) : [];
+        fileMap.set(key, {
+          id: doc.id,
+          type: doc.type,
+          sourceFile: doc.sourceFile,
+          allConcepts: concepts,
+          chunkIds: [doc.id],
+          project: doc.project || null,
+          createdAt: doc.createdAt
+        });
+      } else {
+        existing.chunkIds.push(doc.id);
+        const newConcepts: string[] = doc.concepts ? JSON.parse(doc.concepts) : [];
+        for (const c of newConcepts) {
+          if (!existing.allConcepts.includes(c)) existing.allConcepts.push(c);
+        }
+      }
+    }
+    const dedupedDocs = Array.from(fileMap.values());
+
     // Group by project for spatial clustering
     const projectMap = new Map<string, number>();
     let projectIdx = 0;
-    for (const doc of allDocs) {
+    for (const doc of dedupedDocs) {
       const proj = doc.project || '_default';
       if (!projectMap.has(proj)) projectMap.set(proj, projectIdx++);
     }
@@ -672,14 +706,17 @@ export async function handleMap(): Promise<{
       clusterCenters.set(i, { cx: Math.cos(angle) * r, cy: Math.sin(angle) * r });
     }
 
-    const documents = allDocs.map((doc) => {
+    // Apply limit after dedup
+    const limitedDocs = dedupedDocs.slice(0, 10000);
+
+    const documents = limitedDocs.map((doc) => {
       const proj = doc.project || '_default';
       const clusterIdx = projectMap.get(proj) || 0;
       const center = clusterCenters.get(clusterIdx) || { cx: 0, cy: 0 };
 
-      // Hash-based scatter within cluster (box-muller-ish via hash)
-      const h1 = simpleHash(doc.id);
-      const h2 = simpleHash(doc.id + '_y');
+      // Hash-based scatter within cluster — use sourceFile for stable position per file
+      const h1 = simpleHash(doc.sourceFile);
+      const h2 = simpleHash(doc.sourceFile + '_y');
       // Map uniform [0,1) to roughly gaussian spread
       const localX = (h1 - 0.5) * 0.2;
       const localY = (h2 - 0.5) * 0.2;
@@ -691,8 +728,9 @@ export async function handleMap(): Promise<{
         id: doc.id,
         type: doc.type,
         source_file: doc.sourceFile,
-        concepts: doc.concepts ? JSON.parse(doc.concepts) : [],
-        project: doc.project || null,
+        concepts: doc.allConcepts,
+        chunk_ids: doc.chunkIds,
+        project: doc.project,
         x,
         y,
         created_at: doc.createdAt ? new Date(doc.createdAt).toISOString() : null

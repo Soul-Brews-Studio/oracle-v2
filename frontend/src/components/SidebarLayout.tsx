@@ -34,6 +34,7 @@ export const TOOLS_NAV: NavItem[] = [
   { path: '/traces', label: 'Traces' },
   { path: '/superseded', label: 'Superseded' },
   { path: '/handoff', label: 'Handoff' },
+  { path: '/schedule', label: 'Schedule' },
 ];
 
 export function SidebarLayout({
