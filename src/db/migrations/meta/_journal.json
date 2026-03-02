@@ -43,6 +43,13 @@
       "when": 1772236800000,
       "tag": "0005_add_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1772415363037,
+      "tag": "0006_magenta_screwball",
+      "breakpoints": true
     }
   ]
 }

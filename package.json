@@ -1,5 +1,5 @@
 {
-  "name": "@laris-co/oracle-v2",
+  "name": "oracle-v2",
   "version": "0.4.0-nightly",
   "description": "Oracle v2 - MCP Memory Layer with semantic search, philosophy, and knowledge management",
   "type": "module",
@@ -8,12 +8,16 @@
     "oracle-v2": "./src/index.ts",
     "oracle-vault": "./src/vault/cli.ts"
   },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "engines": {
     "bun": ">=1.2.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/laris-co/oracle-v2.git"
+    "url": "https://github.com/Soul-Brews-Studio/oracle-v2.git"
   },
   "publishConfig": {
     "access": "public"
