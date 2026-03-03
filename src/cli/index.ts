@@ -31,7 +31,7 @@ const pkg = JSON.parse(
 
 const program = new Command();
 program
-  .name('oracle-cli')
+  .name('oracle')
   .description('Oracle CLI — unified knowledge management')
   .version(pkg.version);
 
