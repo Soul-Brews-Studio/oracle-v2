@@ -2,7 +2,7 @@
  * Vector Store Factory
  *
  * Creates the right VectorStoreAdapter + EmbeddingProvider from env vars.
- * Supports model-based registry for dual-index (nomic + qwen3).
+ * Supports model-based registry for multi-index (bge-m3 default, nomic, qwen3).
  */
 
 import path from 'path';
@@ -143,7 +143,7 @@ export const EMBEDDING_MODELS: Record<string, { collection: string; model: strin
   nomic: {
     collection: 'oracle_knowledge',
     model: 'nomic-embed-text',
-    dataPath: path.join(homeDir(), '.chromadb'),  // legacy location from initial indexer
+    dataPath: path.join(homeDir(), '.oracle', 'lancedb'),
   },
   qwen3: {
     collection: 'oracle_knowledge_qwen3',
@@ -166,7 +166,7 @@ const modelStoreCache = new Map<string, VectorStoreAdapter>();
 const connectPromises = new Map<string, Promise<void>>();
 
 export function getVectorStoreByModel(model?: string): VectorStoreAdapter {
-  const key = model && EMBEDDING_MODELS[model] ? model : 'nomic';
+  const key = model && EMBEDDING_MODELS[model] ? model : 'bge-m3';
   let store = modelStoreCache.get(key);
   if (!store) {
     const preset = EMBEDDING_MODELS[key];
@@ -188,7 +188,7 @@ export function getVectorStoreByModel(model?: string): VectorStoreAdapter {
 
 /** Ensure a model's store is connected. Call before first query. */
 export async function ensureVectorStoreConnected(model?: string): Promise<VectorStoreAdapter> {
-  const key = model && EMBEDDING_MODELS[model] ? model : 'nomic';
+  const key = model && EMBEDDING_MODELS[model] ? model : 'bge-m3';
   const store = getVectorStoreByModel(model);
   const pending = connectPromises.get(key);
   if (pending) await pending;
