@@ -10,7 +10,8 @@
  */
 
 import { createVectorStore, EMBEDDING_MODELS } from '../vector/factory.ts';
-import { Database } from 'bun:sqlite';
+import { createDatabase, oracleDocuments } from '../db/index.ts';
+import { count } from 'drizzle-orm';
 import { DB_PATH } from '../config.ts';
 
 const modelKey = process.argv[2];
@@ -33,9 +34,10 @@ async function main() {
   console.log(`Model: ${preset.model}`);
   console.log(`Batch size: ${BATCH_SIZE}`);
 
-  const db = new Database(DB_PATH, { readonly: true });
-  const total = db.query('SELECT COUNT(*) as count FROM oracle_documents').get() as { count: number };
-  console.log(`Documents: ${total.count}`);
+  // Use Drizzle for structured queries, raw sqlite only for FTS5 joins
+  const { db, sqlite } = createDatabase(DB_PATH);
+  const [{ total: docCount }] = db.select({ total: count() }).from(oracleDocuments).all();
+  console.log(`Documents: ${docCount}`);
 
   const store = createVectorStore({
     type: 'lancedb',
@@ -51,7 +53,8 @@ async function main() {
   try { await store.deleteCollection(); } catch {}
   await store.ensureCollection();
 
-  const rows = db.query(`
+  // FTS5 join requires raw SQL — Drizzle doesn't support virtual tables
+  const rows = sqlite.prepare(`
     SELECT d.id, d.type, GROUP_CONCAT(f.content, '\n') as content, d.source_file, d.concepts, d.project, d.created_at
     FROM oracle_documents d
     JOIN oracle_fts f ON d.id = f.id
@@ -110,7 +113,7 @@ async function main() {
   console.log(`Time: ${totalTime}s`);
 
   await store.close();
-  db.close();
+  sqlite.close();
 }
 
 main().catch(e => {
