@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { list, getFile, getDoc } from '../api/oracle';
+import { list, getFile, getDoc, getSimilar } from '../api/oracle';
 import type { Document } from '../api/oracle';
 import { SidebarLayout } from '../components/SidebarLayout';
 import { getDocDisplayInfo } from '../utils/docDisplay';
@@ -24,6 +24,8 @@ export function DocDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [neighbors, setNeighbors] = useState<{ prev: Document | null; next: Document | null }>({ prev: null, next: null });
+  const [similarDocs, setSimilarDocs] = useState<Document[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
   const [showRawModal, setShowRawModal] = useState(false);
   const [rawContent, setRawContent] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,24 @@ export function DocDetail() {
     setFileNotFound(false);
     loadFullContent();
   }, [doc]);
+
+  // Load similar documents (semantic)
+  useEffect(() => {
+    async function loadSimilar() {
+      if (!doc?.id) return;
+      setSimilarLoading(true);
+      try {
+        const data = await getSimilar(doc.id, 5);
+        setSimilarDocs(data.results || []);
+      } catch {
+        setSimilarDocs([]);
+      } finally {
+        setSimilarLoading(false);
+      }
+    }
+    setSimilarDocs([]);
+    loadSimilar();
+  }, [doc?.id]);
 
   // Load neighbors (prev/next documents)
   useEffect(() => {
@@ -311,6 +331,38 @@ export function DocDetail() {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Similar Documents (Semantic) */}
+      {similarDocs.length > 0 && (
+        <div className={styles.similarSection}>
+          <h3 className={styles.similarTitle}>Semantically Similar</h3>
+          <div className={styles.similarList}>
+            {similarDocs.map(sim => (
+              <Link
+                key={sim.id}
+                to={`/doc/${encodeURIComponent(sim.id)}`}
+                state={{ doc: sim }}
+                className={styles.similarCard}
+              >
+                <div className={styles.similarMeta}>
+                  <span className={styles.similarType}>{sim.type}</span>
+                  {sim.score != null && (
+                    <span className={styles.similarScore}>{Math.round(sim.score * 100)}%</span>
+                  )}
+                </div>
+                <p className={styles.similarText}>
+                  {sim.content?.replace(/\*\*/g, '').replace(/`/g, '').replace(/^#+\s*/gm, '').trim().slice(0, 120)}...
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      {similarLoading && (
+        <div className={styles.similarSection}>
+          <h3 className={styles.similarTitle}>Finding similar documents...</h3>
         </div>
       )}
 
