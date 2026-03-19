@@ -561,3 +561,72 @@
 .lineContent {
   flex: 1;
 }
+
+/* Similar Documents Section */
+.similarSection {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.similarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.similarList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.similarCard {
+  display: block;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.similarCard:hover {
+  border-color: var(--accent);
+  background: rgba(167, 139, 250, 0.05);
+}
+
+.similarMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.similarType {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(167, 139, 250, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.similarScore {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4ade80;
+  margin-left: auto;
+}
+
+.similarText {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}

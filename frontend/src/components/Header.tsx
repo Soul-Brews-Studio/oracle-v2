@@ -37,6 +37,7 @@ export function Header() {
   const { isAuthenticated, authEnabled, logout } = useAuth();
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sessionStartTime] = useState(() => {
     // Get or initialize session start time from localStorage
     const stored = localStorage.getItem('oracle_session_start');
@@ -95,7 +96,15 @@ export function Header() {
         <span className={styles.version}>{__APP_VERSION__}</span>
       </Link>
 
-      <nav className={styles.nav}>
+      <button
+        className={styles.hamburger}
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle navigation"
+      >
+        {mobileMenuOpen ? '✕' : '☰'}
+      </button>
+
+      <nav className={`${styles.nav} ${mobileMenuOpen ? styles.navOpen : ''}`}>
         {navItems.map((item, i) =>
           'divider' in item ? (
             <span key={i} className={styles.divider} />
@@ -104,6 +113,7 @@ export function Header() {
               key={item.path}
               to={item.path}
               className={`${styles.navLink} ${location.pathname === item.path.split('?')[0] ? styles.active : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
             >
               {item.label}
             </Link>

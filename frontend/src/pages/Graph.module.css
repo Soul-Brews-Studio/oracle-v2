@@ -116,13 +116,47 @@
 
 .canvas3d {
   flex: 1;
-  min-height: 600px;
+  min-height: 400px;
   height: calc(100vh - 200px);
   border-radius: 12px;
   overflow: hidden;
   background: #0a0a0f;
   border: 1px solid #222;
   position: relative;
+  touch-action: none;
+}
+
+/* Responsive adjustments for iPad/tablet */
+@media (max-width: 1024px) {
+  .hud {
+    max-width: 180px;
+    padding: 10px;
+  }
+
+  .hudLabel {
+    font-size: 10px;
+  }
+
+  .hudSlider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hudToggle {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .hint {
+    font-size: 11px;
+  }
+
+  .canvas3d {
+    min-height: 300px;
+    height: calc(100vh - 160px);
+  }
 }
 
 .hud {

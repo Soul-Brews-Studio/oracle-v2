@@ -37,17 +37,19 @@ export function Activity() {
   const activeTab = (searchParams.get('tab') as Tab) || 'gaps';
 
   // Knowledge gaps: searches and consultations with 0 results
+  const searches = activity?.searches ?? [];
+  const consultations = activity?.consultations ?? [];
   const gaps = [
-    ...(activity?.searches.filter(s => s.results_count === 0).map(s => ({
+    ...searches.filter(s => s.results_count === 0).map(s => ({
       type: 'search' as const,
       query: s.query,
       created_at: s.created_at
-    })) || []),
-    ...(activity?.consultations.filter(c => c.principles_found === 0 && c.patterns_found === 0).map(c => ({
+    })),
+    ...consultations.filter(c => c.principles_found === 0 && c.patterns_found === 0).map(c => ({
       type: 'consult' as const,
       query: c.decision,
       created_at: c.created_at
-    })) || [])
+    }))
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   function setPeriod(newPeriod: Period) {
@@ -87,13 +89,13 @@ export function Activity() {
     }
   }
 
-  // Calculate averages
-  const avgSearchTime = activity?.searches.length
-    ? Math.round(activity.searches.reduce((sum, s) => sum + s.search_time_ms, 0) / activity.searches.length)
+  // Calculate averages (safe against undefined)
+  const avgSearchTime = searches.length
+    ? Math.round(searches.reduce((sum, s) => sum + (s.search_time_ms || 0), 0) / searches.length)
     : 0;
 
-  const avgMatches = activity?.consultations.length
-    ? (activity.consultations.reduce((sum, c) => sum + c.principles_found + c.patterns_found, 0) / activity.consultations.length).toFixed(1)
+  const avgMatches = consultations.length
+    ? (consultations.reduce((sum, c) => sum + (c.principles_found || 0) + (c.patterns_found || 0), 0) / consultations.length).toFixed(1)
     : '0';
 
   if (loading && !summary) {
@@ -224,9 +226,9 @@ export function Activity() {
               {tab === 'gaps' ? 'Knowledge Gaps' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               <span className={`${styles.tabCount} ${tab === 'gaps' && gaps.length > 0 ? styles.gapCount : ''}`}>
                 {tab === 'gaps' ? gaps.length :
-                 tab === 'searches' ? activity?.searches.length ?? 0 :
-                 tab === 'consultations' ? activity?.consultations.length ?? 0 :
-                 activity?.learnings.length ?? 0}
+                 tab === 'searches' ? searches.length :
+                 tab === 'consultations' ? consultations.length :
+                 activity?.learnings?.length ?? 0}
               </span>
             </button>
           ))}
