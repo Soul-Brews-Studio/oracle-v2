@@ -1,5 +1,5 @@
 ---
-title: Oracle v2 - MCP Memory Layer (Original Specification)
+title: Arra Oracle v3 - MCP Memory Layer (Original Specification)
 created: 2025-12-29
 archived: 2026-01-15
 status: historical
@@ -7,7 +7,7 @@ learned-from: claude-mem
 note: This is the original planning document with implementation annotations.
 ---
 
-# Oracle v2 - Original Specification (Dec 2025)
+# Arra Oracle v3 - Original Specification (Dec 2025)
 
 > **📜 Historical Document**: Original planning spec from Dec 29, 2025.
 > Annotated with what was actually implemented by Jan 15, 2026.
@@ -24,7 +24,7 @@ note: This is the original planning document with implementation annotations.
 
 ## Vision ✅
 
-Oracle v2 transforms the existing Oracle philosophy files into a **searchable knowledge system** via MCP, allowing Claude to:
+Arra Oracle v3 transforms the existing Oracle philosophy files into a **searchable knowledge system** via MCP, allowing Claude to:
 
 1. ✅ **Consult** Oracle philosophy when making decisions
 2. ✅ **Learn** from patterns in resonance files
@@ -188,7 +188,7 @@ See [TIMELINE.md](../TIMELINE.md) for full history.
 
 ## Original Next Steps ✅ ALL DONE
 
-- [x] Create ψ/lab/oracle-v2/prototype.ts → Became `src/index.ts`
+- [x] Create ψ/lab/arra-oracle-v3/prototype.ts → Became `src/index.ts`
 - [x] Test Chroma indexing → Works with 5,500+ documents
 - [x] Create oracle skill → Evolved to 19 MCP tools
 - [x] Test in real session → Production since Jan 15

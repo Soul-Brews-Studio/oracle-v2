@@ -1,5 +1,5 @@
 /**
- * Oracle v2 Project Context
+ * Arra Oracle v3 Project Context
  * Detects project context from ghq-format directory paths
  */
 
@@ -7,10 +7,10 @@ import { execSync } from 'child_process';
 
 export interface ProjectContext {
   // From ghq path parsing
-  github: string;      // "https://github.com/laris-co/oracle-v2"
+  github: string;      // "https://github.com/laris-co/arra-oracle-v3"
   owner: string;       // "laris-co"
-  repo: string;        // "oracle-v2"
-  ghqPath: string;     // "github.com/laris-co/oracle-v2"
+  repo: string;        // "arra-oracle-v3"
+  ghqPath: string;     // "github.com/laris-co/arra-oracle-v3"
 
   // Directories
   root: string;        // Git root directory

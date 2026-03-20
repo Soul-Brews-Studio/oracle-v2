@@ -369,7 +369,7 @@ app.post('/api/settings', async (c) => {
 
 // Health check
 app.get('/api/health', (c) => {
-  return c.json({ status: 'ok', server: 'arra-oracle', port: PORT, oracleV2: 'connected' });
+  return c.json({ status: 'ok', server: 'arra-oracle-v3', port: PORT, oracleV2: 'connected' });
 });
 
 // Search
@@ -495,8 +495,8 @@ app.get('/api/map3d', async (c) => {
   }
 });
 
-// Live Oracle feed (from ~/.oracle/feed.log)
-const FEED_LOG = path.join(process.env.HOME || '/home/nat', '.oracle', 'feed.log');
+// Live Oracle feed (from ~/.arra-oracle-v3/feed.log)
+const FEED_LOG = path.join(process.env.HOME || '/home/nat', '.arra-oracle-v3', 'feed.log');
 app.get('/api/feed', (c) => {
   try {
     const limit = Math.min(200, parseInt(c.req.query('limit') || '50'));
@@ -761,7 +761,7 @@ app.get('/api/session/stats', (c) => {
 
 // Serve raw schedule.md for frontend rendering
 app.get('/api/schedule/md', (c) => {
-  const schedulePath = path.join(process.env.HOME || '/tmp', '.oracle', 'ψ/inbox/schedule.md');
+  const schedulePath = path.join(process.env.HOME || '/tmp', '.arra-oracle-v3', 'ψ/inbox/schedule.md');
   if (fs.existsSync(schedulePath)) {
     return c.text(fs.readFileSync(schedulePath, 'utf-8'));
   }

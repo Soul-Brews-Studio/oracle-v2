@@ -1296,7 +1296,7 @@ export function handleLearn(
     indexedAt: now.getTime(),
     origin: origin || null,          // origin: null = universal/mother
     project: resolvedProject || null, // project: null = universal (auto-detected from cwd)
-    createdBy: 'oracle_learn'
+    createdBy: 'arra_learn'
   }).run();
 
   // Insert into FTS (must use raw SQL - Drizzle doesn't support virtual tables)

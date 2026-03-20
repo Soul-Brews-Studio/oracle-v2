@@ -19,12 +19,12 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 // Configuration
 export const PORT = parseInt(String(process.env.ORACLE_PORT || 47778), 10);
 export const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/tmp';
-export const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, '.oracle');
+export const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, '.arra-oracle-v3');
 export const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, 'oracle.db');
 // REPO_ROOT for features that need knowledge base context
 // When running from source: defaults to project root (where ψ/ lives)
 // When running via bunx: set ORACLE_REPO_ROOT explicitly
-// Fallback: ~/.oracle for bunx installs
+// Fallback: ~/.arra-oracle-v3 for bunx installs
 export const REPO_ROOT = process.env.ORACLE_REPO_ROOT ||
   (fs.existsSync(path.join(PROJECT_ROOT, 'ψ')) ? PROJECT_ROOT : ORACLE_DATA_DIR);
 

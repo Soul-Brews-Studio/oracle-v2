@@ -173,7 +173,7 @@ export function parseGitStatus(porcelainOutput: string): GitStatusCounts {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the vault ψ/ root for shared use by oracle_learn, oracle_handoff, indexer, etc.
+ * Resolve the vault ψ/ root for shared use by arra_learn, arra_handoff, indexer, etc.
  * Returns the vault repo local path, or a setup hint if not configured.
  */
 export function getVaultPsiRoot(): { path: string } | { needsInit: true; hint: string } {
@@ -221,8 +221,8 @@ export function initVault(repo: string): InitResult {
   setSetting('vault_repo', repo);
   setSetting('vault_enabled', 'true');
 
-  // 3. Create ~/.oracle/ψ symlink → vault repo's ψ/
-  const oracleHome = path.join(os.homedir(), '.oracle');
+  // 3. Create ~/.arra-oracle-v3/ψ symlink → vault repo's ψ/
+  const oracleHome = path.join(os.homedir(), '.arra-oracle-v3');
   const psiSymlink = path.join(oracleHome, 'ψ');
   const vaultPsiDir = path.join(vaultPath, 'ψ');
 

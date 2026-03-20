@@ -171,7 +171,7 @@ export class OracleIndexer {
     this.backupDatabase();
 
     // Smart deletion: delete indexer-created docs whose source file no longer exists on disk.
-    // Safe for multi-project vault: only removes docs with missing files, preserves oracle_learn docs.
+    // Safe for multi-project vault: only removes docs with missing files, preserves arra_learn docs.
     const allIndexerDocs = this.db.select({ id: oracleDocuments.id, sourceFile: oracleDocuments.sourceFile })
       .from(oracleDocuments)
       .where(
@@ -182,7 +182,7 @@ export class OracleIndexer {
     const idsToDelete = allIndexerDocs
       .filter(d => !fs.existsSync(path.join(this.config.repoRoot, d.sourceFile)))
       .map(d => d.id);
-    console.log(`Smart delete: ${idsToDelete.length} stale docs (preserving oracle_learn)`);
+    console.log(`Smart delete: ${idsToDelete.length} stale docs (preserving arra_learn)`);
 
     if (idsToDelete.length > 0) {
       // Delete from oracle_documents (Drizzle)

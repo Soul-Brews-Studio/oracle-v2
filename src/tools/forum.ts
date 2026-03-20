@@ -48,7 +48,7 @@ export interface OracleThreadUpdateInput {
 // ============================================================================
 
 export const threadToolDef = {
-  name: 'oracle_thread',
+  name: 'arra_thread',
   description: 'Send a message to an Oracle discussion thread. Creates a new thread or continues an existing one. Oracle auto-responds from knowledge base. Use for multi-turn consultations.',
   inputSchema: {
     type: 'object',
@@ -64,7 +64,7 @@ export const threadToolDef = {
 };
 
 export const threadsToolDef = {
-  name: 'oracle_threads',
+  name: 'arra_threads',
   description: 'List Oracle discussion threads. Filter by status to find pending questions or active discussions.',
   inputSchema: {
     type: 'object',
@@ -78,7 +78,7 @@ export const threadsToolDef = {
 };
 
 export const threadReadToolDef = {
-  name: 'oracle_thread_read',
+  name: 'arra_thread_read',
   description: 'Read full message history from a thread. Use to review context before continuing a conversation.',
   inputSchema: {
     type: 'object',
@@ -91,7 +91,7 @@ export const threadReadToolDef = {
 };
 
 export const threadUpdateToolDef = {
-  name: 'oracle_thread_update',
+  name: 'arra_thread_update',
   description: 'Update thread status. Use to close, reopen, or mark threads as answered/pending.',
   inputSchema: {
     type: 'object',

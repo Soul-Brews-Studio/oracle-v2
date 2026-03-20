@@ -1,5 +1,5 @@
 /**
- * Oracle v2 Database Schema (Drizzle ORM)
+ * Arra Oracle v3 Database Schema (Drizzle ORM)
  *
  * Generated from existing database via drizzle-kit pull,
  * then cleaned up to exclude FTS5 internal tables.
@@ -22,8 +22,8 @@ export const oracleDocuments = sqliteTable('oracle_documents', {
   supersededReason: text('superseded_reason'), // Why (optional)
   // Provenance tracking (Issue #22)
   origin: text('origin'),                   // 'mother' | 'arthur' | 'volt' | 'human' | null (legacy)
-  project: text('project'),                 // ghq-style: 'github.com/laris-co/oracle-v2'
-  createdBy: text('created_by'),            // 'indexer' | 'oracle_learn' | 'manual'
+  project: text('project'),                 // ghq-style: 'github.com/laris-co/arra-oracle-v3'
+  createdBy: text('created_by'),            // 'indexer' | 'arra_learn' | 'manual'
 }, (table) => [
   index('idx_source').on(table.sourceFile),
   index('idx_type').on(table.type),
