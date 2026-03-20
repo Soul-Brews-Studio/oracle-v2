@@ -145,7 +145,7 @@ CREATE INDEX idx_trace_created ON trace_log(created_at DESC);
 [
   {
     "number": 40,
-    "title": "Oracle v2 - Open Source Framework",
+    "title": "Arra Oracle v3 - Open Source Framework",
     "state": "open",
     "url": "https://github.com/laris-co/Nat-s-Agents/issues/40",
     "match_reason": "title match"

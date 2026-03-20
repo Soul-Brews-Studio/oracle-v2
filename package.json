@@ -1,11 +1,11 @@
 {
-  "name": "arra-oracle",
+  "name": "arra-oracle-v3",
   "version": "0.5.0",
   "description": "Arra Oracle - MCP Memory Layer with semantic search, philosophy, and knowledge management",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
-    "arra-oracle": "./src/index.ts"
+    "arra-oracle-v3": "./src/index.ts"
   },
   "files": [
     "src",
@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Soul-Brews-Studio/arra-oracle.git"
+    "url": "https://github.com/Soul-Brews-Studio/arra-oracle-v3.git"
   },
   "publishConfig": {
     "access": "public"

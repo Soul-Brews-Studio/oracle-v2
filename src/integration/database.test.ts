@@ -1,6 +1,6 @@
 /**
  * Database Integration Tests
- * Tests oracle-v2 database operations with Drizzle ORM
+ * Tests arra-oracle-v3 database operations with Drizzle ORM
  * Uses isolated test database with proper migrations
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";

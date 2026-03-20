@@ -4,7 +4,7 @@
  * Controls which tool groups are registered at startup.
  * Config sources (in priority order):
  *   1. arra.config.json in repo root (ORACLE_REPO_ROOT or cwd)
- *   2. ~/.oracle/config.json (global)
+ *   2. ~/.arra-oracle-v3/config.json (global)
  *   3. Defaults: all groups enabled
  */
 
@@ -12,12 +12,12 @@ import fs from 'fs';
 import path from 'path';
 
 export const TOOL_GROUPS = {
-  search: ['oracle_search', 'oracle_read', 'oracle_list', 'oracle_concepts'],
-  knowledge: ['oracle_learn', 'oracle_reflect', 'oracle_stats', 'oracle_supersede', 'oracle_verify'],
-  session: ['oracle_handoff', 'oracle_inbox'],
-  schedule: ['oracle_schedule_add', 'oracle_schedule_list'],
-  forum: ['oracle_thread', 'oracle_threads', 'oracle_thread_read', 'oracle_thread_update'],
-  trace: ['oracle_trace', 'oracle_trace_list', 'oracle_trace_get', 'oracle_trace_link', 'oracle_trace_unlink', 'oracle_trace_chain'],
+  search: ['arra_search', 'arra_read', 'arra_list', 'arra_concepts'],
+  knowledge: ['arra_learn', 'arra_reflect', 'arra_stats', 'arra_supersede', 'arra_verify'],
+  session: ['arra_handoff', 'arra_inbox'],
+  schedule: ['arra_schedule_add', 'arra_schedule_list'],
+  forum: ['arra_thread', 'arra_threads', 'arra_thread_read', 'arra_thread_update'],
+  trace: ['arra_trace', 'arra_trace_list', 'arra_trace_get', 'arra_trace_link', 'arra_trace_unlink', 'arra_trace_chain'],
 } as const;
 
 export type ToolGroupName = keyof typeof TOOL_GROUPS;
@@ -53,10 +53,10 @@ export function loadToolGroupConfig(repoRoot?: string): ToolGroupConfig {
     return { ...DEFAULT_CONFIG, ...localConfig.tools };
   }
 
-  // Priority 2: global ~/.oracle/config.json
-  const globalConfig = readJsonSafe(path.join(homeDir, '.oracle', 'config.json'));
+  // Priority 2: global ~/.arra-oracle-v3/config.json
+  const globalConfig = readJsonSafe(path.join(homeDir, '.arra-oracle-v3', 'config.json'));
   if (globalConfig?.tools) {
-    console.error('[ToolGroups] Using ~/.oracle/config.json');
+    console.error('[ToolGroups] Using ~/.arra-oracle-v3/config.json');
     return { ...DEFAULT_CONFIG, ...globalConfig.tools };
   }
 

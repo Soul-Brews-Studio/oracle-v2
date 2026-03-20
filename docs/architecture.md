@@ -1,10 +1,10 @@
-# Oracle v2 Architecture
+# Arra Oracle v3 Architecture
 
 > Knowledge system MCP server with hybrid search, consultation logging, and learning capabilities.
 
 ## Overview
 
-Oracle v2 indexes philosophy from markdown files and provides:
+Arra Oracle v3 indexes philosophy from markdown files and provides:
 - **Semantic + keyword search** (ChromaDB + FTS5)
 - **Decision guidance** via principles and patterns
 - **Learning capture** from sessions
@@ -182,9 +182,9 @@ CREATE TABLE indexing_status (
 ```json
 {
   "mcpServers": {
-    "oracle-v2": {
+    "arra-oracle-v3": {
       "command": "node",
-      "args": ["/path/to/oracle-v2/dist/index.js"],
+      "args": ["/path/to/arra-oracle-v3/dist/index.js"],
       "env": {
         "ORACLE_REPO_ROOT": "/path/to/knowledge-base"
       }

@@ -57,7 +57,7 @@ export function createVectorStore(config: VectorStoreConfig = {}): VectorStoreAd
     case 'sqlite-vec': {
       const dbPath = config.dataPath
         || process.env.ORACLE_VECTOR_DB_PATH
-        || path.join(home,'.oracle', 'vectors.db');
+        || path.join(home,'.arra-oracle-v3', 'vectors.db');
 
       const embeddingType = config.embeddingProvider
         || (process.env.ORACLE_EMBEDDING_PROVIDER as EmbeddingProviderType)
@@ -73,7 +73,7 @@ export function createVectorStore(config: VectorStoreConfig = {}): VectorStoreAd
     case 'lancedb': {
       const dbPath = config.dataPath
         || process.env.ORACLE_VECTOR_DB_PATH
-        || path.join(home,'.oracle', 'lancedb');
+        || path.join(home,'.arra-oracle-v3', 'lancedb');
 
       const embeddingType = config.embeddingProvider
         || (process.env.ORACLE_EMBEDDING_PROVIDER as EmbeddingProviderType)
@@ -148,17 +148,17 @@ export function getEmbeddingModels(): Record<string, { collection: string; model
       nomic: {
         collection: 'oracle_knowledge',
         model: 'nomic-embed-text',
-        dataPath: path.join(home, '.oracle', 'lancedb'),
+        dataPath: path.join(home, '.arra-oracle-v3', 'lancedb'),
       },
       qwen3: {
         collection: 'oracle_knowledge_qwen3',
         model: 'qwen3-embedding',
-        dataPath: path.join(home, '.oracle', 'lancedb'),
+        dataPath: path.join(home, '.arra-oracle-v3', 'lancedb'),
       },
       'bge-m3': {
         collection: 'oracle_knowledge_bge_m3',
         model: 'bge-m3',
-        dataPath: path.join(home, '.oracle', 'lancedb'),
+        dataPath: path.join(home, '.arra-oracle-v3', 'lancedb'),
       },
     };
   }

@@ -85,7 +85,7 @@ export class ChromaMcpClient {
       });
 
       this.client = new Client({
-        name: 'arra-oracle-chroma',
+        name: 'arra-oracle-v3-chroma',
         version: '1.0.0'
       }, {
         capabilities: {}

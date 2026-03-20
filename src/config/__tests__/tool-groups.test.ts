@@ -26,12 +26,12 @@ describe('tool-groups', () => {
       schedule: false, forum: true, trace: false,
     };
     const disabled = getDisabledTools(config);
-    expect(disabled.has('oracle_schedule_add')).toBe(true);
-    expect(disabled.has('oracle_schedule_list')).toBe(true);
-    expect(disabled.has('oracle_trace')).toBe(true);
-    expect(disabled.has('oracle_trace_list')).toBe(true);
-    expect(disabled.has('oracle_search')).toBe(false);
-    expect(disabled.has('oracle_learn')).toBe(false);
+    expect(disabled.has('arra_schedule_add')).toBe(true);
+    expect(disabled.has('arra_schedule_list')).toBe(true);
+    expect(disabled.has('arra_trace')).toBe(true);
+    expect(disabled.has('arra_trace_list')).toBe(true);
+    expect(disabled.has('arra_search')).toBe(false);
+    expect(disabled.has('arra_learn')).toBe(false);
   });
 
   it('defaults to all groups enabled', () => {
@@ -44,10 +44,10 @@ describe('tool-groups', () => {
     expect(config.trace).toBe(true);
   });
 
-  it('all tool names follow oracle_ prefix convention', () => {
+  it('all tool names follow arra_ prefix convention', () => {
     for (const tools of Object.values(TOOL_GROUPS)) {
       for (const tool of tools) {
-        expect(tool).toMatch(/^oracle_/);
+        expect(tool).toMatch(/^arra_/);
       }
     }
   });
