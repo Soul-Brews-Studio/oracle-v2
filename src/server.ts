@@ -24,6 +24,7 @@ import { getVaultPsiRoot } from './vault/handler.ts';
 // Config constants (no DB dependency)
 import {
   PORT,
+  HOSTNAME,
   ORACLE_DATA_DIR,
   REPO_ROOT,
   DB_PATH,
@@ -1257,5 +1258,6 @@ console.log(`
 
 export default {
   port: Number(PORT),
+  hostname: HOSTNAME,
   fetch: app.fetch,
 };

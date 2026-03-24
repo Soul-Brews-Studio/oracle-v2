@@ -18,6 +18,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 // Configuration
 export const PORT = parseInt(String(process.env.ORACLE_PORT || 47778), 10);
+export const HOSTNAME = process.env.ORACLE_HOSTNAME || '0.0.0.0';
 export const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/tmp';
 export const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, '.arra-oracle-v3');
 export const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, 'oracle.db');
