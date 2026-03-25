@@ -145,7 +145,7 @@
   color: var(--text-primary);
   padding: 14px 16px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 16px; /* ≥16px prevents iOS keyboard zoom */
   font-family: inherit;
   transition: border-color 0.2s;
 }
@@ -316,4 +316,66 @@
 
 .replyForm .submitButton {
   align-self: flex-end;
+}
+
+/* Mobile: stack sidebar above main */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  .threadItem {
+    padding: 10px 14px;
+  }
+
+  .threadTitle {
+    font-size: 13px;
+  }
+
+  .main {
+    min-height: 0;
+  }
+
+  .threadHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .threadHeader h2 {
+    font-size: 16px;
+  }
+
+  .messages {
+    padding: 12px;
+  }
+
+  .message {
+    padding: 12px;
+  }
+
+  .replyForm {
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .replyForm .submitButton {
+    width: 100%;
+    text-align: center;
+  }
+
+  .newThread {
+    padding: 16px;
+  }
 }

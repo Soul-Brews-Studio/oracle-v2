@@ -174,6 +174,23 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* Hamburger button — hidden on desktop */
+.hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 20px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.hamburger:hover {
+  background: var(--bg-card);
+}
+
 @media (max-width: 900px) {
   .header {
     flex-wrap: wrap;
@@ -189,5 +206,52 @@
   .sessionStats {
     font-size: 11px;
     gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
+
+  .nav {
+    display: none;
+    order: 3;
+    width: 100%;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .nav.navOpen {
+    display: flex;
+  }
+
+  .navLink {
+    width: 100%;
+    text-align: left;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    margin: 4px 0;
+  }
+
+  .sessionStats {
+    display: none;
+  }
+
+  .dropdown {
+    width: 100%;
+  }
+
+  .dropdownMenu {
+    position: static;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding-left: 16px;
   }
 }

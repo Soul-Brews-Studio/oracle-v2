@@ -131,7 +131,7 @@ export function Graph() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_VIEW);
-    return saved === '3d' ? '3d' : '2d';
+    return saved === '2d' ? '2d' : '3d'; // Default to 3D (better interaction)
   });
 
   // Load graph data once
@@ -207,14 +207,19 @@ export function Graph() {
   );
 }
 
-// 2D Canvas Component
+// 2D Canvas Component with pan/zoom and touch support
 function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: Link[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showFull, setShowFull] = useState(() => localStorage.getItem(STORAGE_KEY_FULL) === 'true');
   const animationRef = useRef<number>(0);
+
+  // Viewport transform for pan/zoom
+  const viewportRef = useRef({ x: 0, y: 0, scale: 1 });
+  const localNodesRef = useRef<Node[]>([]);
 
   useEffect(() => {
     applyNodeLimit(allNodes, allLinks, showFull);
@@ -251,6 +256,20 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
     localStorage.setItem(STORAGE_KEY_FULL, String(newFull));
   }
 
+  // Convert screen coordinates to canvas/simulation coordinates
+  function screenToCanvas(screenX: number, screenY: number): { x: number; y: number } {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: screenX, y: screenY };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const vp = viewportRef.current;
+    return {
+      x: ((screenX - rect.left) * scaleX - vp.x) / vp.scale,
+      y: ((screenY - rect.top) * scaleY - vp.y) / vp.scale,
+    };
+  }
+
   useEffect(() => {
     if (nodes.length === 0) return;
     const canvas = canvasRef.current;
@@ -258,11 +277,27 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Handle resize
+    function resizeCanvas() {
+      const wrapper = wrapperRef.current;
+      if (!wrapper || !canvas) return;
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      canvas.width = wrapper.clientWidth * dpr;
+      canvas.height = wrapper.clientHeight * dpr;
+      canvas.style.width = wrapper.clientWidth + 'px';
+      canvas.style.height = wrapper.clientHeight + 'px';
+    }
+    resizeCanvas();
+
     const width = canvas.width, height = canvas.height;
     let localNodes = [...nodes];
+    localNodesRef.current = localNodes;
     let time = 0;
     let revealProgress = 0;
     const revealDuration = 10;
+
+    // Center viewport initially
+    viewportRef.current = { x: 0, y: 0, scale: 1 };
 
     function simulate() {
       time += 0.02;
@@ -335,12 +370,18 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
     }
 
     function draw() {
-      if (!ctx) return;
+      if (!ctx || !canvas) return;
+      const vp = viewportRef.current;
+
       ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(vp.x, vp.y);
+      ctx.scale(vp.scale, vp.scale);
 
       const visibleLinks = Math.floor(links.length * revealProgress);
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 0.5 / vp.scale;
       links.slice(0, visibleLinks).forEach((link, i) => {
         const source = localNodes.find(n => n.id === link.source);
         const target = localNodes.find(n => n.id === link.target);
@@ -357,11 +398,12 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
         const t = ((time * speed + offset) % 1);
         ctx.fillStyle = `rgba(167, 139, 250, ${0.6 * fadeIn})`;
         ctx.beginPath();
-        ctx.arc(source.x! + (target.x! - source.x!) * t, source.y! + (target.y! - source.y!) * t, 1.5, 0, Math.PI * 2);
+        ctx.arc(source.x! + (target.x! - source.x!) * t, source.y! + (target.y! - source.y!) * t, 1.5 / vp.scale, 0, Math.PI * 2);
         ctx.fill();
       });
 
       const nodeAlpha = Math.min(1, revealProgress * 3);
+      const nodeRadius = 4 / Math.max(1, vp.scale * 0.8); // Slightly scale node size
       localNodes.forEach(node => {
         const color = TYPE_COLORS_HEX[node.type] || '#888';
         const r = parseInt(color.slice(1, 3), 16);
@@ -369,21 +411,165 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
         const b = parseInt(color.slice(5, 7), 16);
         ctx.fillStyle = `rgba(${r},${g},${b},${nodeAlpha})`;
         ctx.beginPath();
-        ctx.arc(node.x!, node.y!, 4, 0, Math.PI * 2);
+        ctx.arc(node.x!, node.y!, nodeRadius, 0, Math.PI * 2);
         ctx.fill();
       });
+
+      ctx.restore();
     }
 
+    // Mouse drag to pan
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+
+    function onMouseDown(e: MouseEvent) {
+      isDragging = true;
+      dragStart = { x: e.clientX, y: e.clientY };
+      if (canvas) canvas.style.cursor = 'grabbing';
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+      if (canvas) canvas.style.cursor = 'grab';
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (!isDragging) return;
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      viewportRef.current.x += (e.clientX - dragStart.x) * dpr;
+      viewportRef.current.y += (e.clientY - dragStart.y) * dpr;
+      dragStart = { x: e.clientX, y: e.clientY };
+    }
+
+    // Wheel to zoom (zoom toward cursor)
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      const mouseX = (e.clientX - rect.left) * dpr;
+      const mouseY = (e.clientY - rect.top) * dpr;
+      const vp = viewportRef.current;
+
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.3, Math.min(5, vp.scale * zoomFactor));
+      const ratio = newScale / vp.scale;
+
+      vp.x = mouseX - (mouseX - vp.x) * ratio;
+      vp.y = mouseY - (mouseY - vp.y) * ratio;
+      vp.scale = newScale;
+    }
+
+    // Touch support
+    let touchStartDistance = 0;
+    let lastTouchPos = { x: 0, y: 0 };
+    let isTouching = false;
+    let touchStartTime = 0;
+    let touchStartPos = { x: 0, y: 0 };
+
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isTouching = true;
+        touchStartTime = Date.now();
+        lastTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touchStartPos = { ...lastTouchPos };
+      } else if (e.touches.length === 2) {
+        isTouching = false;
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      if (e.touches.length === 1 && isTouching) {
+        // Single finger — pan
+        viewportRef.current.x += (e.touches[0].clientX - lastTouchPos.x) * dpr;
+        viewportRef.current.y += (e.touches[0].clientY - lastTouchPos.y) * dpr;
+        lastTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        // Two fingers — pinch zoom
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * dpr;
+        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) * dpr;
+
+        const vp = viewportRef.current;
+        const zoomFactor = distance / touchStartDistance;
+        const newScale = Math.max(0.3, Math.min(5, vp.scale * zoomFactor));
+        const ratio = newScale / vp.scale;
+
+        vp.x = midX - (midX - vp.x) * ratio;
+        vp.y = midY - (midY - vp.y) * ratio;
+        vp.scale = newScale;
+
+        touchStartDistance = distance;
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (isTouching && e.changedTouches.length > 0) {
+        const elapsed = Date.now() - touchStartTime;
+        const dx = e.changedTouches[0].clientX - touchStartPos.x;
+        const dy = e.changedTouches[0].clientY - touchStartPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (elapsed < 300 && dist < 10) {
+          // Tap — find node
+          const pos = screenToCanvas(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+          const hitRadius = 15 / viewportRef.current.scale;
+          const tapped = localNodesRef.current.find(n =>
+            Math.sqrt((n.x! - pos.x) ** 2 + (n.y! - pos.y) ** 2) < hitRadius
+          );
+          setSelectedNode(tapped || null);
+        }
+      }
+      isTouching = false;
+    }
+
+    function onResize() {
+      resizeCanvas();
+    }
+
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('resize', onResize);
+    canvas.style.cursor = 'grab';
+
     simulate();
-    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
+
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      canvas.removeEventListener('mousedown', onMouseDown);
+      canvas.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('mouseleave', onMouseUp);
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('resize', onResize);
+    };
   }, [nodes, links]);
 
   function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const clicked = nodes.find(n => Math.sqrt((n.x! - x) ** 2 + (n.y! - y) ** 2) < 10);
+    const pos = screenToCanvas(e.clientX, e.clientY);
+    const hitRadius = 15 / viewportRef.current.scale;
+    const clicked = localNodesRef.current.find(n =>
+      Math.sqrt((n.x! - pos.x) ** 2 + (n.y! - pos.y) ** 2) < hitRadius
+    );
     setSelectedNode(clicked || null);
   }
 
@@ -403,13 +589,43 @@ function Canvas2D({ nodes: allNodes, links: allLinks }: { nodes: Node[]; links: 
           </button>
         )}
       </div>
-      <div className={styles.canvasWrapper}>
-        <canvas ref={canvasRef} width={800} height={600} onClick={handleCanvasClick} className={styles.canvas} />
+      <div className={styles.controls}>
+        <span className={styles.hint}>
+          Drag to pan • Scroll to zoom • Click to select
+          {selectedNode && <strong> • {selectedNode.type}: {selectedNode.label?.slice(0, 30) || 'Unknown'}</strong>}
+        </span>
+        <button
+          onClick={() => { viewportRef.current = { x: 0, y: 0, scale: 1 }; }}
+          className={styles.hudToggle}
+        >
+          Reset View
+        </button>
+      </div>
+      <div ref={wrapperRef} className={styles.canvasWrapper} style={{ width: '100%', height: 'calc(100vh - 200px)' }}>
+        <canvas ref={canvasRef} onClick={handleCanvasClick} className={styles.canvas} style={{ touchAction: 'none', cursor: 'grab' }} />
       </div>
       {selectedNode && (
         <div className={styles.nodeInfo}>
           <span className={styles.nodeType}>{selectedNode.type}</span>
           <p className={styles.nodeLabel}>{selectedNode.label}</p>
+          {selectedNode.source_file && (
+            <p style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+              📄 {selectedNode.source_file}
+            </p>
+          )}
+          {selectedNode.concepts && selectedNode.concepts.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+              {selectedNode.concepts.slice(0, 8).map((c, i) => (
+                <span key={i} style={{
+                  background: 'rgba(167, 139, 250, 0.2)',
+                  color: '#a78bfa',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '11px'
+                }}>{c}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>
@@ -1042,6 +1258,71 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
     function onWheel(e: WheelEvent) { e.preventDefault(); setCamDistance(prev => Math.max(5, Math.min(50, prev + (e.deltaY > 0 ? 1.5 : -1.5)))); }
     function onResize() { const w = container.clientWidth, h = container.clientHeight; camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
 
+    // Touch support for iPad/mobile
+    let touchStartDistance = 0;
+    let lastTouchPos = { x: 0, y: 0 };
+    let isTouching = false;
+    let touchStartTime = 0;
+    let touchStartPos = { x: 0, y: 0 };
+
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isTouching = true;
+        touchStartTime = Date.now();
+        lastTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touchStartPos = { ...lastTouchPos };
+      } else if (e.touches.length === 2) {
+        isTouching = false;
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+      if (e.touches.length === 1 && isTouching) {
+        const dx = (e.touches[0].clientX - lastTouchPos.x) * 0.005;
+        const dy = (e.touches[0].clientY - lastTouchPos.y) * 0.003;
+        targetAngleRef.current.x += dx;
+        targetAngleRef.current.y = Math.max(-0.5, Math.min(0.5, targetAngleRef.current.y - dy));
+        lastTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const delta = (touchStartDistance - distance) * 0.08;
+        setCamDistance(prev => Math.max(5, Math.min(50, prev + delta)));
+        touchStartDistance = distance;
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (isTouching && e.changedTouches.length > 0) {
+        const elapsed = Date.now() - touchStartTime;
+        const dx = e.changedTouches[0].clientX - touchStartPos.x;
+        const dy = e.changedTouches[0].clientY - touchStartPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (elapsed < 300 && dist < 10) {
+          // Tap — raycast for node selection
+          const rect = container.getBoundingClientRect();
+          mouse.x = ((e.changedTouches[0].clientX - rect.left) / width) * 2 - 1;
+          mouse.y = -((e.changedTouches[0].clientY - rect.top) / height) * 2 + 1;
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(meshes);
+          if (intersects.length > 0) {
+            const tapped = intersects[0].object.userData.node as Node;
+            setSelectedNode(prev => prev?.id === tapped.id ? null : tapped);
+            setClickedPos({ x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY });
+          } else {
+            setSelectedNode(null);
+          }
+        }
+      }
+      isTouching = false;
+    }
+
     container.addEventListener('mousedown', onMouseDown);
     container.addEventListener('mouseup', onMouseUp);
     container.addEventListener('mouseleave', onMouseUp);
@@ -1049,6 +1330,9 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
     container.addEventListener('click', onClick);
     container.addEventListener('dblclick', onDblClick);
     container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
     window.addEventListener('resize', onResize);
 
     return () => {
@@ -1059,6 +1343,9 @@ function Canvas3D({ nodes, links }: { nodes: Node[]; links: Link[] }) {
       container.removeEventListener('click', onClick);
       container.removeEventListener('dblclick', onDblClick);
       container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('resize', onResize);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       meshes.forEach(mesh => { (mesh.material as THREE.Material).dispose(); scene.remove(mesh); });
