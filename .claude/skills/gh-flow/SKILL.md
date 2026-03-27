@@ -1,3 +1,8 @@
+---
+name: gh-flow
+description: Enforce PR-based GitHub workflow — never commit directly to main
+---
+
 # GitHub Flow Skill
 
 Enforce PR-based workflow for all changes. Never commit directly to main.
@@ -32,11 +37,7 @@ git add -A
 git commit -m "type: description
 
 - What: specific changes
-- Why: motivation
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+- Why: motivation"
 ```
 
 ### 3. Push and Create PR
@@ -56,8 +57,6 @@ gh pr create --title "type: description" --body "$(cat <<'EOF'
 ## Testing
 - [ ] Tests pass
 - [ ] Manual testing done
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
@@ -89,24 +88,14 @@ EOF
 
 If accidentally on main with uncommitted changes:
 ```bash
-# Stash changes
 git stash
-
-# Create and switch to feature branch
 git checkout -b feat/recovery-branch
-
-# Apply stashed changes
 git stash pop
 ```
 
 If already committed to main (not pushed):
 ```bash
-# Create branch from current state
 git branch feat/recovery-branch
-
-# Reset main to origin
 git reset --hard origin/main
-
-# Switch to feature branch
 git checkout feat/recovery-branch
 ```
