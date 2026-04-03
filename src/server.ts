@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { eq } from 'drizzle-orm';
 import { rateLimitStandard } from './middleware/rate-limit.ts';
+import { csrfProtection } from './middleware/csrf.ts';
 
 import {
   configure,
@@ -95,6 +96,9 @@ app.use('*', async (c, next) => {
 
 // Rate limiting middleware (apply to all API routes)
 app.use('/api/*', rateLimitStandard);
+
+// CSRF protection for state-changing operations
+app.use('/api/*', csrfProtection());
 
 // Register all route modules (order matters: auth middleware first)
 registerAuthRoutes(app);

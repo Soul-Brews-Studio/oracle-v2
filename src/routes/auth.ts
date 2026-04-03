@@ -7,14 +7,25 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { getSetting } from '../db/index.ts';
 import { rateLimitAuth } from '../middleware/rate-limit.ts';
+import { getCSRFTokenForSession } from '../middleware/csrf.ts';
 
 // Session secret - MUST be set in production for persistent sessions
-// Warn if not configured
+// Enforce in production mode
 const SESSION_SECRET = process.env.ORACLE_SESSION_SECRET;
-if (!SESSION_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('⚠️  SECURITY WARNING: ORACLE_SESSION_SECRET not set!');
-  console.error('⚠️  Sessions will not persist across server restarts.');
-  console.error('⚠️  Set ORACLE_SESSION_SECRET environment variable with a strong random value.');
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (!SESSION_SECRET && isProduction) {
+  console.error('❌ SECURITY ERROR: ORACLE_SESSION_SECRET not set in production!');
+  console.error('❌ Server cannot start safely without a session secret.');
+  console.error('❌ Set ORACLE_SESSION_SECRET environment variable with a strong random value.');
+  console.error('❌ Example: openssl rand -base64 32');
+  throw new Error('ORACLE_SESSION_SECRET must be set in production');
+}
+
+if (!SESSION_SECRET) {
+  console.warn('⚠️  SECURITY WARNING: ORACLE_SESSION_SECRET not set!');
+  console.warn('⚠️  Sessions will not persist across server restarts.');
+  console.warn('⚠️  Set ORACLE_SESSION_SECRET environment variable for production use.');
 }
 // Use provided secret or generate a temporary one (changes on restart!)
 const sessionSecretValue = SESSION_SECRET || crypto.randomUUID();
@@ -171,6 +182,23 @@ export function registerAuthRoutes(app: Hono) {
   app.post('/api/auth/logout', (c) => {
     deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
     return c.json({ success: true });
+  });
+
+  // CSRF Token - returns token for authenticated sessions
+  app.get('/api/auth/csrf-token', (c) => {
+    if (!isAuthenticated(c)) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Extract session ID from session cookie
+    const sessionCookie = getCookie(c, SESSION_COOKIE_NAME);
+    if (!sessionCookie) {
+      return c.json({ error: 'No session' }, 401);
+    }
+
+    // Use session token as session ID for CSRF
+    const token = getCSRFTokenForSession(sessionCookie);
+    return c.json({ csrf_token: token });
   });
 
 }
