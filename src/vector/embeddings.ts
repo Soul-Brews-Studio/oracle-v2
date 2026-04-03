@@ -83,10 +83,12 @@ export class OpenAIEmbeddings implements EmbeddingProvider {
   readonly dimensions: number;
   private apiKey: string;
   private model: string;
+  private baseUrl: string;
 
-  constructor(config: { apiKey?: string; model?: string } = {}) {
+  constructor(config: { apiKey?: string; model?: string; baseUrl?: string } = {}) {
     this.apiKey = config.apiKey || process.env.OPENAI_API_KEY || '';
     this.model = config.model || 'text-embedding-3-small';
+    this.baseUrl = config.baseUrl || process.env.OPENAI_BASE_URL || 'https://api.openai.com';
     this.dimensions = this.model === 'text-embedding-3-large' ? 3072 : 1536;
 
     if (!this.apiKey) {
@@ -95,7 +97,8 @@ export class OpenAIEmbeddings implements EmbeddingProvider {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const url = `${this.baseUrl}/v1/embeddings`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
@@ -109,11 +112,17 @@ export class OpenAIEmbeddings implements EmbeddingProvider {
       throw new Error(`OpenAI API error: ${error}`);
     }
 
-    const data = await response.json() as {
-      data: { embedding: number[]; index: number }[];
-    };
+    const data = await response.json();
+    console.debug('[OpenAI Embeddings] Response keys:', Object.keys(data));
+    console.debug('[OpenAI Embeddings] Full response:', JSON.stringify(data).slice(0, 500));
 
-    return data.data
+    // Check if response has expected format
+    if (!data || !data.data) {
+      throw new Error(`Invalid response format: missing 'data' field. Keys: ${Object.keys(data).join(', ')}`);
+    }
+
+    const embeddings = data.data as { embedding: number[]; index: number }[];
+    return embeddings
       .sort((a, b) => a.index - b.index)
       .map(d => d.embedding);
   }
@@ -124,13 +133,14 @@ export class OpenAIEmbeddings implements EmbeddingProvider {
  */
 export function createEmbeddingProvider(
   type: EmbeddingProviderType = 'chromadb-internal',
-  model?: string
+  model?: string,
+  baseUrl?: string
 ): EmbeddingProvider {
   switch (type) {
     case 'ollama':
       return new OllamaEmbeddings({ model });
     case 'openai':
-      return new OpenAIEmbeddings({ model });
+      return new OpenAIEmbeddings({ model, baseUrl });
     case 'cloudflare-ai': {
       // Dynamic import to avoid requiring CF credentials when not used
       const { CloudflareAIEmbeddings } = require('./adapters/cloudflare-vectorize.ts');

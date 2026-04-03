@@ -121,6 +121,7 @@ export interface IndexerConfig {
   repoRoot: string;
   dbPath: string;
   chromaPath: string;
+  lancedbPath?: string;
   sourcePaths: {
     resonance: string;
     learnings: string;
