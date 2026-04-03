@@ -44,7 +44,10 @@ export function handleDashboardSummary(): DashboardSummary {
           conceptCounts.set(c, (conceptCounts.get(c) || 0) + 1);
         });
       }
-    } catch {}
+    } catch (e) {
+      // Skip malformed concept JSON - continue with other documents
+      console.debug(`Failed to parse concepts for document: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   const topConcepts = Array.from(conceptCounts.entries())
@@ -64,7 +67,10 @@ export function handleDashboardSummary(): DashboardSummary {
       .where(gt(searchLog.createdAt, sevenDaysAgo))
       .get();
     searches7d = searchResult?.count || 0;
-  } catch {}
+  } catch (e) {
+    // Search log table might not exist yet - continue with 0
+    console.debug(`Failed to query search log: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   try {
     const learnResult = db.select({ count: sql<number>`count(*)` })
@@ -72,7 +78,10 @@ export function handleDashboardSummary(): DashboardSummary {
       .where(gt(learnLog.createdAt, sevenDaysAgo))
       .get();
     learnings7d = learnResult?.count || 0;
-  } catch {}
+  } catch (e) {
+    // Learn log table might not exist yet - continue with 0
+    console.debug(`Failed to query learn log: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   // Health status
   const lastIndexedResult = db.select({ lastIndexed: sql<number | null>`max(${oracleDocuments.indexedAt})` })
@@ -130,7 +139,10 @@ export function handleDashboardActivity(days: number = 7): DashboardActivity {
       search_time_ms: row.searchTimeMs,
       created_at: new Date(row.createdAt).toISOString()
     }));
-  } catch {}
+  } catch (e) {
+    // Search log table might not exist - return empty array
+    console.debug(`Failed to query recent searches: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   // Recent learnings
   let learnings: DashboardActivity['learnings'] = [];
@@ -155,7 +167,10 @@ export function handleDashboardActivity(days: number = 7): DashboardActivity {
       concepts: JSON.parse(row.concepts || '[]'),
       created_at: new Date(row.createdAt).toISOString()
     }));
-  } catch {}
+  } catch (e) {
+    // Learn log table might not exist - return empty array
+    console.debug(`Failed to query recent learnings: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   return { searches, learnings, days };
 }
@@ -199,7 +214,10 @@ export function handleDashboardGrowth(period: string = 'week'): DashboardGrowth 
         ))
         .get();
       searchCount = searchResult?.count || 0;
-    } catch {}
+    } catch (e) {
+      // Search log table might not exist yet - continue with 0
+      console.debug(`Failed to query daily search count: ${e instanceof Error ? e.message : String(e)}`);
+    }
 
     data.push({
       date,
