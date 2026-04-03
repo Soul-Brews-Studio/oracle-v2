@@ -91,7 +91,8 @@ function getVectorStore(): VectorStoreAdapter {
     _vectorStore = createVectorStore({ dataPath: CHROMADB_DIR });
     _vectorStore.connect().then(() => {
       _vectorStatus = 'connected';
-    }).catch(() => {
+    }).catch((err: unknown) => {
+      console.error('[Oracle] Vector store connection failed:', err);
       _vectorStatus = 'unavailable';
     });
   }
@@ -111,14 +112,16 @@ function createMcpServer(): Server {
   );
 
   const vs = getVectorStore();
-  const toolCtx: ToolContext = {
+  // Use a getter so each tool invocation reads the live _vectorStatus
+  // instead of the snapshot captured at server-creation time.
+  const toolCtx = {
     db,
     sqlite,
     repoRoot,
     vectorStore: vs,
-    vectorStatus: _vectorStatus,
+    get vectorStatus() { return _vectorStatus; },
     version: VERSION,
-  };
+  } satisfies ToolContext;
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const allTools = [

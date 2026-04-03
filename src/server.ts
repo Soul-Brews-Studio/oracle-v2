@@ -6,7 +6,7 @@
  */
 
 import { Hono } from 'hono';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, createHmac } from 'crypto';
 import { cors } from 'hono/cors';
 import { eq } from 'drizzle-orm';
 
@@ -117,11 +117,12 @@ app.all('/mcp', async (c) => {
   const authHeader = c.req.header('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 
-  // Constant-time comparison to prevent timing attacks
-  const expected = Buffer.from(MCP_AUTH_TOKEN);
-  const provided = Buffer.from(token.padEnd(MCP_AUTH_TOKEN.length, '\0').slice(0, MCP_AUTH_TOKEN.length));
-  const match = token.length === MCP_AUTH_TOKEN.length &&
-    timingSafeEqual(expected, provided);
+  // Constant-time comparison via HMAC — avoids length oracle leak and
+  // handles multi-byte tokens correctly (both digests are always 32 bytes).
+  const _hmacKey = Buffer.alloc(32);
+  const expectedHash = createHmac('sha256', _hmacKey).update(MCP_AUTH_TOKEN).digest();
+  const providedHash = createHmac('sha256', _hmacKey).update(token).digest();
+  const match = timingSafeEqual(expectedHash, providedHash);
 
   if (!match) {
     return c.json({ error: 'Unauthorized' }, 401);
@@ -131,8 +132,16 @@ app.all('/mcp', async (c) => {
   c.header('Access-Control-Expose-Headers', 'mcp-session-id, mcp-protocol-version');
   c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, mcp-session-id, mcp-protocol-version, Last-Event-ID');
 
-  const response = await createMcpHandler(c.req.raw);
-  return response;
+  try {
+    const response = await createMcpHandler(c.req.raw);
+    return response;
+  } catch (err) {
+    console.error('[MCP] Handler error:', err);
+    return c.json(
+      { jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null },
+      500,
+    );
+  }
 });
 
 // Startup banner
