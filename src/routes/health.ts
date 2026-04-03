@@ -6,7 +6,7 @@ import type { Hono } from 'hono';
 import { PORT, DB_PATH } from '../config.ts';
 import { MCP_SERVER_NAME } from '../const.ts';
 import { getSetting, sqlite } from '../db/index.ts';
-import { handleStats, handleVectorStats } from '../server/handlers.ts';
+import { handleStats, handleVectorStats } from '../server/handlers/index.ts';
 
 // Oracle cache for /api/oracles
 let oracleCache: { data: any; ts: number } | null = null;

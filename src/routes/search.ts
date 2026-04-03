@@ -10,7 +10,7 @@ import {
   handleSimilar,
   handleMap,
   handleMap3d,
-} from '../server/handlers.ts';
+} from '../server/handlers/index.ts';
 
 export function registerSearchRoutes(app: Hono) {
   // Search

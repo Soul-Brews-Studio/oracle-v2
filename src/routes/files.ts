@@ -5,7 +5,7 @@ import path from 'path';
 import { desc } from 'drizzle-orm';
 import { REPO_ROOT, PLUGINS_DIR } from '../config.ts';
 import { db, sqlite, searchLog } from '../db/index.ts';
-import { handleGraph } from '../server/handlers.ts';
+import { handleGraph } from '../server/handlers/index.ts';
 import { handleRead } from '../tools/read.ts';
 import { handleContext } from '../server/context.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
