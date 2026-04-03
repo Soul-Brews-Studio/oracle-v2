@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { timingSafeEqual } from 'crypto';
 import { cors } from 'hono/cors';
 import { eq } from 'drizzle-orm';
 
@@ -17,7 +18,7 @@ import {
   performGracefulShutdown,
 } from './process-manager/index.ts';
 
-import { PORT, ORACLE_DATA_DIR } from './config.ts';
+import { PORT, ORACLE_DATA_DIR, MCP_AUTH_TOKEN } from './config.ts';
 import { db, closeDb, indexingStatus } from './db/index.ts';
 
 // Route modules
@@ -33,6 +34,7 @@ import { registerTraceRoutes } from './routes/traces.ts';
 import { registerKnowledgeRoutes } from './routes/knowledge.ts';
 import { registerSupersedeRoutes } from './routes/supersede.ts';
 import { registerFileRoutes } from './routes/files.ts';
+import { createMcpHandler } from './mcp-transport.ts';
 
 // Reset stale indexing status on startup using Drizzle
 try {
@@ -105,6 +107,34 @@ registerKnowledgeRoutes(app);
 registerSupersedeRoutes(app);
 registerFileRoutes(app);
 
+// MCP Streamable HTTP endpoint — Bearer token auth, stateless per-request
+app.all('/mcp', async (c) => {
+  // Require MCP_AUTH_TOKEN to be set; reject all if not configured
+  if (!MCP_AUTH_TOKEN) {
+    return c.json({ error: 'MCP endpoint not configured (MCP_AUTH_TOKEN not set)' }, 401);
+  }
+
+  const authHeader = c.req.header('Authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+  // Constant-time comparison to prevent timing attacks
+  const expected = Buffer.from(MCP_AUTH_TOKEN);
+  const provided = Buffer.from(token.padEnd(MCP_AUTH_TOKEN.length, '\0').slice(0, MCP_AUTH_TOKEN.length));
+  const match = token.length === MCP_AUTH_TOKEN.length &&
+    timingSafeEqual(expected, provided);
+
+  if (!match) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Add MCP-specific CORS headers
+  c.header('Access-Control-Expose-Headers', 'mcp-session-id, mcp-protocol-version');
+  c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, mcp-session-id, mcp-protocol-version, Last-Event-ID');
+
+  const response = await createMcpHandler(c.req.raw);
+  return response;
+});
+
 // Startup banner
 console.log(`
 🔮 Arra Oracle HTTP Server running! (Hono.js)
@@ -132,7 +162,11 @@ console.log(`
    - GET  /api/supersede       List supersessions
    - GET  /api/supersede/chain/:path  Document lineage
    - POST /api/supersede       Log supersession
+
+   MCP (Remote):
+   - ALL /mcp                  Streamable HTTP MCP endpoint
 `);
+console.log(MCP_AUTH_TOKEN ? '   🔑 MCP auth: configured' : '   ⚠️  MCP auth: NOT configured (/mcp will reject all requests)');
 
 export default {
   port: Number(PORT),

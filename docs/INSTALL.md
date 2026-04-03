@@ -211,6 +211,67 @@ rm -rf ~/.local/share/arra-oracle-v2
 rm -rf ~/.oracle
 ```
 
+## Remote MCP Access (Streamable HTTP)
+
+Connect external MCP clients (Claude Desktop, ChatGPT, Codex, Gemini) to Oracle v3 via HTTPS.
+
+### Server Setup
+
+Set the auth token in your `.env`:
+
+```bash
+MCP_AUTH_TOKEN=your-secret-token-here
+```
+
+Restart the server — the startup banner will confirm: `🔑 MCP auth: configured`
+
+### Client Configuration
+
+Add to your MCP client settings (e.g., `~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "oracle-v3": {
+      "type": "streamable-http",
+      "url": "https://oracle.goko.digital/mcp",
+      "headers": {
+        "Authorization": "Bearer your-secret-token-here"
+      }
+    }
+  }
+}
+```
+
+### Verify Connection
+
+```bash
+# Test auth rejection (no token)
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:47778/mcp \
+  -H "Content-Type: application/json" -d '{}'
+# Expected: 401
+
+# Test MCP initialize
+curl -X POST http://localhost:47778/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secret-token-here" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+# Expected: JSON-RPC response with serverInfo
+
+# Test tools/list (via HTTPS in production)
+curl -X POST https://oracle.goko.digital/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MCP_AUTH_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+# Expected: 15+ arra_* tools
+```
+
+### Notes
+
+- The `/mcp` endpoint uses **stateless mode** — each request is independent (no session tracking)
+- Stdio transport (`src/index.ts`) is unchanged; local Claude Code installations continue to work
+- nginx already configured with `proxy_buffering off` for SSE streaming
+
 ---
 
 See also:
