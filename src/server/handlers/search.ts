@@ -74,7 +74,7 @@ export async function handleSearch(
   project?: string,
   cwd?: string,
   model?: string
-): Promise<SearchResponse & { mode?: string; warning?: string; model?: string }> {
+): Promise<SearchResponse & { mode?: string; warning?: string; model?: string; query?: string }> {
   // Auto-detect project from cwd if not explicitly specified
   const resolvedProject = (project ?? detectProject(cwd))?.toLowerCase() ?? null;
   const startTime = Date.now();
@@ -166,28 +166,36 @@ export async function handleSearch(
 
   if (mode !== 'fts') {
     const vectorStore = await getVectorStore(model);
-    if (vectorStore.status === 'connected') {
+    try {
       const vectorQuery = type === 'all' ? safeQuery : `${type} ${safeQuery}`;
-      const { results, total } = await vectorStore.search(vectorQuery, limit * 2, 0);
+      const vectorResult = await vectorStore.query(vectorQuery, limit * 2);
 
-      vectorResults = results
-        .filter((r: any) => !resolvedProject || !r.project || r.project.toLowerCase() === resolvedProject)
-        .map((r: any) => ({
-          id: r.id,
-          type: r.type,
-          content: r.text,
-          source_file: r.source_file,
-          concepts: r.concepts || [],
-          project: r.project,
-          source: 'vector' as const,
-          score: r.score,
-          distance: r._distance,
-          model
-        }));
+      vectorResults = vectorResult.ids.map((id, i) => ({
+        id,
+        type: vectorResult.metadatas?.[i]?.type || 'unknown',
+        content: vectorResult.documents?.[i] || '',
+        source_file: vectorResult.metadatas?.[i]?.source_file || '',
+        concepts: vectorResult.metadatas?.[i]?.concepts || [],
+        project: vectorResult.metadatas?.[i]?.project,
+        source: 'vector' as const,
+        score: undefined, // Will be computed from distances
+        distance: vectorResult.distances?.[i],
+        model
+      }));
 
-      vectorTotal = total;
-    } else if (mode === 'vector') {
-      warning = 'Vector store not connected';
+      // Convert distance to score (0-1, higher = better)
+      vectorResults.forEach((r: any) => {
+        if (r.distance !== undefined) {
+          r.score = Math.max(0, 1 - r.distance / 2);
+        }
+      });
+
+      vectorTotal = vectorResult.ids.length;
+    } catch (e) {
+      if (mode === 'vector') {
+        warning = 'Vector store query failed';
+      }
+      console.debug(`Vector search error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 

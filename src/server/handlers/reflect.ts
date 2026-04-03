@@ -4,7 +4,7 @@
  * Get random wisdom from principles and learnings.
  */
 
-import { eq, or } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 import { db, sqlite, oracleDocuments } from '../../db/index.ts';
 
 /**
