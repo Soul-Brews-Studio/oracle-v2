@@ -13,5 +13,5 @@ export const VECTORS_DB_FILE = 'vectors.db';
 export const LANCEDB_DIR_NAME = 'lancedb';
 export const CHROMADB_DIR_NAME = '.chromadb';
 export const MCP_SERVER_NAME = 'arra-oracle-v2';
-export const COLLECTION_NAME = 'oracle_knowledge';
+export const COLLECTION_NAME = 'oracle_knowledge_bge_m3';
 export const PID_FILE_NAME = 'oracle-http.pid';
