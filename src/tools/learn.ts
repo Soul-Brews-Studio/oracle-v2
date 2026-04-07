@@ -12,6 +12,37 @@ import { detectProject } from '../server/project-detect.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
 import type { ToolContext, ToolResponse, OracleLearnInput } from './types.ts';
 
+// ============================================================================
+// TTL Helpers (Issue #4)
+// ============================================================================
+
+/** Default TTL by title pattern prefix */
+const TTL_PATTERNS: [RegExp, number][] = [
+  [/^\[score-output\]/i, 7],
+  [/^\[infra-health\]/i, 7],
+  [/^\[remediation-audit\]/i, 14],
+  [/^\[daily-goal\]/i, 7],
+  [/^\[goal-carryover\]/i, 7],
+  [/^\[retro\]/i, 30],
+];
+
+/** Parse TTL string like "7d" → number of days, or null if invalid */
+export function parseTtl(ttl: string | undefined | null): number | null {
+  if (!ttl) return null;
+  const match = ttl.match(/^(\d+)d$/);
+  if (!match) return null;
+  const days = parseInt(match[1], 10);
+  return days > 0 ? days : null;
+}
+
+/** Get default TTL in days based on title pattern prefix, or null for permanent */
+export function defaultTtlDays(title: string): number | null {
+  for (const [pattern, days] of TTL_PATTERNS) {
+    if (pattern.test(title)) return days;
+  }
+  return null;
+}
+
 /** Coerce concepts to string[] — handles string, array, or undefined from MCP input */
 export function coerceConcepts(concepts: unknown): string[] {
   if (Array.isArray(concepts)) return concepts.map(String);
@@ -41,6 +72,10 @@ export const learnToolDef = {
       project: {
         type: 'string',
         description: 'Source project. Accepts: "github.com/owner/repo", "owner/repo", local path with ghq/Code prefix, or GitHub URL. Auto-normalized to "github.com/owner/repo" format.'
+      },
+      ttl: {
+        type: 'string',
+        description: 'Optional TTL for auto-expiry (e.g. "7d", "14d", "30d"). Auto-assigned by title pattern if omitted: [score-output]=7d, [infra-health]=7d, [remediation-audit]=14d, [daily-goal]=7d, [goal-carryover]=7d, [retro]=30d. No TTL = permanent.'
       }
     },
     required: ['pattern']
@@ -102,7 +137,7 @@ export function extractProjectFromSource(source?: string): string | null {
 // ============================================================================
 
 export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Promise<ToolResponse> {
-  const { pattern, source, concepts, project: projectInput } = input;
+  const { pattern, source, concepts, project: projectInput, ttl } = input;
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
 
@@ -146,6 +181,8 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
 
   const title = pattern.split('\n')[0].substring(0, 80);
   const conceptsList = coerceConcepts(concepts);
+  const ttlDays = parseTtl(ttl) ?? defaultTtlDays(pattern);
+  const expiresAt = ttlDays ? now.getTime() + (ttlDays * 86400000) : null;
   const frontmatter = [
     '---',
     `title: ${title}`,
@@ -153,6 +190,8 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     `created: ${dateStr}`,
     `source: ${source || 'Oracle Learn'}`,
     ...(project ? [`project: ${project}`] : []),
+    ...(ttlDays ? [`ttl: ${ttlDays}d`] : []),
+    ...(expiresAt ? [`expires: ${new Date(expiresAt).toISOString().split('T')[0]}`] : []),
     '---',
     '',
     `# ${title}`,
@@ -179,6 +218,8 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     origin: null,
     project,
     createdBy: 'arra_learn',
+    expiresAt,
+    ttlDays,
   }).run();
 
   ctx.sqlite.prepare(`
@@ -193,7 +234,8 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
         success: true,
         file: sourceFileRel,
         id,
-        message: `Pattern added to Oracle knowledge base${vaultRoot ? ' (vault)' : ''}`
+        ...(ttlDays ? { ttl: `${ttlDays}d`, expires_at: new Date(expiresAt!).toISOString() } : {}),
+        message: `Pattern added to Oracle knowledge base${vaultRoot ? ' (vault)' : ''}${ttlDays ? ` (expires in ${ttlDays} days)` : ''}`
       }, null, 2)
     }]
   };

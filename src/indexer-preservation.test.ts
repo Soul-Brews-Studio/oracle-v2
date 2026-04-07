@@ -49,7 +49,9 @@ beforeAll(() => {
       superseded_reason TEXT,
       origin TEXT,
       project TEXT,
-      created_by TEXT
+      created_by TEXT,
+      expires_at INTEGER,
+      ttl_days INTEGER
     );
 
     CREATE INDEX idx_type ON oracle_documents(type);

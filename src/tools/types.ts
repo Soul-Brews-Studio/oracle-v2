@@ -47,6 +47,7 @@ export interface OracleLearnInput {
   source?: string;
   concepts?: string[];
   project?: string;
+  ttl?: string; // e.g. "7d", "14d", "30d" — parsed to days
 }
 
 export interface OracleListInput {

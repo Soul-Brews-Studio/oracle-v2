@@ -50,16 +50,23 @@ export async function handleList(ctx: ToolContext, input: OracleListInput): Prom
     throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
   }
 
+  // TTL filter: exclude expired documents (Issue #4)
+  const nowMs = Date.now();
+
   const countResult = type === 'all'
-    ? ctx.db.select({ total: sql<number>`count(*)` }).from(oracleDocuments).get()
-    : ctx.db.select({ total: sql<number>`count(*)` }).from(oracleDocuments).where(eq(oracleDocuments.type, type)).get();
+    ? ctx.sqlite.prepare('SELECT count(*) as total FROM oracle_documents WHERE (expires_at IS NULL OR expires_at > ?)').get(nowMs) as { total: number }
+    : ctx.sqlite.prepare('SELECT count(*) as total FROM oracle_documents WHERE type = ? AND (expires_at IS NULL OR expires_at > ?)').get(type, nowMs) as { total: number };
   const total = countResult?.total ?? 0;
+
+  const expiredResult = ctx.sqlite.prepare('SELECT count(*) as cnt FROM oracle_documents WHERE expires_at IS NOT NULL AND expires_at <= ?').get(nowMs) as { cnt: number };
+  const expiredCount = expiredResult?.cnt ?? 0;
 
   const listStmt = type === 'all'
     ? ctx.sqlite.prepare(`
         SELECT d.id, d.type, d.source_file, d.concepts, d.indexed_at, f.content
         FROM oracle_documents d
         JOIN oracle_fts f ON d.id = f.id
+        WHERE (d.expires_at IS NULL OR d.expires_at > ?)
         ORDER BY d.indexed_at DESC
         LIMIT ? OFFSET ?
       `)
@@ -67,14 +74,14 @@ export async function handleList(ctx: ToolContext, input: OracleListInput): Prom
         SELECT d.id, d.type, d.source_file, d.concepts, d.indexed_at, f.content
         FROM oracle_documents d
         JOIN oracle_fts f ON d.id = f.id
-        WHERE d.type = ?
+        WHERE d.type = ? AND (d.expires_at IS NULL OR d.expires_at > ?)
         ORDER BY d.indexed_at DESC
         LIMIT ? OFFSET ?
       `);
 
   const rows = type === 'all'
-    ? listStmt.all(limit, offset)
-    : listStmt.all(type, limit, offset);
+    ? listStmt.all(nowMs, limit, offset)
+    : listStmt.all(type, nowMs, limit, offset);
 
   const documents = (rows as any[]).map((row) => ({
     id: row.id,
@@ -89,7 +96,7 @@ export async function handleList(ctx: ToolContext, input: OracleListInput): Prom
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({ documents, total, limit, offset, type }, null, 2)
+      text: JSON.stringify({ documents, total, limit, offset, type, expired: expiredCount }, null, 2)
     }]
   };
 }

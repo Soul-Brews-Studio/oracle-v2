@@ -20,6 +20,9 @@ export const oracleDocuments = sqliteTable('oracle_documents', {
   supersededBy: text('superseded_by'),      // ID of newer document
   supersededAt: integer('superseded_at'),   // When it was superseded
   supersededReason: text('superseded_reason'), // Why (optional)
+  // TTL/auto-expire (Issue #4) - ephemeral learnings auto-supersede after TTL
+  expiresAt: integer('expires_at'),            // Unix timestamp (ms) when doc auto-expires
+  ttlDays: integer('ttl_days'),                // TTL in days (for reference/display)
   // Provenance tracking (Issue #22)
   origin: text('origin'),                   // 'mother' | 'arthur' | 'volt' | 'human' | null (legacy)
   project: text('project'),                 // ghq-style: 'github.com/laris-co/arra-oracle'
@@ -30,6 +33,7 @@ export const oracleDocuments = sqliteTable('oracle_documents', {
   index('idx_superseded').on(table.supersededBy),
   index('idx_origin').on(table.origin),
   index('idx_project').on(table.project),
+  index('idx_expires').on(table.expiresAt),
 ]);
 
 // Indexing status tracking

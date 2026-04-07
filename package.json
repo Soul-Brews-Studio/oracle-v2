@@ -50,7 +50,8 @@
     "vault:pull": "bun src/vault/cli.ts pull",
     "vault:status": "bun src/vault/cli.ts status",
     "vault:migrate": "bun src/vault/cli.ts migrate",
-    "vault:rsync": "./scripts/vault-rsync.sh"
+    "vault:rsync": "./scripts/vault-rsync.sh",
+    "expire": "bun scripts/expire-learnings.ts"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.26.2",
