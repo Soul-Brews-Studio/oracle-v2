@@ -20,7 +20,7 @@ import type { VectorStoreAdapter } from './vector/types.ts';
 import path from 'path';
 import fs from 'fs';
 import { loadToolGroupConfig, getDisabledTools, type ToolGroupConfig } from './config/tool-groups.ts';
-import { ORACLE_DATA_DIR, DB_PATH, CHROMADB_DIR } from './config.ts';
+import { ORACLE_DATA_DIR, DB_PATH } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 
 // Tool handlers (all extracted to src/tools/)
@@ -98,9 +98,8 @@ class OracleMCPServer {
       console.error(`[ToolGroups] Disabled: ${disabledGroups.join(', ')}`);
     }
 
-    this.vectorStore = createVectorStore({
-      dataPath: CHROMADB_DIR,
-    });
+    // Use factory defaults from env vars (ORACLE_VECTOR_DB, ORACLE_EMBEDDING_PROVIDER)
+    this.vectorStore = createVectorStore();
 
     const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname || __dirname, '..', 'package.json'), 'utf-8'));
     this.version = pkg.version;

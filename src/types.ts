@@ -120,7 +120,6 @@ export interface HybridSearchOptions {
 export interface IndexerConfig {
   repoRoot: string;
   dbPath: string;
-  chromaPath: string;
   sourcePaths: {
     resonance: string;
     learnings: string;

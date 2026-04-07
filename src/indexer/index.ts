@@ -80,7 +80,8 @@ export class OracleIndexer {
 
     // Initialize vector store
     try {
-      this.vectorClient = createVectorStore({ dataPath: this.config.chromaPath });
+      // Use factory defaults from env vars (ORACLE_VECTOR_DB, ORACLE_EMBEDDING_PROVIDER)
+      this.vectorClient = createVectorStore();
       await this.vectorClient.connect();
       await this.vectorClient.deleteCollection();
       await this.vectorClient.ensureCollection();
