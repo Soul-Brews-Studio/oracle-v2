@@ -6,9 +6,29 @@ import { Hono, type Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { getSetting } from '../db/index.ts';
+import { rateLimitAuth } from '../middleware/rate-limit.ts';
+import { getCSRFTokenForSession } from '../middleware/csrf.ts';
 
-// Session secret - generate once per server run
-const SESSION_SECRET = process.env.ORACLE_SESSION_SECRET || crypto.randomUUID();
+// Session secret - MUST be set in production for persistent sessions
+// Enforce in production mode
+const SESSION_SECRET = process.env.ORACLE_SESSION_SECRET;
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (!SESSION_SECRET && isProduction) {
+  console.error('❌ SECURITY ERROR: ORACLE_SESSION_SECRET not set in production!');
+  console.error('❌ Server cannot start safely without a session secret.');
+  console.error('❌ Set ORACLE_SESSION_SECRET environment variable with a strong random value.');
+  console.error('❌ Example: openssl rand -base64 32');
+  throw new Error('ORACLE_SESSION_SECRET must be set in production');
+}
+
+if (!SESSION_SECRET) {
+  console.warn('⚠️  SECURITY WARNING: ORACLE_SESSION_SECRET not set!');
+  console.warn('⚠️  Sessions will not persist across server restarts.');
+  console.warn('⚠️  Set ORACLE_SESSION_SECRET environment variable for production use.');
+}
+// Use provided secret or generate a temporary one (changes on restart!)
+const sessionSecretValue = SESSION_SECRET || crypto.randomUUID();
 const SESSION_COOKIE_NAME = 'oracle_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -46,7 +66,7 @@ export function isLocalNetwork(c: Context): boolean {
 // Generate session token using HMAC-SHA256
 export function generateSessionToken(): string {
   const expires = Date.now() + SESSION_DURATION_MS;
-  const signature = createHmac('sha256', SESSION_SECRET)
+  const signature = createHmac('sha256', sessionSecretValue)
     .update(String(expires))
     .digest('hex');
   return `${expires}:${signature}`;
@@ -63,7 +83,7 @@ export function verifySessionToken(token: string): boolean {
   const expires = parseInt(expiresStr, 10);
   if (isNaN(expires) || expires < Date.now()) return false;
 
-  const expectedSignature = createHmac('sha256', SESSION_SECRET)
+  const expectedSignature = createHmac('sha256', sessionSecretValue)
     .update(expiresStr)
     .digest('hex');
 
@@ -125,7 +145,7 @@ export function registerAuthRoutes(app: Hono) {
   });
 
   // Login
-  app.post('/api/auth/login', async (c) => {
+  app.post('/api/auth/login', rateLimitAuth, async (c) => {
     const body = await c.req.json();
     const { password } = body;
 
@@ -162,6 +182,23 @@ export function registerAuthRoutes(app: Hono) {
   app.post('/api/auth/logout', (c) => {
     deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
     return c.json({ success: true });
+  });
+
+  // CSRF Token - returns token for authenticated sessions
+  app.get('/api/auth/csrf-token', (c) => {
+    if (!isAuthenticated(c)) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Extract session ID from session cookie
+    const sessionCookie = getCookie(c, SESSION_COOKIE_NAME);
+    if (!sessionCookie) {
+      return c.json({ error: 'No session' }, 401);
+    }
+
+    // Use session token as session ID for CSRF
+    const token = getCSRFTokenForSession(sessionCookie);
+    return c.json({ csrf_token: token });
   });
 
 }

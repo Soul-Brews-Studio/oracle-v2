@@ -5,7 +5,7 @@ import path from 'path';
 import { desc } from 'drizzle-orm';
 import { REPO_ROOT, PLUGINS_DIR } from '../config.ts';
 import { db, sqlite, searchLog } from '../db/index.ts';
-import { handleGraph } from '../server/handlers.ts';
+import { handleGraph } from '../server/handlers/index.ts';
 import { handleRead } from '../tools/read.ts';
 import { handleContext } from '../server/context.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
@@ -33,9 +33,45 @@ export function registerFileRoutes(app: Hono) {
       return c.json({ error: 'Missing path parameter' }, 400);
     }
 
-    // SECURITY: Block path traversal attempts
-    if (filePath.includes('..') || filePath.includes('\0')) {
+    // SECURITY: Block path traversal attempts (check multiple encodings)
+    const decodedPath = decodeURIComponent(filePath);
+    const normalizedPath = path.normalize(decodedPath);
+
+    // Block traversal patterns
+    if (decodedPath.includes('..') ||
+        decodedPath.includes('\\..') ||
+        decodedPath.includes('%2e%2e') ||
+        decodedPath.includes('%2E%2E') ||
+        filePath.includes('\0') ||
+        filePath.includes('\\0') ||
+        normalizedPath.includes('..')) {
       return c.json({ error: 'Invalid path: traversal not allowed' }, 400);
+    }
+
+    // SECURITY: Restrict file extensions to safe types
+    const safeExtensions = [
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.md', '.txt', '.json', '.yaml', '.yml', '.toml',
+      '.html', '.css', '.scss', '.less',
+      '.sh', '.bash', '.zsh', '.fish',
+      '.py', '.rs', '.go', '.java', '.cpp', '.c', '.h',
+      '.graphql', '.gql', '.sql',
+      '.env.example', '.gitignore', '.dockerignore'
+    ];
+    const fileExt = path.extname(normalizedPath).toLowerCase();
+    const isSafeExtension = safeExtensions.includes(fileExt) || !fileExt; // Allow files without extension
+
+    // Block sensitive files regardless of extension
+    const blockedPatterns = [
+      '.env', '.key', '.pem', '.cert', '.crt',
+      'secret', 'private', 'password', 'credentials',
+      '.npmrc', '.yarnrc', 'package-lock.json', 'yarn.lock'
+    ];
+    const lowerPath = normalizedPath.toLowerCase();
+    const isSensitiveFile = blockedPatterns.some(pattern => lowerPath.includes(pattern));
+
+    if (!isSafeExtension || isSensitiveFile) {
+      return c.json({ error: 'File access denied: unsafe file type or sensitive file' }, 403);
     }
 
     try {
@@ -73,6 +109,9 @@ export function registerFileRoutes(app: Hono) {
 
       if (fs.existsSync(fullPath)) {
         const content = fs.readFileSync(fullPath, 'utf-8');
+        // Security headers for file content
+        c.header('X-Content-Type-Options', 'nosniff');
+        c.header('Content-Security-Policy', "default-src 'none'");
         return c.text(content);
       }
 

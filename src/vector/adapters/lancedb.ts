@@ -143,14 +143,19 @@ export class LanceDBAdapter implements VectorStoreAdapter {
           if (tableNames.includes(this.collectionName)) {
             this.table = await this.db.openTable(this.collectionName);
           }
-        } catch {}
+        } catch (e) {
+          // Connection or table listing failed - will return 0 count
+          console.debug(`Failed to list LanceDB tables: ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
       if (!this.table) return { count: 0 };
     }
     try {
       const count = await this.table.countRows();
       return { count };
-    } catch {
+    } catch (e) {
+      // Count failed - table might be in bad state
+      console.debug(`Failed to get LanceDB row count: ${e instanceof Error ? e.message : String(e)}`);
       return { count: 0 };
     }
   }

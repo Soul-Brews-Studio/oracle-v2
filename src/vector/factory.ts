@@ -24,6 +24,7 @@ export interface VectorStoreConfig {
   pythonVersion?: string;
   embeddingProvider?: EmbeddingProviderType;
   embeddingModel?: string;
+  embeddingBaseUrl?: string;
   /** Qdrant URL (default: http://localhost:6333) */
   qdrantUrl?: string;
   /** Qdrant API key */
@@ -41,6 +42,7 @@ export interface VectorStoreConfig {
  *   ORACLE_VECTOR_DB          = 'chroma' | 'sqlite-vec' | 'lancedb' | 'qdrant' | 'cloudflare-vectorize'
  *   ORACLE_EMBEDDING_PROVIDER = 'chromadb-internal' | 'ollama' | 'openai' | 'cloudflare-ai'
  *   ORACLE_EMBEDDING_MODEL    = model name override
+ *   OPENAI_BASE_URL          = custom base URL for OpenAI-compatible APIs (e.g., z.ai proxy)
  *   ORACLE_VECTOR_DB_PATH     = sqlite-vec / lancedb path
  *   CLOUDFLARE_ACCOUNT_ID     = CF account (for cloudflare-vectorize)
  *   CLOUDFLARE_API_TOKEN      = CF API token (for cloudflare-vectorize)
@@ -65,7 +67,7 @@ export function createVectorStore(config: VectorStoreConfig = {}): VectorStoreAd
       const embeddingModel = config.embeddingModel
         || process.env.ORACLE_EMBEDDING_MODEL;
 
-      const embedder = createEmbeddingProvider(embeddingType, embeddingModel);
+      const embedder = createEmbeddingProvider(embeddingType, embeddingModel, config.embeddingBaseUrl);
       return new SqliteVecAdapter(collectionName, dbPath, embedder);
     }
 
@@ -81,7 +83,8 @@ export function createVectorStore(config: VectorStoreConfig = {}): VectorStoreAd
       const embeddingModel = config.embeddingModel
         || process.env.ORACLE_EMBEDDING_MODEL;
 
-      const embedder = createEmbeddingProvider(embeddingType, embeddingModel);
+      const embeddingBaseUrl = config.embeddingBaseUrl || process.env.OPENAI_BASE_URL;
+      const embedder = createEmbeddingProvider(embeddingType, embeddingModel, embeddingBaseUrl);
       return new LanceDBAdapter(collectionName, dbPath, embedder);
     }
 
