@@ -173,12 +173,15 @@ export class OAuthProvider {
 
   /**
    * Verify that a client registration request is authorized.
-   * Requires Bearer MCP_AUTH_TOKEN.
-   * Returns true if registration is allowed.
+   * Requires Bearer MCP_AUTH_TOKEN. Returns false (deny) when MCP_AUTH_TOKEN is not
+   * configured — dynamic client registration is disabled until a token is set.
+   * Set MCP_AUTH_TOKEN alongside MCP_OAUTH_PIN to enable OAuth client registration.
    */
   checkRegistrationAuth(authHeader: string): boolean {
     if (!MCP_AUTH_TOKEN) {
-      console.warn('[OAuth] /register: MCP_AUTH_TOKEN not set — registration denied');
+      // No token configured — deny registration rather than leaving it open.
+      // Operators must set MCP_AUTH_TOKEN to enable dynamic client registration.
+      console.warn('[OAuth] /register: MCP_AUTH_TOKEN not set — dynamic client registration is disabled');
       return false;
     }
     const providedToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';

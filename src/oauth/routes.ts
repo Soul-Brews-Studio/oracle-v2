@@ -208,6 +208,10 @@ export function registerOAuthRoutes(app: Hono): void {
     return c.html(html);
   });
 
+  // Rate limiting is enforced server-side (global window in OAuthProvider.pinAttemptWindow),
+  // not per-IP. This is intentional: per-IP limits can be bypassed via spoofed
+  // x-forwarded-for/x-real-ip headers. The global lockout is more secure for a single-user
+  // server and cannot be bypassed regardless of proxy configuration.
   app.post('/oauth/callback', async (c) => {
     let stateKey: string;
     let pin: string;
