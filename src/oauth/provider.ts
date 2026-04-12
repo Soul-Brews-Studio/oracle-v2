@@ -173,14 +173,13 @@ export class OAuthProvider {
 
   /**
    * Verify that a client registration request is authorized.
-   * Requires Bearer MCP_AUTH_TOKEN if configured.
+   * Requires Bearer MCP_AUTH_TOKEN.
    * Returns true if registration is allowed.
    */
   checkRegistrationAuth(authHeader: string): boolean {
     if (!MCP_AUTH_TOKEN) {
-      // No token configured — allow (degraded mode, log warning)
-      console.warn('[OAuth] /register: MCP_AUTH_TOKEN not set — registration is unprotected');
-      return true;
+      console.warn('[OAuth] /register: MCP_AUTH_TOKEN not set — registration denied');
+      return false;
     }
     const providedToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
     const expected = Buffer.from(MCP_AUTH_TOKEN, 'utf-8');

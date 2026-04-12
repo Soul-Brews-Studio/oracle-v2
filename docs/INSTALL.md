@@ -337,15 +337,15 @@ Claude Desktop → POST /mcp → 401 + WWW-Authenticate header
 
 When `MCP_OAUTH_PIN` is set, `/mcp` accepts both:
 - **OAuth-issued tokens** (from the flow above)
-- **Static Bearer token** (`MCP_AUTH_TOKEN`) — fallback for existing configs
+- **Static Bearer token** (`MCP_AUTH_TOKEN`) — fallback for existing configs and required for dynamic client registration
 
 ### Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MCP_OAUTH_PIN` | For OAuth | PIN shown on login page (enables OAuth if set) |
+| `MCP_OAUTH_PIN` | For OAuth | PIN shown on login page (enables OAuth if set; pair with `MCP_AUTH_TOKEN`) |
 | `MCP_EXTERNAL_URL` | For OAuth | Public HTTPS URL (e.g., `https://oracle.goko.digital`) — must be HTTPS in production |
-| `MCP_AUTH_TOKEN` | For Bearer | Static token for clients that support custom headers |
+| `MCP_AUTH_TOKEN` | For Bearer | Static token for clients that support custom headers and for OAuth client registration |
 
 ### Test OAuth manually
 

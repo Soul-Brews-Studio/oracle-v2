@@ -19,11 +19,10 @@ import type { Context, Hono } from 'hono';
 import { MCP_EXTERNAL_URL } from '../config.ts';
 import { getOAuthProvider } from './provider.ts';
 
-/** Extract best-effort client IP from request headers */
+/** Use the actual connection address for PIN throttling; forwarded headers are spoofable. */
 function getClientIp(c: Context): string {
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return c.req.header('x-real-ip') ?? 'unknown';
+  const remoteAddress = (c.env as { remoteAddress?: string } | undefined)?.remoteAddress;
+  return remoteAddress ?? 'unknown';
 }
 
 export function registerOAuthRoutes(app: Hono): void {

@@ -143,6 +143,46 @@ describe('OAuth 2.1 Integration', () => {
       });
       expect(res.status).toBe(400);
     });
+
+    test('POST /register fails closed when OAuth is enabled without MCP_AUTH_TOKEN', async () => {
+      const pinOnlyPort = '47780';
+      const pinOnlyBaseUrl = `http://localhost:${pinOnlyPort}`;
+      const pinOnlyServer = Bun.spawn(['bun', 'run', 'src/server.ts'], {
+        cwd: import.meta.dir.replace('/src/integration', ''),
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: {
+          ...process.env,
+          ORACLE_PORT: pinOnlyPort,
+          MCP_OAUTH_PIN: TEST_PIN,
+          MCP_EXTERNAL_URL: pinOnlyBaseUrl,
+          MCP_AUTH_TOKEN: '',
+          ORACLE_CHROMA_TIMEOUT: '1000',
+        },
+      });
+
+      try {
+        for (let i = 0; i < 30; i++) {
+          try {
+            const res = await fetch(`${pinOnlyBaseUrl}/api/health`);
+            if (res.ok) break;
+          } catch {
+            // Server still starting
+          }
+          await Bun.sleep(500);
+        }
+
+        const res = await fetch(`${pinOnlyBaseUrl}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ redirect_uris: ['http://localhost:9999/callback'] }),
+        });
+
+        expect(res.status).toBe(401);
+      } finally {
+        pinOnlyServer.kill();
+      }
+    });
   });
 
   // ─── Full OAuth flow ─────────────────────────────────────────────────────
@@ -236,6 +276,103 @@ describe('OAuth 2.1 Integration', () => {
         redirect: 'manual',
       });
       expect(callbackRes.status).toBe(403);
+    });
+
+    test('Step 4b: PIN lockout ignores spoofed forwarded headers', async () => {
+      const lockoutPort = '47781';
+      const lockoutBaseUrl = `http://localhost:${lockoutPort}`;
+      const lockoutServer = Bun.spawn(['bun', 'run', 'src/server.ts'], {
+        cwd: import.meta.dir.replace('/src/integration', ''),
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: {
+          ...process.env,
+          ORACLE_PORT: lockoutPort,
+          MCP_AUTH_TOKEN: TEST_TOKEN,
+          MCP_OAUTH_PIN: TEST_PIN,
+          MCP_EXTERNAL_URL: lockoutBaseUrl,
+          ORACLE_CHROMA_TIMEOUT: '1000',
+        },
+      });
+
+      try {
+        for (let i = 0; i < 30; i++) {
+          try {
+            const res = await fetch(`${lockoutBaseUrl}/api/health`);
+            if (res.ok) break;
+          } catch {
+            // Server still starting
+          }
+          await Bun.sleep(500);
+        }
+
+        const registerRes = await fetch(`${lockoutBaseUrl}/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TEST_TOKEN}`,
+          },
+          body: JSON.stringify({
+            redirect_uris: [redirectUri],
+            client_name: 'Lockout Test Client',
+          }),
+        });
+        const lockoutClient = await registerRes.json() as Record<string, string>;
+
+        const codeVerifier = generateCodeVerifier();
+        const codeChallenge = generateCodeChallenge(codeVerifier);
+
+        const authorizeUrl = new URL(`${lockoutBaseUrl}/authorize`);
+        authorizeUrl.searchParams.set('response_type', 'code');
+        authorizeUrl.searchParams.set('client_id', lockoutClient.client_id);
+        authorizeUrl.searchParams.set('redirect_uri', redirectUri);
+        authorizeUrl.searchParams.set('code_challenge', codeChallenge);
+        authorizeUrl.searchParams.set('code_challenge_method', 'S256');
+
+        const redirectRes = await fetch(authorizeUrl.toString(), { redirect: 'manual' });
+        const loginUrl = redirectRes.headers.get('location') || '';
+        const stateKey = new URL(loginUrl).searchParams.get('state') || '';
+
+        for (let i = 0; i < 9; i++) {
+          const attemptRes = await fetch(`${lockoutBaseUrl}/oauth/callback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'x-forwarded-for': `203.0.113.${i}`,
+              'x-real-ip': `198.51.100.${i}`,
+            },
+            body: new URLSearchParams({ state: stateKey, pin: 'wrongpin' }).toString(),
+            redirect: 'manual',
+          });
+          expect(attemptRes.status).toBe(403);
+        }
+
+        const tenthRes = await fetch(`${lockoutBaseUrl}/oauth/callback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'x-forwarded-for': '203.0.113.250',
+            'x-real-ip': '198.51.100.250',
+          },
+          body: new URLSearchParams({ state: stateKey, pin: 'wrongpin' }).toString(),
+          redirect: 'manual',
+        });
+        expect(tenthRes.status).toBe(403);
+
+        const lockedRes = await fetch(`${lockoutBaseUrl}/oauth/callback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'x-forwarded-for': '203.0.113.251',
+            'x-real-ip': '198.51.100.251',
+          },
+          body: new URLSearchParams({ state: stateKey, pin: 'wrongpin' }).toString(),
+          redirect: 'manual',
+        });
+        expect(lockedRes.status).toBe(429);
+      } finally {
+        lockoutServer.kill();
+      }
     });
 
     test('Step 5: Full flow — authorize → PIN → code → token → use /mcp', async () => {

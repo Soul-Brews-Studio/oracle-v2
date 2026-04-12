@@ -2,7 +2,7 @@
 
 **Plan**: `.prp-output/plans/completed/issue-6-oracle-family-thread-normalization-revalidation.plan.md`
 **Source Issue**: #6
-**Branch**: `feat/issue-6-oracle-family-normalization`
+**Branch**: `feat/issue-6-revalidation-pr`
 **Date**: 2026-04-12
 **Status**: COMPLETE
 
@@ -10,9 +10,12 @@
 
 ## Summary
 
-Verification-and-drift pass for the issue #6 Oracle-family normalization work. All four
-repository artifacts (README, issue form, maintainer runbook, inbox workflow) remain
-coherent with the documented issue history. No drift was detected; no changes were required.
+Verification-and-drift pass for the issue #6 Oracle-family normalization work, followed by
+review-fix hardening for PR #716. The issue-6 repository artifacts (README, issue form,
+maintainer runbook, inbox workflow) remain coherent with the documented issue history. The
+follow-up review-fix commit hardens OAuth client registration, removes spoofable forwarded
+header dependence from PIN throttling, adds focused integration coverage, and updates docs
+to match the enforced auth requirements.
 
 ---
 
@@ -20,7 +23,7 @@ coherent with the documented issue history. No drift was detected; no changes we
 
 | Metric | Predicted | Actual | Reasoning |
 |--------|-----------|--------|-----------|
-| Complexity | LOW | LOW | Read-only audit — no code or docs changes needed |
+| Complexity | LOW | MEDIUM | Started as a read-only audit; review-fix follow-up added targeted OAuth hardening/tests/docs |
 | Confidence | 8/10 | 9/10 | Prior plan was correct; no regressions introduced |
 
 **No deviations from plan.** The verification pass confirmed all artifacts still match the
@@ -37,6 +40,15 @@ intended resolution. This is a no-op implementation — the prior work remains v
 | 3 | Audit maintainer guidance and automation fit | `docs/oracle-family-issues.md`, `.github/workflows/inbox-auto-add.yml` | ✅ | No drift — runbook accurate, workflow handles all opened issues generically |
 | 4 | Re-review and close the loop | Prior artifacts | ✅ | No unresolved issues; implementation still valid — no-op confirmed |
 
+## Review-Fix Follow-Up
+
+| Area | Change | Reason |
+|------|--------|--------|
+| OAuth registration | Fail closed when `MCP_AUTH_TOKEN` is unset | Prevent unauthenticated dynamic client registration |
+| PIN throttling | Key lockout to `c.env.remoteAddress` | Ignore spoofable `x-forwarded-for` / `x-real-ip` headers |
+| Integration coverage | Added focused OAuth tests for both fixes | Verify the hardening behavior on a live server |
+| Docs/config | Clarified that OAuth client registration requires `MCP_AUTH_TOKEN` | Keep operator guidance aligned with runtime behavior |
+
 ---
 
 ## Validation Results
@@ -44,15 +56,21 @@ intended resolution. This is a no-op implementation — the prior work remains v
 | Check | Result | Details |
 |-------|--------|---------|
 | YAML check | ✅ PASS | `oracle-awakening.yml` and `inbox-auto-add.yml` parse successfully |
-| Unit tests (`bun run test:unit`) | ✅ PASS | 157 passed, 0 failed |
-| Build (`bun run build`) | ⚠️ PRE-EXISTING | 4 pre-existing TS errors in `server-legacy.ts` / `server/handlers.ts` — not introduced by this work |
+| OAuth integration tests (`bun test src/integration/oauth.test.ts`) | ✅ PASS | 19 passed, 0 failed |
+| Build (`bun run build`) | ⚠️ PRE-EXISTING | Existing TS errors in `src/server-legacy.ts` and `src/server/handlers.ts` remain unrelated to this review-fix |
 
 ---
 
 ## Files Changed
 
-None. This was a verification-only pass. All artifacts were confirmed correct with no
-modifications needed.
+- `.prp-output/plans/completed/issue-6-oracle-family-thread-normalization-revalidation.plan.md`
+- `.prp-output/reports/issue-6-revalidation-report-20260412-1104.md`
+- `.env.example`
+- `README.md`
+- `docs/INSTALL.md`
+- `src/integration/oauth.test.ts`
+- `src/oauth/provider.ts`
+- `src/oauth/routes.ts`
 
 ---
 
@@ -70,11 +88,11 @@ None. All artifacts were internally consistent with each other and with the GitH
 
 ## Tests Written
 
-None required — verification-only pass with no code or docs changes.
+Added targeted OAuth integration coverage in `src/integration/oauth.test.ts`.
 
 ---
 
 ## Next Steps
 
-- [ ] Create PR: `gh pr create` or `/prp-core:prp-pr`
+- [ ] Re-review PR #716 after this follow-up commit
 - [ ] Merge when approved

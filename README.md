@@ -209,8 +209,8 @@ arra-oracle-v3/
 |----------|---------|-------------|
 | `ORACLE_PORT` | `47778` | HTTP server port |
 | `ORACLE_REPO_ROOT` | `process.cwd()` | Knowledge base root |
-| `MCP_AUTH_TOKEN` | — | Bearer token for `/mcp` endpoint (required for remote MCP) |
-| `MCP_OAUTH_PIN` | — | PIN for OAuth 2.1 login page — enables OAuth when set |
+| `MCP_AUTH_TOKEN` | — | Bearer token for `/mcp` and OAuth client registration |
+| `MCP_OAUTH_PIN` | — | PIN for OAuth 2.1 login page — requires `MCP_AUTH_TOKEN` for client registration |
 | `MCP_EXTERNAL_URL` | `http://localhost:PORT` | Public HTTPS URL for OAuth metadata |
 
 ## Testing
