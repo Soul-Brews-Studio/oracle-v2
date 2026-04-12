@@ -10,11 +10,11 @@
  * - Single PIN, single user (same as PSak)
  * - Atomic file writes for crash safety (temp file + rename)
  * - crypto.timingSafeEqual for PIN comparison to prevent timing attacks
- * - IP-based rate limiting for PIN brute-force protection
+ * - Server-side lockout for PIN brute-force protection (no trust in forwarded IP headers)
  */
 
 import { randomBytes, createHash, timingSafeEqual } from 'crypto';
-import { writeFileSync, readFileSync, renameSync, existsSync, mkdirSync, chmodSync } from 'fs';
+import { writeFileSync, readFileSync, renameSync, existsSync, mkdirSync, chmodSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { tmpdir } from 'os';
 
@@ -44,7 +44,7 @@ interface IssuedCode {
   issued_at: number;
 }
 
-/** Rate-limit window for a single IP */
+/** Rate-limit window for the single-user PIN flow */
 interface RateLimitRecord {
   count: number;
   resetAt: number;
@@ -68,8 +68,8 @@ export class OAuthProvider {
   // code → issued code data (after PIN verification, before token exchange)
   private issuedCodes: Map<string, IssuedCode> = new Map();
 
-  // Rate limiting: ip → {count, resetAt}
-  private pinAttempts: Map<string, RateLimitRecord> = new Map();
+  // Single-user OAuth flow: shared lockout window cannot be bypassed with spoofed headers.
+  private pinAttemptWindow: RateLimitRecord | null = null;
 
   private static readonly MAX_PIN_ATTEMPTS = 10;
   private static readonly PIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
@@ -98,17 +98,21 @@ export class OAuthProvider {
 
   /** Atomic write: write to temp file then rename — crash-safe. Sets 0600 permissions. */
   private saveState(): void {
+    let tmp: string | null = null;
     try {
       const dir = dirname(this.stateFile);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
-      const tmp = join(tmpdir(), `.oauth-state-${Date.now()}-${randomBytes(4).toString('hex')}.tmp`);
+      tmp = join(tmpdir(), `.oauth-state-${Date.now()}-${randomBytes(4).toString('hex')}.tmp`);
       writeFileSync(tmp, JSON.stringify(this.state, null, 2), 'utf-8');
       chmodSync(tmp, 0o600);
       renameSync(tmp, this.stateFile);
     } catch (err) {
-      console.error('[OAuth] saveState failed — token state may be inconsistent:', err);
+      if (tmp && existsSync(tmp)) {
+        rmSync(tmp, { force: true });
+      }
+      throw new Error('[OAuth] Failed to persist OAuth state to disk', { cause: err });
     }
   }
 
@@ -130,19 +134,17 @@ export class OAuthProvider {
       }
     }
 
-    // Clean expired rate-limit windows
-    for (const [ip, record] of this.pinAttempts.entries()) {
-      if (now > record.resetAt) {
-        this.pinAttempts.delete(ip);
-      }
+    // Clean expired global rate-limit window
+    if (this.pinAttemptWindow && now > this.pinAttemptWindow.resetAt) {
+      this.pinAttemptWindow = null;
     }
   }
 
   // ─── Rate limiting ───────────────────────────────────────────────────────
 
-  private checkRateLimit(ip: string): { allowed: boolean; attemptsLeft: number } {
+  private checkRateLimit(): { allowed: boolean; attemptsLeft: number } {
     const now = Date.now();
-    const record = this.pinAttempts.get(ip);
+    const record = this.pinAttemptWindow;
 
     if (!record || now > record.resetAt) {
       return { allowed: true, attemptsLeft: OAuthProvider.MAX_PIN_ATTEMPTS };
@@ -152,12 +154,19 @@ export class OAuthProvider {
     return { allowed: attemptsLeft > 0, attemptsLeft };
   }
 
-  private recordFailedAttempt(ip: string): number {
+  private recordFailedAttempt(stateKey: string): number {
     const now = Date.now();
-    const record = this.pinAttempts.get(ip);
+    const record = this.pinAttemptWindow;
+    const pending = this.pendingAuthorizations.get(stateKey);
+
+    if (!pending) {
+      return 0;
+    }
+
+    pending.failed_attempts += 1;
 
     if (!record || now > record.resetAt) {
-      this.pinAttempts.set(ip, { count: 1, resetAt: now + OAuthProvider.PIN_LOCKOUT_MS });
+      this.pinAttemptWindow = { count: 1, resetAt: now + OAuthProvider.PIN_LOCKOUT_MS };
       return OAuthProvider.MAX_PIN_ATTEMPTS - 1;
     }
 
@@ -165,8 +174,12 @@ export class OAuthProvider {
     return Math.max(0, OAuthProvider.MAX_PIN_ATTEMPTS - record.count);
   }
 
-  private resetAttempts(ip: string): void {
-    this.pinAttempts.delete(ip);
+  private resetAttempts(stateKey: string): void {
+    this.pinAttemptWindow = null;
+    const pending = this.pendingAuthorizations.get(stateKey);
+    if (pending) {
+      pending.failed_attempts = 0;
+    }
   }
 
   // ─── Registration auth ───────────────────────────────────────────────────
@@ -213,7 +226,13 @@ export class OAuthProvider {
     };
 
     this.state.clients[client_id] = client;
-    this.saveState();
+    try {
+      this.saveState();
+    } catch (error) {
+      delete this.state.clients[client_id];
+      console.error('[OAuth] Client registration aborted: failed to persist state', error);
+      throw error;
+    }
 
     console.log(`[OAuth] Client registered: ${client_id} (${metadata.client_name ?? 'unnamed'})`);
     return client;
@@ -274,6 +293,7 @@ export class OAuthProvider {
       redirect_uri: params.redirect_uri,
       resource: params.resource,
       created_at: Date.now(),
+      failed_attempts: 0,
     });
 
     console.log(`[OAuth] Authorization started for client: ${params.client_id}`);
@@ -332,17 +352,15 @@ export class OAuthProvider {
   /**
    * Verify PIN and issue authorization code.
    * Returns redirect URI with code param, or error info.
-   * @param ip - Client IP address for rate limiting (pass 'unknown' if unavailable)
    */
   handleLoginCallback(
     stateKey: string,
     pin: string,
-    ip: string = 'unknown',
   ): { redirectUri: string } | { error: string; status: number; showLoginPage?: boolean } {
     // Rate limit check
-    const rateCheck = this.checkRateLimit(ip);
+    const rateCheck = this.checkRateLimit();
     if (!rateCheck.allowed) {
-      console.warn(`[OAuth] PIN rate limit exceeded for IP: ${ip}`);
+      console.warn('[OAuth] PIN rate limit exceeded');
       return { error: 'Too many failed attempts. Please try again in 15 minutes.', status: 429, showLoginPage: true };
     }
 
@@ -372,15 +390,15 @@ export class OAuthProvider {
     const pinMatch = lengthMatch && bytesMatch;
 
     if (!pinMatch) {
-      const attemptsLeft = this.recordFailedAttempt(ip);
-      console.warn(`[OAuth] Failed PIN attempt from IP: ${ip}, attempts remaining: ${attemptsLeft}`);
+      const attemptsLeft = this.recordFailedAttempt(stateKey);
+      console.warn(`[OAuth] Failed PIN attempt for state ${stateKey}, attempts remaining: ${attemptsLeft}`);
       const msg = attemptsLeft > 0
         ? `Incorrect PIN (${attemptsLeft} attempts remaining)`
         : 'Incorrect PIN — account locked for 15 minutes';
       return { error: msg, status: 403, showLoginPage: true };
     }
 
-    this.resetAttempts(ip);
+    this.resetAttempts(stateKey);
 
     // Issue authorization code — one-time use
     const code = randomBytes(24).toString('hex');
@@ -456,7 +474,13 @@ export class OAuthProvider {
       expires_at,
       resource: codeData.resource,
     };
-    this.saveState();
+    try {
+      this.saveState();
+    } catch (error) {
+      delete this.state.tokens[access_token];
+      console.error('[OAuth] Access token issuance aborted: failed to persist state', error);
+      return { error: 'temporarily_unavailable: failed to persist token state', status: 503 };
+    }
 
     console.log(`[OAuth] Access token issued for client: ${codeData.client_id}`);
 
@@ -481,7 +505,11 @@ export class OAuthProvider {
     if (data) {
       if (data.expires_at < Date.now()) {
         delete this.state.tokens[token];
-        this.saveState();
+        try {
+          this.saveState();
+        } catch (error) {
+          console.error('[OAuth] Failed to persist expired-token cleanup', error);
+        }
         return null;
       }
       return {
@@ -517,7 +545,11 @@ export class OAuthProvider {
   revokeToken(token: string): void {
     if (this.state.tokens[token]) {
       delete this.state.tokens[token];
-      this.saveState();
+      try {
+        this.saveState();
+      } catch (error) {
+        console.error('[OAuth] Failed to persist token revocation', error);
+      }
       console.log('[OAuth] Token revoked');
     }
   }

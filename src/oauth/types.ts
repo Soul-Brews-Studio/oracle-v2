@@ -36,4 +36,5 @@ export interface PendingAuthorization {
   redirect_uri: string;
   resource?: string;
   created_at: number;
+  failed_attempts: number;
 }

@@ -15,16 +15,9 @@
  *   POST /oauth/callback                          — PIN verification + redirect (rate-limited)
  */
 
-import type { Context, Hono } from 'hono';
+import type { Hono } from 'hono';
 import { MCP_EXTERNAL_URL } from '../config.ts';
 import { getOAuthProvider } from './provider.ts';
-
-/** Extract best-effort client IP from request headers */
-function getClientIp(c: Context): string {
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return c.req.header('x-real-ip') ?? 'unknown';
-}
 
 export function registerOAuthRoutes(app: Hono): void {
   // ─── Discovery metadata ────────────────────────────────────────────────
@@ -80,14 +73,19 @@ export function registerOAuthRoutes(app: Hono): void {
       return c.json({ error: 'invalid_client_metadata: redirect_uris required' }, 400);
     }
 
-    const client = provider.registerClient({
-      redirect_uris: redirect_uris as string[],
-      client_name: body.client_name as string | undefined,
-      grant_types: body.grant_types as string[] | undefined,
-      response_types: body.response_types as string[] | undefined,
-      scope: body.scope as string | undefined,
-      token_endpoint_auth_method: body.token_endpoint_auth_method as string | undefined,
-    });
+    let client;
+    try {
+      client = provider.registerClient({
+        redirect_uris: redirect_uris as string[],
+        client_name: body.client_name as string | undefined,
+        grant_types: body.grant_types as string[] | undefined,
+        response_types: body.response_types as string[] | undefined,
+        scope: body.scope as string | undefined,
+        token_endpoint_auth_method: body.token_endpoint_auth_method as string | undefined,
+      });
+    } catch {
+      return c.json({ error: 'temporarily_unavailable: failed to persist client registration' }, 503);
+    }
 
     return c.json(client, 201);
   });
@@ -229,9 +227,8 @@ export function registerOAuthRoutes(app: Hono): void {
       }
     }
 
-    const ip = getClientIp(c);
     const provider = getOAuthProvider();
-    const result = provider.handleLoginCallback(stateKey, pin, ip);
+    const result = provider.handleLoginCallback(stateKey, pin);
 
     if ('error' in result) {
       if (result.showLoginPage) {

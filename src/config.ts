@@ -47,11 +47,39 @@ export const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN || '';
 // OAuth 2.1 — PIN-based auth for Claude Desktop / claude.ai Custom Connectors
 // If MCP_OAUTH_PIN is empty, OAuth routes are not mounted (Bearer-only mode)
 export const MCP_OAUTH_PIN = process.env.MCP_OAUTH_PIN || '';
-export const MCP_EXTERNAL_URL = process.env.MCP_EXTERNAL_URL || `http://localhost:${PORT}`;
-
-if (MCP_EXTERNAL_URL.startsWith('http://') && !MCP_EXTERNAL_URL.includes('localhost') && !MCP_EXTERNAL_URL.includes('127.0.0.1')) {
-  console.warn('⚠️  MCP_EXTERNAL_URL is using HTTP in production — OAuth requires HTTPS for secure token exchange');
+function isLoopbackHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '::1'
+    || hostname.endsWith('.localhost')
+  );
 }
+
+function resolveMcpExternalUrl(rawValue: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawValue);
+  } catch (error) {
+    throw new Error(`MCP_EXTERNAL_URL must be an absolute URL (received: ${rawValue})`, { cause: error });
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`MCP_EXTERNAL_URL must use http or https (received: ${parsed.protocol})`);
+  }
+
+  if (MCP_OAUTH_PIN && parsed.protocol === 'http:' && !isLoopbackHostname(parsed.hostname)) {
+    throw new Error(
+      'FATAL: MCP_EXTERNAL_URL must use HTTPS when OAuth is enabled unless the host is loopback/local-only.',
+    );
+  }
+
+  return parsed.toString().replace(/\/$/, '');
+}
+
+export const MCP_EXTERNAL_URL = resolveMcpExternalUrl(
+  process.env.MCP_EXTERNAL_URL || `http://localhost:${PORT}`,
+);
 
 // Ensure data directory exists (for fresh installs via bunx)
 if (!fs.existsSync(ORACLE_DATA_DIR)) {
