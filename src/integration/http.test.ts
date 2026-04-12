@@ -207,6 +207,51 @@ describe("HTTP API Integration", () => {
   });
 
   // ===================
+  // Knowledge Ingestion
+  // ===================
+  describe("Knowledge Ingestion", () => {
+    test("POST /api/learn persists a pattern and returns an id", async () => {
+      const pattern = `integration-test-pattern-${Date.now()}`;
+      const res = await fetch(`${BASE_URL}/api/learn`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pattern,
+          source: "http-integration-test",
+          concepts: ["test"],
+          project: "test-suite",
+        }),
+      });
+      expect(res.ok).toBe(true);
+      const data = await res.json();
+      expect(typeof data.id).toBe("string");
+      expect(data.id.length).toBeGreaterThan(0);
+
+      // Verify persistence: search for the pattern we just stored
+      const searchRes = await fetch(
+        `${BASE_URL}/api/search?q=${encodeURIComponent(pattern)}&type=learning`
+      );
+      expect(searchRes.ok).toBe(true);
+      const searchData = await searchRes.json();
+      expect(Array.isArray(searchData.results)).toBe(true);
+      // The newly stored document should appear in results
+      const found = searchData.results.some((r: { id?: string }) => r.id === data.id);
+      expect(found).toBe(true);
+    }, 30_000);
+
+    test("POST /api/learn rejects missing pattern field", async () => {
+      const res = await fetch(`${BASE_URL}/api/learn`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "test" }),
+      });
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toMatch(/pattern/i);
+    });
+  });
+
+  // ===================
   // Error Handling
   // ===================
   describe("Error Handling", () => {
