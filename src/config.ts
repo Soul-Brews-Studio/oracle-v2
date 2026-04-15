@@ -44,6 +44,11 @@ export const CHROMADB_DIR = path.join(HOME_DIR, C.CHROMADB_DIR_NAME);
 // If empty, /mcp will reject all requests with 401 (fail-safe)
 export const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN || '';
 
+// HTTP bind host. Defaults to 127.0.0.1 so the server is reachable only via
+// localhost / a reverse proxy; set ORACLE_BIND_HOST=0.0.0.0 to bind all
+// interfaces (only safe when auth is enforced on every /api/* route).
+export const ORACLE_BIND_HOST = process.env.ORACLE_BIND_HOST || '127.0.0.1';
+
 // OAuth 2.1 — PIN-based auth for Claude Desktop / claude.ai Custom Connectors
 // If MCP_OAUTH_PIN is empty, OAuth routes are not mounted (Bearer-only mode)
 export const MCP_OAUTH_PIN = process.env.MCP_OAUTH_PIN || '';

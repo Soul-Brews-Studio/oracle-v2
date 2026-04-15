@@ -18,7 +18,7 @@ import {
   performGracefulShutdown,
 } from './process-manager/index.ts';
 
-import { PORT, ORACLE_DATA_DIR, MCP_AUTH_TOKEN, MCP_OAUTH_PIN, MCP_EXTERNAL_URL } from './config.ts';
+import { PORT, ORACLE_BIND_HOST, ORACLE_DATA_DIR, MCP_AUTH_TOKEN, MCP_OAUTH_PIN, MCP_EXTERNAL_URL } from './config.ts';
 import { db, closeDb, indexingStatus } from './db/index.ts';
 
 // Route modules
@@ -177,7 +177,7 @@ app.all('/mcp', async (c) => {
 console.log(`
 🔮 Arra Oracle HTTP Server running! (Hono.js)
 
-   URL: http://localhost:${PORT}
+   Bind: ${ORACLE_BIND_HOST}:${PORT}
 
    Endpoints:
    - GET  /api/health          Health check
@@ -214,5 +214,6 @@ if (MCP_OAUTH_PIN) {
 
 export default {
   port: Number(PORT),
+  hostname: ORACLE_BIND_HOST,
   fetch: app.fetch,
 };
