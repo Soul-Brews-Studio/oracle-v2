@@ -128,13 +128,13 @@ export async function handleSearch(
     // Determine which models to query
     const isMulti = model === 'multi';
     const modelsToQuery = isMulti
-      ? ['bge-m3', 'nomic']
+      ? ['nomic', 'bge-m3']
       : [model && EMBEDDING_MODELS[model] ? model : undefined];
 
     // Query all models in parallel
     const modelResults = await Promise.allSettled(
       modelsToQuery.map(async (m) => {
-        const modelName = m || 'bge-m3';
+        const modelName = m || 'nomic';
         console.log(`[Vector] Searching model=${modelName} for: "${query.substring(0, 30)}..."`);
         const client = await getVectorStore(m);
         const whereFilter = type !== 'all' ? { type } : undefined;
@@ -874,7 +874,7 @@ export async function handleMap3d(model?: string): Promise<{
     computed_at: string;
   };
 }> {
-  const modelKey = model || 'bge-m3';
+  const modelKey = model || 'nomic';
   const cached = map3dCaches.get(modelKey);
   if (cached && (Date.now() - cached.timestamp) < MAP3D_CACHE_TTL) {
     return cached.data;
@@ -1213,13 +1213,13 @@ export async function handleVectorStats(): Promise<{
     })
   );
 
-  // Primary = bge-m3 (backward compat)
-  const primary = engines.find(e => e.key === 'bge-m3') || engines[0];
+  // Primary = nomic (matches indexer default collection)
+  const primary = engines.find(e => e.key === 'nomic') || engines[0];
   return {
     vector: {
       enabled: primary?.enabled ?? false,
       count: primary?.count ?? 0,
-      collection: primary?.collection ?? 'oracle_knowledge_bge_m3'
+      collection: primary?.collection ?? 'oracle_knowledge'
     },
     vectors: engines,
   };

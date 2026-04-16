@@ -176,7 +176,7 @@ const connectPromises = new Map<string, Promise<void>>();
 
 export function getVectorStoreByModel(model?: string): VectorStoreAdapter {
   const models = getEmbeddingModels();
-  const key = model && models[model] ? model : 'bge-m3';
+  const key = model && models[model] ? model : 'nomic';
   let store = modelStoreCache.get(key);
   if (!store) {
     const preset = models[key];
@@ -199,7 +199,7 @@ export function getVectorStoreByModel(model?: string): VectorStoreAdapter {
 /** Ensure a model's store is connected. Call before first query. */
 export async function ensureVectorStoreConnected(model?: string): Promise<VectorStoreAdapter> {
   const models = getEmbeddingModels();
-  const key = model && models[model] ? model : 'bge-m3';
+  const key = model && models[model] ? model : 'nomic';
   const store = getVectorStoreByModel(model);
   const pending = connectPromises.get(key);
   if (pending) await pending;

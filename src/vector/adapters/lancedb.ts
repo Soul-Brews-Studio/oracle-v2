@@ -166,6 +166,7 @@ export class LanceDBAdapter implements VectorStoreAdapter {
   }
 
   async getAllEmbeddings(limit: number = 5000): Promise<{ ids: string[]; embeddings: number[][]; metadatas: any[] }> {
+    if (!this.table) await this.ensureCollection();
     if (!this.table) return { ids: [], embeddings: [], metadatas: [] };
 
     const rows = await this.table.query().limit(limit).toArray();

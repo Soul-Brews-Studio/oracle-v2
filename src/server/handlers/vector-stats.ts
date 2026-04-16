@@ -38,13 +38,13 @@ export async function handleVectorStats(): Promise<{
     })
   );
 
-  // Primary = bge-m3 (backward compat)
-  const primary = engines.find(e => e.key === 'bge-m3') || engines[0];
+  // Primary = nomic (matches indexer default collection)
+  const primary = engines.find(e => e.key === 'nomic') || engines[0];
   return {
     vector: {
       enabled: primary?.enabled ?? false,
       count: primary?.count ?? 0,
-      collection: primary?.collection ?? 'oracle_knowledge_bge_m3'
+      collection: primary?.collection ?? 'oracle_knowledge'
     },
     vectors: engines,
   };

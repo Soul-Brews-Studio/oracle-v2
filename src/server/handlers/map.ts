@@ -199,7 +199,7 @@ export async function handleMap3d(model?: string): Promise<{
     computed_at: string;
   };
 }> {
-  const modelKey = model || 'bge-m3';
+  const modelKey = model || 'nomic';
   const cached = map3dCaches.get(modelKey);
   if (cached && (Date.now() - cached.timestamp) < MAP3D_CACHE_TTL) {
     return cached.data;
