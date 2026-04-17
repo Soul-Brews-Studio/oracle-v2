@@ -2,17 +2,14 @@
  * CLI entrypoint for running the Oracle indexer
  */
 
-import fs from 'fs';
-import path from 'path';
-import { DB_PATH, CHROMADB_DIR } from '../config.ts';
+import { DB_PATH, REPO_ROOT } from '../config.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
 import type { IndexerConfig } from '../types.ts';
 import { OracleIndexer } from './index.ts';
+import fs from 'fs';
+import path from 'path';
 
-// Prefer vault repo for centralized indexing, fall back to local psi/ detection
-const scriptDir = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
-const projectRoot = path.resolve(scriptDir, '..', '..');
-
+// Prefer vault repo for centralized indexing, fall back to REPO_ROOT from config
 const vaultResult = getVaultPsiRoot();
 const vaultRoot = 'path' in vaultResult ? vaultResult.path : null;
 
@@ -22,13 +19,14 @@ const vaultHasContent = vaultRoot && (
   fs.existsSync(path.join(vaultRoot, 'github.com'))
 );
 const repoRoot = process.env.ORACLE_REPO_ROOT ||
-  (vaultHasContent ? vaultRoot :
-   fs.existsSync(path.join(projectRoot, '\u03c8')) ? projectRoot : process.cwd());
+  (vaultHasContent ? vaultRoot : REPO_ROOT);
 
 const config: IndexerConfig = {
   repoRoot,
   dbPath: DB_PATH,
-  chromaPath: CHROMADB_DIR,
+  // chromaPath is kept in the type for backward compatibility but no longer
+  // used: vector indexing is handled by src/scripts/index-model.ts.
+  chromaPath: '',
   sourcePaths: {
     resonance: '\u03c8/memory/resonance',
     learnings: '\u03c8/memory/learnings',

@@ -3,12 +3,11 @@
  *
  * Parses markdown files from psi/memory and creates:
  * 1. SQLite index (source of truth for metadata)
- * 2. Chroma vectors (semantic search)
+ * 2. FTS5 full-text index
  *
- * Following claude-mem's granular vector pattern:
- * - Split large documents into smaller chunks
- * - Each principle/pattern becomes multiple vectors
- * - Enable concept-based filtering
+ * Vector indexing (LanceDB) is handled separately by src/scripts/index-model.ts
+ * to keep a single source of truth for the canonical LanceDB path + collection
+ * (via the EMBEDDING_MODELS registry used by the server).
  */
 
 import fs from 'fs';
@@ -19,8 +18,6 @@ import { eq, or, isNull, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema.ts';
 import { oracleDocuments } from '../db/schema.ts';
 import { createDatabase } from '../db/index.ts';
-import { createVectorStore } from '../vector/factory.ts';
-import type { VectorStoreAdapter } from '../vector/types.ts';
 import { detectProject } from '../server/project-detect.ts';
 import type { OracleDocument, IndexerConfig } from '../types.ts';
 
@@ -33,7 +30,6 @@ import { storeDocuments } from './storage.ts';
 export class OracleIndexer {
   private sqlite: Database;
   private db: BunSQLiteDatabase<typeof schema>;
-  private vectorClient: VectorStoreAdapter | null = null;
   private config: IndexerConfig;
   private project: string | null;
   private seenContentHashes: Set<string> = new Set();
@@ -57,6 +53,39 @@ export class OracleIndexer {
     setIndexingStatus(this.sqlite, this.config, true, 0, 100);
     backupDatabase(this.sqlite, this.config);
 
+    // Safety: verify the source directory layout exists. If ψ/memory/ is
+    // completely missing, abort before smart-delete to prevent wiping the DB
+    // when the indexer is launched from the wrong working directory.
+    const psiMemoryDir = path.join(this.config.repoRoot, '\u03c8', 'memory');
+    const existingIndexerDocCount = this.db.select({ id: oracleDocuments.id })
+      .from(oracleDocuments)
+      .where(or(eq(oracleDocuments.createdBy, 'indexer'), isNull(oracleDocuments.createdBy)))
+      .all().length;
+
+    if (!fs.existsSync(psiMemoryDir) && existingIndexerDocCount > 0) {
+      throw new Error(
+        `Refusing to index: ${psiMemoryDir} does not exist but DB has ${existingIndexerDocCount} indexer docs. ` +
+        `Set ORACLE_REPO_ROOT or run from a directory containing ψ/memory/ to avoid data loss.`
+      );
+    }
+
+    // Collect documents from all source types
+    const shared = { config: this.config, seenContentHashes: this.seenContentHashes };
+    const documents: OracleDocument[] = [
+      ...collectDocuments({ ...shared, subdir: 'resonance', parseFn: parseResonanceFile, label: 'resonance' }),
+      ...collectDocuments({ ...shared, subdir: 'learnings', parseFn: parseLearningFile, label: 'learning' }),
+      ...collectDocuments({ ...shared, subdir: 'retrospectives', parseFn: parseRetroFile, label: 'retrospective' }),
+    ];
+
+    // Safety: if we found zero source documents but the DB has existing
+    // indexer-created content, abort rather than smart-deleting everything.
+    if (documents.length === 0 && existingIndexerDocCount > 0) {
+      throw new Error(
+        `Refusing to index: found 0 source documents but DB has ${existingIndexerDocCount} indexer docs. ` +
+        `Check that ψ/memory/ contains .md files and ORACLE_REPO_ROOT points to the correct location.`
+      );
+    }
+
     // Smart deletion: remove indexer-created docs whose source file no longer exists
     const allIndexerDocs = this.db.select({ id: oracleDocuments.id, sourceFile: oracleDocuments.sourceFile })
       .from(oracleDocuments)
@@ -66,6 +95,24 @@ export class OracleIndexer {
     const idsToDelete = allIndexerDocs
       .filter(d => !fs.existsSync(path.join(this.config.repoRoot, d.sourceFile)))
       .map(d => d.id);
+
+    // Safety: if smart-delete would drop more than half of existing indexer
+    // docs, we're almost certainly running from the wrong repoRoot — the docs
+    // on disk at this repoRoot just don't match what's in the DB. Abort rather
+    // than wiping historical data. Set ORACLE_FORCE_REINDEX=1 to override.
+    const forceFlag = process.env.ORACLE_FORCE_REINDEX === '1';
+    if (
+      !forceFlag &&
+      allIndexerDocs.length > 0 &&
+      idsToDelete.length / allIndexerDocs.length > 0.5
+    ) {
+      throw new Error(
+        `Refusing to delete ${idsToDelete.length}/${allIndexerDocs.length} docs (>50%). ` +
+        `repoRoot="${this.config.repoRoot}" likely doesn't match the source files this DB was built from. ` +
+        `Set ORACLE_REPO_ROOT to the correct path, or ORACLE_FORCE_REINDEX=1 to override.`
+      );
+    }
+
     console.log(`Smart delete: ${idsToDelete.length} stale docs (preserving arra_learn)`);
 
     if (idsToDelete.length > 0) {
@@ -78,38 +125,18 @@ export class OracleIndexer {
       }
     }
 
-    // Initialize vector store
-    try {
-      this.vectorClient = createVectorStore({ dataPath: this.config.chromaPath });
-      await this.vectorClient.connect();
-      await this.vectorClient.deleteCollection();
-      await this.vectorClient.ensureCollection();
-      console.log(`Vector store (${this.vectorClient.name}) connected`);
-    } catch (e) {
-      console.log('Vector store not available, using SQLite-only mode:', e instanceof Error ? e.message : e);
-      this.vectorClient = null;
-    }
-
-    // Collect documents from all source types
-    const shared = { config: this.config, seenContentHashes: this.seenContentHashes };
-    const documents: OracleDocument[] = [
-      ...collectDocuments({ ...shared, subdir: 'resonance', parseFn: parseResonanceFile, label: 'resonance' }),
-      ...collectDocuments({ ...shared, subdir: 'learnings', parseFn: parseLearningFile, label: 'learning' }),
-      ...collectDocuments({ ...shared, subdir: 'retrospectives', parseFn: parseRetroFile, label: 'retrospective' }),
-    ];
-
-    await storeDocuments(this.sqlite, this.db, this.vectorClient, this.project, documents);
+    // Store in SQLite + FTS5 only. Vector indexing is a separate step
+    // (src/scripts/index-model.ts) that uses the canonical LanceDB path.
+    await storeDocuments(this.sqlite, this.db, null, this.project, documents);
 
     setIndexingStatus(this.sqlite, this.config, false, documents.length, documents.length);
-    console.log(`Indexed ${documents.length} documents`);
+    console.log(`Indexed ${documents.length} documents (SQLite + FTS5)`);
+    console.log('Run `bun src/scripts/index-model.ts bge-m3` to populate vector embeddings.');
     console.log('Indexing complete!');
   }
 
   /** Close database connections */
   async close(): Promise<void> {
     this.sqlite.close();
-    if (this.vectorClient) {
-      await this.vectorClient.close();
-    }
   }
 }
