@@ -27,10 +27,19 @@ export const PORT = parseInt(String(process.env.ORACLE_PORT || C.ORACLE_DEFAULT_
 export const ORACLE_DATA_DIR = process.env.ORACLE_DATA_DIR || path.join(HOME_DIR, C.ORACLE_DATA_DIR_NAME);
 export const DB_PATH = process.env.ORACLE_DB_PATH || path.join(ORACLE_DATA_DIR, C.ORACLE_DB_FILE);
 
-// REPO_ROOT: where ψ/ lives
-// From source: project root. Via bunx: set ORACLE_REPO_ROOT. Fallback: data dir.
+// REPO_ROOT: where ψ/ lives.
+// Priority:
+//   1. ORACLE_REPO_ROOT env var — explicit override
+//   2. ORACLE_DATA_DIR if it has ψ/ — canonical data location (outside code repo)
+//   3. PROJECT_ROOT if it has ψ/ — dev mode for indexing the oracle's own psi
+//   4. ORACLE_DATA_DIR — default (will be empty initially)
+//
+// Data dir wins over project root so that accidental ψ/ folders in a source
+// checkout (e.g. from arra_learn writing with no vault configured) don't
+// override the real indexed data at ~/.arra-oracle-v2/ψ/.
 export const REPO_ROOT = process.env.ORACLE_REPO_ROOT ||
-  (fs.existsSync(path.join(PROJECT_ROOT, 'ψ')) ? PROJECT_ROOT : ORACLE_DATA_DIR);
+  (fs.existsSync(path.join(ORACLE_DATA_DIR, '\u03c8')) ? ORACLE_DATA_DIR :
+   fs.existsSync(path.join(PROJECT_ROOT, '\u03c8')) ? PROJECT_ROOT : ORACLE_DATA_DIR);
 
 // Derived paths — import these, don't compute inline
 export const FEED_LOG = path.join(ORACLE_DATA_DIR, C.FEED_LOG_FILE);

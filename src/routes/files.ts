@@ -76,6 +76,18 @@ export function registerFileRoutes(app: Hono) {
         return c.text(content);
       }
 
+      // Fallback: some files carry a project frontmatter tag but physically
+      // live in the universal vault (REPO_ROOT / ORACLE_DATA_DIR / ψ/), not
+      // in the project's ghq checkout. Try REPO_ROOT before giving up.
+      if (project) {
+        const repoFullPath = path.join(REPO_ROOT, filePath);
+        const realRepoFullPath = path.resolve(repoFullPath);
+        if (realRepoFullPath.startsWith(realRepoRoot) && fs.existsSync(repoFullPath)) {
+          const content = fs.readFileSync(repoFullPath, 'utf-8');
+          return c.text(content);
+        }
+      }
+
       const vault = getVaultPsiRoot();
       if ('path' in vault) {
         const vaultFullPath = path.join(vault.path, filePath);
