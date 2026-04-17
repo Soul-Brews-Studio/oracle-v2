@@ -49,7 +49,8 @@
     "vault:pull": "bun src/vault/cli.ts pull",
     "vault:status": "bun src/vault/cli.ts status",
     "vault:migrate": "bun src/vault/cli.ts migrate",
-    "vault:rsync": "./scripts/vault-rsync.sh"
+    "vault:rsync": "./scripts/vault-rsync.sh",
+    "reindex:full": "bun src/indexer/cli.ts && bun src/scripts/index-model.ts bge-m3"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.26.2",

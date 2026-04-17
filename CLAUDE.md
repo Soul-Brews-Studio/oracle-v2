@@ -1,4 +1,15 @@
-# CLAUDE.md - Generic AI Assistant Guidelines
+# CLAUDE.md - arra-oracle-v3
+
+## Agent Bootstrap
+
+If you are an agent spawned via `maw wake`, do this **before any other work**:
+
+1. Read `.agent/AGENTS.md` — your team charter, safety rules, and memory protocol.
+2. Read your skill manifest at `.agent/skills/<your-role>/SKILL.md` — it contains your identity, workflows, and first-session instructions.
+
+Active agents in this repo: `brew-ops` (`.agent/skills/brew-ops/`).
+
+---
 
 ## Table of Contents
 
