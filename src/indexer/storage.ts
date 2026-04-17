@@ -22,9 +22,14 @@ export async function storeDocuments(
 ): Promise<void> {
   const now = Date.now();
 
-  // Prepare FTS statement (raw SQL required for FTS5)
+  // Prepare FTS statements. FTS5 virtual tables have no UNIQUE constraint on
+  // the id column (it's UNINDEXED), so INSERT OR REPLACE doesn't dedupe —
+  // every reindex accumulates duplicates. Delete-then-insert instead.
+  // (Drift discovered 2026-04-16: oracle_fts had 1268 rows for 141 unique ids
+  // after 9 reindex passes.)
+  const deleteFts = sqlite.prepare(`DELETE FROM oracle_fts WHERE id = ?`);
   const insertFts = sqlite.prepare(`
-    INSERT OR REPLACE INTO oracle_fts (id, content, concepts)
+    INSERT INTO oracle_fts (id, content, concepts)
     VALUES (?, ?, ?)
   `);
 
@@ -66,7 +71,9 @@ export async function storeDocuments(
         })
         .run();
 
-      // SQLite FTS (raw SQL required for FTS5)
+      // SQLite FTS (raw SQL required for FTS5): delete then insert to avoid
+      // duplicates across re-index runs.
+      deleteFts.run(doc.id);
       insertFts.run(
         doc.id,
         doc.content,

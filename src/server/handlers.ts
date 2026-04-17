@@ -1306,7 +1306,9 @@ export function handleLearn(
     createdBy: 'arra_learn'
   }).run();
 
-  // Insert into FTS (must use raw SQL - Drizzle doesn't support virtual tables)
+  // Insert into FTS (must use raw SQL - Drizzle doesn't support virtual tables).
+  // FTS5 has no unique constraint on id — delete-then-insert to be idempotent.
+  sqlite.prepare(`DELETE FROM oracle_fts WHERE id = ?`).run(id);
   sqlite.prepare(`
     INSERT INTO oracle_fts (id, content, concepts)
     VALUES (?, ?, ?)

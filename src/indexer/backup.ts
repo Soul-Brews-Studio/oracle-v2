@@ -21,8 +21,16 @@ export function backupDatabase(sqlite: Database, config: IndexerConfig): void {
   const jsonPath = `${config.dbPath}.export-${timestamp}.json`;
   const csvPath = `${config.dbPath}.export-${timestamp}.csv`;
 
-  // 1. Copy SQLite file
+  // 1. Copy SQLite file. Checkpoint the WAL first so all in-flight writes
+  //    are flushed to the main DB file — otherwise fs.copyFileSync produces
+  //    an incomplete backup (we hit this on 2026-04-16: live DB had 591 FTS
+  //    rows but the copied .db file only had 134 checkpointed).
   try {
+    try {
+      sqlite.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    } catch (e) {
+      console.warn(`\u26a0\ufe0f WAL checkpoint failed (backup may be incomplete): ${e instanceof Error ? e.message : e}`);
+    }
     fs.copyFileSync(config.dbPath, backupPath);
     console.log(`\u{1f4e6} DB backup: ${backupPath}`);
   } catch (e) {
