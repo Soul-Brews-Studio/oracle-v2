@@ -70,7 +70,7 @@ export async function handleSupersede(ctx: ToolContext, input: OracleSupersededI
         new_type: newDoc.type,
         reason: reason || null,
         superseded_at: new Date(now).toISOString(),
-        message: `"${oldId}" is now marked as superseded by "${newId}". It will still appear in searches with a warning.`
+        message: `"${oldId}" is now marked as superseded by "${newId}". It will still appear in search results (P-001 Nothing is Deleted), now flagged with "superseded_by", "superseded_at", and "superseded_reason" fields so callers can follow the replacement pointer.`
       }, null, 2)
     }]
   };

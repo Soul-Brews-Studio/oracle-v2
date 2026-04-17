@@ -1,82 +1,127 @@
 /**
  * Supersede Routes — /api/supersede, /api/supersede/chain (Issue #18, #19)
+ *
+ * Source of truth: `oracle_documents.superseded_by/at/reason` columns.
+ * These are populated by `arra_supersede` MCP tool (src/tools/supersede.ts).
+ * The legacy `supersede_log` table is kept for POST /api/supersede backwards
+ * compatibility but is no longer the read source — it was disconnected from
+ * the MCP write path (drift discovered 2026-04-16, see learning
+ * `reindex-wiped-db-clits-fallback-wal-incomple` in the vault).
  */
 
 import type { Hono } from 'hono';
-import { eq, desc, sql } from 'drizzle-orm';
-import { db, supersedeLog } from '../db/index.ts';
+import { eq, isNotNull, desc, sql, and } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
+import { db, supersedeLog, oracleDocuments } from '../db/index.ts';
 
 export function registerSupersedeRoutes(app: Hono) {
-  // List supersessions with optional filters
+  // List supersessions from oracle_documents.superseded_by
   app.get('/api/supersede', (c) => {
     const project = c.req.query('project');
     const limit = parseInt(c.req.query('limit') || '50');
     const offset = parseInt(c.req.query('offset') || '0');
 
-    const whereClause = project ? eq(supersedeLog.project, project) : undefined;
+    const projectFilter = project ? eq(oracleDocuments.project, project) : undefined;
+    const whereClause = projectFilter
+      ? and(isNotNull(oracleDocuments.supersededBy), projectFilter)
+      : isNotNull(oracleDocuments.supersededBy);
 
     const countResult = db.select({ total: sql<number>`count(*)` })
-      .from(supersedeLog)
+      .from(oracleDocuments)
       .where(whereClause)
       .get();
     const total = countResult?.total || 0;
 
-    const logs = db.select()
-      .from(supersedeLog)
+    // Self-join to pull the replacement doc's source_file + type
+    const newDoc = alias(oracleDocuments, 'new_doc');
+    const rows = db.select({
+      oldId: oracleDocuments.id,
+      oldPath: oracleDocuments.sourceFile,
+      oldType: oracleDocuments.type,
+      newId: oracleDocuments.supersededBy,
+      newPath: newDoc.sourceFile,
+      newType: newDoc.type,
+      reason: oracleDocuments.supersededReason,
+      supersededAt: oracleDocuments.supersededAt,
+      project: oracleDocuments.project,
+    })
+      .from(oracleDocuments)
+      .leftJoin(newDoc, eq(oracleDocuments.supersededBy, newDoc.id))
       .where(whereClause)
-      .orderBy(desc(supersedeLog.supersededAt))
+      .orderBy(desc(oracleDocuments.supersededAt))
       .limit(limit)
       .offset(offset)
       .all();
 
     return c.json({
-      supersessions: logs.map(log => ({
-        id: log.id,
-        old_path: log.oldPath,
-        old_id: log.oldId,
-        old_title: log.oldTitle,
-        old_type: log.oldType,
-        new_path: log.newPath,
-        new_id: log.newId,
-        new_title: log.newTitle,
-        reason: log.reason,
-        superseded_at: new Date(log.supersededAt).toISOString(),
-        superseded_by: log.supersededBy,
-        project: log.project
+      supersessions: rows.map(r => ({
+        old_id: r.oldId,
+        old_path: r.oldPath,
+        old_type: r.oldType,
+        new_id: r.newId,
+        new_path: r.newPath,
+        new_type: r.newType,
+        reason: r.reason,
+        superseded_at: r.supersededAt ? new Date(r.supersededAt).toISOString() : null,
+        project: r.project,
       })),
       total,
       limit,
-      offset
+      offset,
     });
   });
 
-  // Get supersede chain for a document
+  // Get supersede chain for a document (by source_file path)
   app.get('/api/supersede/chain/:path', (c) => {
     const docPath = decodeURIComponent(c.req.param('path'));
 
-    const asOld = db.select()
-      .from(supersedeLog)
-      .where(eq(supersedeLog.oldPath, docPath))
-      .orderBy(supersedeLog.supersededAt)
-      .all();
+    // Resolve the path to a doc id first
+    const target = db.select({ id: oracleDocuments.id })
+      .from(oracleDocuments)
+      .where(eq(oracleDocuments.sourceFile, docPath))
+      .get();
 
-    const asNew = db.select()
-      .from(supersedeLog)
-      .where(eq(supersedeLog.newPath, docPath))
-      .orderBy(supersedeLog.supersededAt)
+    if (!target) {
+      return c.json({ superseded_by: [], supersedes: [] });
+    }
+
+    const newDoc = alias(oracleDocuments, 'new_doc');
+
+    // Docs that supersede this one (this.superseded_by → that doc)
+    const asOld = db.select({
+      newPath: newDoc.sourceFile,
+      reason: oracleDocuments.supersededReason,
+      supersededAt: oracleDocuments.supersededAt,
+    })
+      .from(oracleDocuments)
+      .leftJoin(newDoc, eq(oracleDocuments.supersededBy, newDoc.id))
+      .where(eq(oracleDocuments.id, target.id))
+      .orderBy(oracleDocuments.supersededAt)
+      .all()
+      .filter(r => r.newPath !== null);
+
+    // Docs that this one supersedes (their superseded_by === target.id)
+    const asNew = db.select({
+      oldPath: oracleDocuments.sourceFile,
+      reason: oracleDocuments.supersededReason,
+      supersededAt: oracleDocuments.supersededAt,
+    })
+      .from(oracleDocuments)
+      .where(eq(oracleDocuments.supersededBy, target.id))
+      .orderBy(oracleDocuments.supersededAt)
       .all();
 
     return c.json({
-      superseded_by: asOld.map(log => ({
-        new_path: log.newPath,
-        reason: log.reason,
-        superseded_at: new Date(log.supersededAt).toISOString()
+      superseded_by: asOld.map(r => ({
+        new_path: r.newPath,
+        reason: r.reason,
+        superseded_at: r.supersededAt ? new Date(r.supersededAt).toISOString() : null,
       })),
-      supersedes: asNew.map(log => ({
-        old_path: log.oldPath,
-        reason: log.reason,
-        superseded_at: new Date(log.supersededAt).toISOString()
-      }))
+      supersedes: asNew.map(r => ({
+        old_path: r.oldPath,
+        reason: r.reason,
+        superseded_at: r.supersededAt ? new Date(r.supersededAt).toISOString() : null,
+      })),
     });
   });
 

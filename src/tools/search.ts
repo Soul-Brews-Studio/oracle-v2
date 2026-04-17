@@ -392,7 +392,35 @@ export async function handleSearch(ctx: ToolContext, input: OracleSearchInput): 
 
   const combinedResults = combineResults(ftsResults, normalizedVectorResults);
   const totalMatches = combinedResults.length;
-  const results = combinedResults.slice(offset, offset + limit);
+  const results: Array<Record<string, unknown>> = combinedResults.slice(offset, offset + limit);
+
+  // Enrich with supersede flags (P-001 "Nothing is Deleted" — superseded docs
+  // remain searchable; callers need to see the flag to decide whether to
+  // follow the replacement pointer). Fixes drift where arra_supersede claimed
+  // "will appear in searches with a warning" but search never flagged them.
+  if (results.length > 0) {
+    const ids = results.map(r => r.id as string);
+    const placeholders = ids.map(() => '?').join(',');
+    const supersedeRows = ctx.sqlite.prepare(`
+      SELECT id, superseded_by, superseded_at, superseded_reason
+      FROM oracle_documents
+      WHERE id IN (${placeholders}) AND superseded_by IS NOT NULL
+    `).all(...ids) as Array<{
+      id: string;
+      superseded_by: string;
+      superseded_at: number;
+      superseded_reason: string | null;
+    }>;
+    const supersedeMap = new Map(supersedeRows.map(r => [r.id, r]));
+    for (const r of results) {
+      const s = supersedeMap.get(r.id as string);
+      if (s) {
+        r.superseded_by = s.superseded_by;
+        r.superseded_at = new Date(s.superseded_at).toISOString();
+        r.superseded_reason = s.superseded_reason;
+      }
+    }
+  }
 
   const ftsCount = results.filter((r) => r.source === 'fts').length;
   const vectorCount = results.filter((r) => r.source === 'vector').length;
