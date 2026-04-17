@@ -10,6 +10,7 @@ import fs from 'fs';
 import { oracleDocuments } from '../db/schema.ts';
 import { detectProject } from '../server/project-detect.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
+import { getVectorStoreByModel } from '../vector/factory.ts';
 import type { ToolContext, ToolResponse, OracleLearnInput } from './types.ts';
 
 /** Coerce concepts to string[] — handles string, array, or undefined from MCP input */
@@ -181,10 +182,37 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     createdBy: 'arra_learn',
   }).run();
 
+  // FTS5 has no unique constraint on id — delete-then-insert to be idempotent.
+  ctx.sqlite.prepare(`DELETE FROM oracle_fts WHERE id = ?`).run(id);
   ctx.sqlite.prepare(`
     INSERT INTO oracle_fts (id, content, concepts)
     VALUES (?, ?, ?)
   `).run(id, frontmatter, conceptsList.join(' '));
+
+  // Inline vector embedding — keep DB + lancedb in step so arra_search hybrid
+  // mode works immediately without a follow-up `bun run index-model`. Graceful
+  // fallback: if the embedder is unreachable (e.g. Ollama down) we log and
+  // carry on — the FTS row above is still searchable.
+  let embeddingStatus: 'ok' | 'skipped' | 'failed' = 'skipped';
+  try {
+    const model = process.env.ORACLE_EMBEDDING_MODEL || 'bge-m3';
+    const vectorStore = getVectorStoreByModel(model);
+    await vectorStore.addDocuments([{
+      id,
+      document: frontmatter,
+      metadata: {
+        type: 'learning',
+        source_file: sourceFileRel,
+        project: project || '',
+        concepts: conceptsList.join(','),
+      },
+    }]);
+    embeddingStatus = 'ok';
+  } catch (err) {
+    embeddingStatus = 'failed';
+    console.warn(`[arra_learn] vector embedding failed for ${id}: ${err instanceof Error ? err.message : String(err)}`);
+    console.warn(`[arra_learn] document still searchable via FTS5; run 'bun src/scripts/index-model.ts <model>' later to backfill vectors`);
+  }
 
   return {
     content: [{
@@ -193,7 +221,8 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
         success: true,
         file: sourceFileRel,
         id,
-        message: `Pattern added to Oracle knowledge base${vaultRoot ? ' (vault)' : ''}`
+        embedding: embeddingStatus,
+        message: `Pattern added to Oracle knowledge base${vaultRoot ? ' (vault)' : ''}${embeddingStatus === 'failed' ? ' — vector embedding failed, see server log' : ''}`
       }, null, 2)
     }]
   };
