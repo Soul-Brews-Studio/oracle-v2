@@ -11,6 +11,7 @@ export interface Learning {
   id: string;
   pattern: string;
   concepts?: string[];
+  file_path?: string;
   created_at: string;
 }
 
@@ -22,7 +23,7 @@ export interface TraceResult {
 
 export interface BackendClient {
   search(query: string): Promise<SearchResult[]>;
-  learn(pattern: string, concepts?: string[]): Promise<Learning>;
+  learn(pattern: string, concepts?: string[], source?: string): Promise<Learning>;
   list(type?: string, limit?: number): Promise<SearchResult[]>;
   trace(query: string): Promise<TraceResult>;
   read(file: string): Promise<string>;
@@ -38,8 +39,8 @@ export class MockBackend implements BackendClient {
     ];
   }
 
-  async learn(pattern: string, concepts?: string[]): Promise<Learning> {
-    return { id: "mock-learn-1", pattern, concepts, created_at: new Date().toISOString() };
+  async learn(pattern: string, concepts?: string[], _source?: string): Promise<Learning> {
+    return { id: "mock-learn-1", pattern, concepts, file_path: "ψ/mock/pattern.md", created_at: new Date().toISOString() };
   }
 
   async list(_type?: string, _limit?: number): Promise<SearchResult[]> {
@@ -83,8 +84,8 @@ export class RealBackend implements BackendClient {
     return this.post("arra_search", { query });
   }
 
-  async learn(pattern: string, concepts?: string[]): Promise<Learning> {
-    return this.post("arra_learn", { pattern, concepts });
+  async learn(pattern: string, concepts?: string[], source?: string): Promise<Learning> {
+    return this.post("arra_learn", { pattern, concepts, source });
   }
 
   async list(type?: string, limit?: number): Promise<SearchResult[]> {
