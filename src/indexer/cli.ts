@@ -6,6 +6,7 @@ import { DB_PATH, REPO_ROOT } from '../config.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
 import type { IndexerConfig } from '../types.ts';
 import { OracleIndexer } from './index.ts';
+import { scanRoots } from './scan.ts';
 import fs from 'fs';
 import path from 'path';
 
@@ -33,6 +34,25 @@ const config: IndexerConfig = {
     retrospectives: '\u03c8/memory/retrospectives'
   }
 };
+
+if (process.argv.includes('--scan')) {
+  const roots = [
+    path.join(repoRoot, config.sourcePaths.resonance),
+    path.join(repoRoot, config.sourcePaths.learnings),
+    path.join(repoRoot, config.sourcePaths.retrospectives),
+  ];
+  const findings = scanRoots(roots);
+  if (findings.length === 0) {
+    console.log('\u2713 Secret scan clean — no matches found.');
+    process.exit(0);
+  }
+  console.error(`\u26a0 Found ${findings.length} potential secret(s):`);
+  for (const f of findings) {
+    const rel = path.relative(repoRoot, f.file) || f.file;
+    console.error(`  ${rel}:${f.line} [${f.kind}] ${f.preview}`);
+  }
+  process.exit(2);
+}
 
 const indexer = new OracleIndexer(config);
 
