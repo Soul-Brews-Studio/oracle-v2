@@ -4,8 +4,9 @@ import Base from "../layouts/Base.astro";
 
 <Base title="Learn | Neo ARRA V3">
   <main class="max-w-2xl mx-auto px-6 py-16">
-    <h1 class="text-3xl font-bold mb-2">Learn</h1>
-    <p class="text-gray-400 mb-8">Save a pattern to Oracle memory.</p>
+    <a href="/" class="text-gray-500 hover:text-teal-300 text-sm transition-colors">← home</a>
+    <h1 class="text-5xl font-bold tracking-tight mt-4 mb-2">Learn</h1>
+    <p class="text-gray-400 mb-10 text-lg">Save a pattern to Oracle memory.</p>
 
     <form id="learn-form" class="space-y-5">
       <div>
@@ -15,7 +16,7 @@ import Base from "../layouts/Base.astro";
           name="pattern"
           rows="6"
           required
-          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-purple-500 resize-y font-mono text-sm"
+          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-teal-500 resize-y font-mono text-sm"
           placeholder="Describe the pattern to remember…"
         ></textarea>
       </div>
@@ -27,7 +28,7 @@ import Base from "../layouts/Base.astro";
           name="concepts"
           type="text"
           placeholder="comma,separated,tags"
-          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-clear-button]:hidden [&::-ms-clear]:hidden"
+          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-teal-500 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-clear-button]:hidden [&::-ms-clear]:hidden"
           style="WebkitAppearance: none"
         />
       </div>
@@ -41,7 +42,7 @@ import Base from "../layouts/Base.astro";
           name="source"
           type="text"
           placeholder="URL, file path, or reference"
-          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-clear-button]:hidden [&::-ms-clear]:hidden"
+          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-teal-500 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-clear-button]:hidden [&::-ms-clear]:hidden"
           style="WebkitAppearance: none"
         />
       </div>
@@ -50,7 +51,7 @@ import Base from "../layouts/Base.astro";
         <button
           type="submit"
           id="submit-btn"
-          class="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
+          class="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-gray-950 font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
         >
           Save
         </button>
@@ -81,9 +82,9 @@ import Base from "../layouts/Base.astro";
       "mt-8 rounded-xl border border-green-700 bg-green-950/40 p-6 space-y-2";
     resultPanel.innerHTML = `
       <p class="text-green-400 font-semibold text-lg">Saved ✓</p>
-      <p class="text-gray-300 text-sm">ID: <code class="text-purple-300 font-mono">${id}</code></p>
-      ${filePath ? `<p class="text-gray-300 text-sm">File: <code class="text-purple-300 font-mono">${filePath}</code></p>` : ""}
-      <a href="${searchUrl}" class="inline-block mt-2 text-purple-400 hover:text-purple-300 underline underline-offset-2 text-sm transition-colors">
+      <p class="text-gray-300 text-sm">ID: <code class="text-teal-300 font-mono">${id}</code></p>
+      ${filePath ? `<p class="text-gray-300 text-sm">File: <code class="text-teal-300 font-mono">${filePath}</code></p>` : ""}
+      <a href="${searchUrl}" class="inline-block mt-2 text-teal-400 hover:text-teal-300 underline underline-offset-2 text-sm transition-colors">
         Search for it →
       </a>
     `;

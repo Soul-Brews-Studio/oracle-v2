@@ -35,25 +35,25 @@ const stubPages = new Set([
 <Base title="MCP Tools | Neo ARRA V3">
   <main class="max-w-5xl mx-auto px-6 py-20">
     <div class="mb-12">
-      <a href="/" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← home</a>
-      <h1 class="text-4xl font-bold tracking-tight mt-4 mb-2">MCP Tools</h1>
+      <a href="/" class="text-gray-500 hover:text-teal-300 text-sm transition-colors">← home</a>
+      <h1 class="text-5xl font-bold tracking-tight mt-4 mb-3">MCP Tools</h1>
       <p class="text-gray-400 text-lg">
         {tools.length} tools exposed over MCP — stdio or HTTP.
       </p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {tools.map((tool) => {
         const isStub = stubPages.has(tool.href);
         return (
           <a
             href={tool.href}
-            class="group relative bg-gray-900 border border-gray-800 hover:border-purple-700 rounded-xl p-5 transition-colors flex flex-col gap-2"
+            class="group relative bg-gray-900/80 border border-gray-800 hover:border-teal-700/70 hover:ring-1 hover:ring-teal-500/30 hover:scale-[1.02] rounded-xl p-5 transition-all duration-200 flex flex-col gap-2"
           >
             {isStub && (
               <span class="absolute top-3 right-3 text-xs text-gray-600 font-mono">soon</span>
             )}
-            <span class="font-mono text-purple-300 text-sm group-hover:text-purple-200 transition-colors">
+            <span class="font-mono text-teal-300 text-sm group-hover:text-teal-200 transition-colors">
               {tool.name}
             </span>
             <span class="text-gray-400 text-sm leading-snug">{tool.desc}</span>
