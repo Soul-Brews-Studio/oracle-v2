@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+:root {
+  --oracle-purple: #a855f7;
+  --oracle-bg: #030712;
+  --oracle-surface: #111827;
+  --oracle-border: #1f2937;
+}

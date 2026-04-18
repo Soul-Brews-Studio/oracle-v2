@@ -1,0 +1,23 @@
+{
+  "name": "neo-arra-web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev --host",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy:preview": "astro build && wrangler deploy --config wrangler.preview.json",
+    "deploy:production": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.6.0",
+    "astro": "^5.17.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.63.0"
+  }
+}

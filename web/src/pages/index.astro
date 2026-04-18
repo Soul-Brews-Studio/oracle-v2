@@ -1,0 +1,55 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Neo ARRA V3 | Build with Oracle">
+  <main class="max-w-4xl mx-auto px-6 py-20">
+    <!-- Hero -->
+    <div class="text-center mb-16">
+      <h1 class="text-5xl font-bold tracking-tight mb-3">Neo ARRA V3</h1>
+      <p class="text-2xl text-purple-400 font-mono mb-4">| Build with Oracle</p>
+      <p class="text-gray-400 text-lg max-w-xl mx-auto mb-8">
+        Hybrid-search MCP memory layer — bring your own localhost.
+      </p>
+      <a
+        href="/?api=http://localhost:3457"
+        class="inline-block bg-purple-600 hover:bg-purple-500 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+      >
+        Connect to localhost
+      </a>
+    </div>
+
+    <!-- Three surfaces -->
+    <div class="mb-6 text-center">
+      <p class="text-gray-500 text-sm uppercase tracking-widest">Three surfaces</p>
+      <p class="text-gray-300 text-xl font-semibold mt-1">CLI · Web · MCP</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-purple-400 text-2xl mb-3">⌨️</div>
+        <h3 class="font-bold text-lg mb-2">CLI</h3>
+        <p class="text-gray-400 text-sm">
+          <code class="text-purple-300">neo-arra search "…"</code> — plugin-driven
+          commands from your shell.
+        </p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-purple-400 text-2xl mb-3">🌐</div>
+        <h3 class="font-bold text-lg mb-2">Web</h3>
+        <p class="text-gray-400 text-sm">
+          This interface — connects to your localhost Oracle MCP server or the
+          hosted API.
+        </p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-purple-400 text-2xl mb-3">🔌</div>
+        <h3 class="font-bold text-lg mb-2">MCP</h3>
+        <p class="text-gray-400 text-sm">
+          Agents call <code class="text-purple-300">arra_search</code>,{" "}
+          <code class="text-purple-300">arra_learn</code>, and 20 more tools via
+          stdio or HTTP.
+        </p>
+      </div>
+    </div>
+  </main>
+</Base>
