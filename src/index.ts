@@ -20,7 +20,7 @@ import type { VectorStoreAdapter } from './vector/types.ts';
 import path from 'path';
 import fs from 'fs';
 import { loadToolGroupConfig, getDisabledTools, type ToolGroupConfig } from './config/tool-groups.ts';
-import { ORACLE_DATA_DIR, DB_PATH, CHROMADB_DIR } from './config.ts';
+import { ORACLE_DATA_DIR, DB_PATH } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 
 // Tool handlers (all extracted to src/tools/)
@@ -99,7 +99,9 @@ class OracleMCPServer {
     }
 
     this.vectorStore = createVectorStore({
-      dataPath: CHROMADB_DIR,
+      type: 'lancedb',
+      collectionName: 'oracle_knowledge_bge_m3',
+      embeddingProvider: 'ollama',
       embeddingModel: 'bge-m3',
     });
 
