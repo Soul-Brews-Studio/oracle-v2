@@ -45,26 +45,32 @@ Each `- [ ]` is a cron-iteration goal. Keep chunks small enough to finish in ~25
 - [x] **3.2** `/search` — input box, result rendering, loading/empty/error states (PR #785).
 - [x] **3.3** `/learn` — form to POST a pattern via backend (PR #787).
 - [x] **3.4** `/tools` — grid of 19 MCP tool cards; arra_search/learn/trace link to real pages (PR #783).
-- [ ] **3.5** Style pass — Tailwind 4, dark default, Oracle family visual language.
+- [x] **3.5** Style pass — Tailwind 4, dark default, Oracle family visual language (PR #797).
 
 ### Stage 4: Backend adapter polish
 - [ ] **4.1** Full `BackendClient` interface covers all 22 MCP tools (not just threads).
-- [ ] **4.2** `RealBackend` uses standard fetch w/ retry. Handle CORS: arra-oracle-v3 MCP HTTP server needs `Access-Control-Allow-Origin: *` for localhost dev (or tailored origin).
-- [ ] **4.3** Document how to run locally: start MCP server → `PUBLIC_BACKEND_URL=http://localhost:47778 bun run dev`.
+- [ ] **4.2** CORS on MCP HTTP server for studio/neo/localhost origins (issue #801, PR in flight).
+- [x] **4.3** Local-dev doc (docs/LOCAL-DEV.md, PR #796).
 
 ### Stage 5: Deploy
-- [ ] **5.1** Verify `wrangler.json` has `account_id`, `custom_domain: neo.buildwithoracle.com`, `assets.directory: ./dist`.
-- [ ] **5.2** `bun run build` → dist/ pre-flight check (index.html exists, CSS > 1kb).
-- [ ] **5.3** `wrangler deploy --config wrangler.preview.json` first.
-- [ ] **5.4** Post-flight `curl -sI https://<preview-url>` expects 200.
-- [ ] **5.5** Production deploy `wrangler deploy` (uses main wrangler.json).
+- [x] **5.1** Verify `wrangler.json` has `account_id`, `custom_domain: neo.buildwithoracle.com`, `assets.directory: ./dist`.
+- [x] **5.2** `bun run build` → dist/ pre-flight check (index.html exists, CSS > 1kb).
+- [x] **5.3** `wrangler deploy --config wrangler.preview.json` (live).
+- [x] **5.4** Post-flight curl 200 on preview.
+- [x] **5.5** Production deploy `wrangler deploy` — neo.buildwithoracle.com live (HTTP 200) + oracle-studio.laris.workers.dev live.
 - [ ] **5.6** Post-flight `curl -sI https://neo.buildwithoracle.com` expects 200.
 
 ### Stage 6: Ship + docs
 - [ ] **6.1** README.md at repo root updated — 3 surfaces, install one-liners.
-- [ ] **6.2** CLI install command: `bunx neo-arra` or `npm i -g neo-arra` (after publishing).
+- [ ] **6.2** `bunx neo-arra` CLI install (issue #802, PR in flight).
+- [ ] **6.2b** `bunx arra-oracle` backend install (issue #799, PR in flight).
+- [ ] **6.2c** `bunx oracle-studio` UI install (already works from github repo).
 - [ ] **6.3** (obsolete — replaced by per-issue PRs throughout).
-- [ ] **6.4** Morning report at `ψ/inbox/neo-arra-v3-morning-report.md` with deployed URL + install cmd + what's live + what's pending.
+- [ ] **6.4** Morning report at `ψ/inbox/neo-arra-v3-morning-report.md` with deployed URL + 3 `bunx` one-liners + what's live + what's pending.
+
+### Architecture shift (2026-04-19 01:10)
+- `arra-oracle-v3` = MCP backend + `neo-arra` CLI + blog/landing at `neo.buildwithoracle.com`
+- `oracle-studio` (incubated 01:06) = Consumer app on `studio.buildwithoracle.com` (landing) + `bunx oracle-studio` (local UI). Canvas plugin work (Stage 7.2–7.10) moves there.
 
 ### Stage 7: Canvas plugin system (authorized 2026-04-19 00:40 — Nat: "make plugin and create plugable 3d!")
 
@@ -73,9 +79,9 @@ References being learned right now:
 - Soul-Brews-Studio/maw-ui `office-8bit/` Rust→WASM pattern (scout in flight)
 - Bombbaza/Multi-Planet-System-Knowledge-Map-3D as a candidate first plugin (scout in flight)
 
-- [ ] **7.1** `/canvas` page scaffold + Three.js host container with resize handling.
-- [ ] **7.2** Web Worker + OffscreenCanvas plugin runner (JS-ESM path from plan — easier authoring for v1).
-- [ ] **7.3** Default demo plugin (spinning cube — proves contract works end-to-end).
+- [x] **7.1** `/canvas` page scaffold + Three.js host container with resize handling (PR #795).
+- [ ] **7.2** Web Worker + OffscreenCanvas plugin runner — **moved to `oracle-studio` repo** (Plugins.tsx).
+- [ ] **7.3** Default demo plugin (spinning cube) — **moved to `oracle-studio` repo**.
 - [ ] **7.4** File upload UI + manifest.json parsing (accept .js / .mjs / .zip).
 - [ ] **7.5** IndexedDB local storage (`neo-arra-canvas-plugins` store).
 - [ ] **7.6** `/canvas/gallery` querying `arra_list({concepts:["canvas-plugin"]})` for remote-saved plugins.
