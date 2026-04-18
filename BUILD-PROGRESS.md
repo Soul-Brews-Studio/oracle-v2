@@ -41,10 +41,10 @@ Each `- [ ]` is a cron-iteration goal. Keep chunks small enough to finish in ~25
 - [x] **2.4** `neo-arra --version`, `--help`, `-h <command>` universal flags (mirror maw-js).
 
 ### Stage 3: Web UI
-- [ ] **3.1** Home page (`/`) — hero + "connect to localhost" button that writes `PUBLIC_BACKEND_URL` or uses `?api=http://localhost:47778` query pattern (drizzle.studio/maw-ui style).
-- [ ] **3.2** `/search` — input box, hits MockBackend or RealBackend, renders results list.
-- [ ] **3.3** `/learn` — form to POST a pattern via backend.
-- [ ] **3.4** `/tools` — catalog of all 22 MCP tools with try-it forms.
+- [x] **3.1** Home page (`/`) — hero + "connect to localhost" button, status probe, 3 cards (PR #786).
+- [x] **3.2** `/search` — input box, result rendering, loading/empty/error states (PR #785).
+- [x] **3.3** `/learn` — form to POST a pattern via backend (PR #787).
+- [x] **3.4** `/tools` — grid of 19 MCP tool cards; arra_search/learn/trace link to real pages (PR #783).
 - [ ] **3.5** Style pass — Tailwind 4, dark default, Oracle family visual language.
 
 ### Stage 4: Backend adapter polish
@@ -63,8 +63,26 @@ Each `- [ ]` is a cron-iteration goal. Keep chunks small enough to finish in ~25
 ### Stage 6: Ship + docs
 - [ ] **6.1** README.md at repo root updated — 3 surfaces, install one-liners.
 - [ ] **6.2** CLI install command: `bunx neo-arra` or `npm i -g neo-arra` (after publishing).
-- [ ] **6.3** Open PR from `neo-arra-v3-build` → `main` with summary.
+- [ ] **6.3** (obsolete — replaced by per-issue PRs throughout).
 - [ ] **6.4** Morning report at `ψ/inbox/neo-arra-v3-morning-report.md` with deployed URL + install cmd + what's live + what's pending.
+
+### Stage 7: Canvas plugin system (authorized 2026-04-19 00:40 — Nat: "make plugin and create plugable 3d!")
+
+Plan: `ψ/plans/2026-04-19_canvas-plugin-system.md` (on arra-oracle-v3-oracle vault). Issue #772.
+References being learned right now:
+- Soul-Brews-Studio/maw-ui `office-8bit/` Rust→WASM pattern (scout in flight)
+- Bombbaza/Multi-Planet-System-Knowledge-Map-3D as a candidate first plugin (scout in flight)
+
+- [ ] **7.1** `/canvas` page scaffold + Three.js host container with resize handling.
+- [ ] **7.2** Web Worker + OffscreenCanvas plugin runner (JS-ESM path from plan — easier authoring for v1).
+- [ ] **7.3** Default demo plugin (spinning cube — proves contract works end-to-end).
+- [ ] **7.4** File upload UI + manifest.json parsing (accept .js / .mjs / .zip).
+- [ ] **7.5** IndexedDB local storage (`neo-arra-canvas-plugins` store).
+- [ ] **7.6** `/canvas/gallery` querying `arra_list({concepts:["canvas-plugin"]})` for remote-saved plugins.
+- [ ] **7.7** Permission prompt UI (opt-in per capability string).
+- [ ] **7.8** Share URL pattern `?plugin=<id>` loading from IndexedDB or arra MCP.
+- [ ] **7.9** Port Bombbaza's multi-planet knowledge map as reference plugin (3D knowledge graph over arra memory).
+- [ ] **7.10** (v2, deferred) WASM slot mirrors maw-js Phase C — Rust/Zig path using `office-8bit` template.
 
 ## Iteration log
 
@@ -88,3 +106,4 @@ Each cron fire appends one line below.
 - `.envrc` and secrets never staged.
 - If stuck: document blocker in iteration log and move to next `- [ ]`.
 - When all boxes checked: write morning report at `ψ/inbox/neo-arra-v3-morning-report.md` (on arra-oracle-v3-oracle vault) + CronDelete job `6348f8be` (find via CronList).
+| 3 | 2026-04-19 00:40 | Stage 3 (Web UI) LANDED: home, /search, /learn, /tools — 4 parallel worktree teammates, 4 PRs merged | 41260df |
