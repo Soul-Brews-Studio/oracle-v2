@@ -1,5 +1,6 @@
 #!/bin/bash
-# Setup arra-oracle-v2 with frontend build
+# Setup arra-oracle-v3
+# Note: frontend/ was archived to the oracle vault on 2026-04-19 — UI now lives in Soul-Brews-Studio/oracle-studio.
 set -e
 
 echo "🔧 Installing root dependencies..."
@@ -9,10 +10,7 @@ echo "🗄️ Setting up database..."
 mkdir -p ~/.oracle
 bun run db:push  # Creates/updates tables from schema
 
-echo "🔧 Installing frontend dependencies..."
-cd frontend && bun install
-
-echo "🔨 Building frontend..."
+echo "🔨 Typechecking..."
 bun run build
 
 echo ""
