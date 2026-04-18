@@ -4,8 +4,49 @@
  */
 
 import fs from 'fs';
+import path from 'path';
 import { Database } from 'bun:sqlite';
 import type { IndexerConfig } from '../types.ts';
+
+const DEFAULT_BACKUP_KEEP = 10;
+
+/**
+ * Delete old backup/export files, keeping the most recent `keep`.
+ * Each family (.backup-, .export-*.json, .export-*.csv) is rotated
+ * independently so a missing member doesn't skew retention.
+ */
+function rotateBackups(dbPath: string, keep: number): void {
+  const dir = path.dirname(dbPath);
+  const base = path.basename(dbPath);
+  const families: Array<{ prefix: string; suffix: string }> = [
+    { prefix: `${base}.backup-`, suffix: '' },
+    { prefix: `${base}.export-`, suffix: '.json' },
+    { prefix: `${base}.export-`, suffix: '.csv' },
+  ];
+
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch (e) {
+    console.warn(`\u26a0\ufe0f Backup rotation: readdir failed: ${e instanceof Error ? e.message : e}`);
+    return;
+  }
+
+  for (const { prefix, suffix } of families) {
+    const matches = entries
+      .filter(f => f.startsWith(prefix) && f.endsWith(suffix))
+      .sort()
+      .reverse();
+    for (const old of matches.slice(keep)) {
+      try {
+        fs.unlinkSync(path.join(dir, old));
+        console.log(`\u{1f5d1}\ufe0f  Rotated old backup: ${old}`);
+      } catch (e) {
+        console.warn(`\u26a0\ufe0f Failed to delete ${old}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+  }
+}
 
 /**
  * Backup database before destructive operations
@@ -87,4 +128,9 @@ export function backupDatabase(sqlite: Database, config: IndexerConfig): void {
   } catch (e) {
     console.warn(`\u26a0\ufe0f CSV export failed: ${e instanceof Error ? e.message : e}`);
   }
+
+  const keepRaw = process.env.ORACLE_BACKUP_KEEP;
+  const parsed = keepRaw !== undefined ? parseInt(keepRaw, 10) : DEFAULT_BACKUP_KEEP;
+  const keep = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_BACKUP_KEEP;
+  rotateBackups(config.dbPath, keep);
 }
