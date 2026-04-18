@@ -21,6 +21,116 @@ export interface TraceResult {
   related: SearchResult[];
 }
 
+export interface HealthResponse {
+  status: string;
+  server?: string;
+  port?: number;
+  oracleV2?: string;
+}
+
+export interface ReflectResponse {
+  text: string;
+  source?: string;
+  type?: string;
+}
+
+export interface GraphResponse {
+  nodes: Array<{ id: string; label?: string; type?: string }>;
+  edges: Array<{ from: string; to: string; type?: string }>;
+}
+
+export interface ThreadSummary {
+  id: number;
+  title: string;
+  status: string;
+  message_count: number;
+  created_at: string;
+  issue_url?: string;
+}
+
+export interface ThreadListResponse {
+  threads: ThreadSummary[];
+  total: number;
+}
+
+export interface ThreadMessage {
+  id: number;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ThreadDetail {
+  thread: ThreadSummary;
+  messages: ThreadMessage[];
+}
+
+export interface ConsultResponse {
+  thread_id: number;
+  message_id: number;
+  status: string;
+  oracle_response?: string;
+  issue_url?: string;
+}
+
+export interface TraceSummary {
+  id: string;
+  query: string;
+  project?: string;
+  status?: string;
+  created_at: string;
+}
+
+export interface TraceListResponse {
+  traces: TraceSummary[];
+  total: number;
+}
+
+export interface TraceDetail extends TraceSummary {
+  dig_points?: Array<Record<string, unknown>>;
+  notes?: string;
+}
+
+export interface TraceChainResponse {
+  id: string;
+  chain: TraceSummary[];
+  direction: "up" | "down" | "both";
+}
+
+export interface Supersession {
+  id: number;
+  old_path: string;
+  old_title?: string;
+  new_path: string;
+  new_title?: string;
+  reason?: string;
+  superseded_at: string;
+  project?: string;
+}
+
+export interface SupersedeListResponse {
+  supersessions: Supersession[];
+  total: number;
+}
+
+export interface SupersedeChainResponse {
+  path: string;
+  chain: Supersession[];
+}
+
+export interface ScheduleItem {
+  id: number;
+  title: string;
+  when?: string;
+  status?: string;
+  project?: string;
+}
+
+export interface ScheduleResponse {
+  items: ScheduleItem[];
+  total?: number;
+}
+
 export interface BackendClient {
   search(query: string): Promise<SearchResult[]>;
   learn(pattern: string, concepts?: string[], source?: string): Promise<Learning>;
@@ -29,6 +139,19 @@ export interface BackendClient {
   read(file: string): Promise<string>;
   concepts(): Promise<string[]>;
   stats(): Promise<Record<string, unknown>>;
+  health(): Promise<HealthResponse>;
+  reflect(): Promise<ReflectResponse>;
+  consult(q: string, threadId?: number): Promise<ConsultResponse>;
+  graph(): Promise<GraphResponse>;
+  threads(): Promise<ThreadListResponse>;
+  thread(id: number): Promise<ThreadDetail>;
+  sendMessage(threadId: number, message: string): Promise<ConsultResponse>;
+  traces(): Promise<TraceListResponse>;
+  traceGet(id: string): Promise<TraceDetail>;
+  traceChain(id: string): Promise<TraceChainResponse>;
+  superseded(): Promise<SupersedeListResponse>;
+  supersedeChain(path: string): Promise<SupersedeChainResponse>;
+  schedule(): Promise<ScheduleResponse>;
 }
 
 export class MockBackend implements BackendClient {
@@ -65,6 +188,61 @@ export class MockBackend implements BackendClient {
   async stats(): Promise<Record<string, unknown>> {
     return { total: 42, patterns: 12, concepts: 6, backend: "mock" };
   }
+
+  async health(): Promise<HealthResponse> {
+    return { status: "ok", server: "mock", port: 0, oracleV2: "mock" };
+  }
+
+  async reflect(): Promise<ReflectResponse> {
+    return { text: "Nothing is deleted. Patterns over intentions.", source: "mock", type: "principle" };
+  }
+
+  async consult(q: string, threadId?: number): Promise<ConsultResponse> {
+    return { thread_id: threadId ?? 1, message_id: 1, status: "open", oracle_response: `Mock reply to: ${q}` };
+  }
+
+  async graph(): Promise<GraphResponse> {
+    return { nodes: [{ id: "oracle", label: "oracle" }], edges: [] };
+  }
+
+  async threads(): Promise<ThreadListResponse> {
+    return { threads: [], total: 0 };
+  }
+
+  async thread(id: number): Promise<ThreadDetail> {
+    return {
+      thread: { id, title: "Mock thread", status: "open", message_count: 0, created_at: new Date().toISOString() },
+      messages: [],
+    };
+  }
+
+  async sendMessage(threadId: number, message: string): Promise<ConsultResponse> {
+    return { thread_id: threadId, message_id: 1, status: "open", oracle_response: `Mock reply to: ${message}` };
+  }
+
+  async traces(): Promise<TraceListResponse> {
+    return { traces: [], total: 0 };
+  }
+
+  async traceGet(id: string): Promise<TraceDetail> {
+    return { id, query: "mock", status: "raw", created_at: new Date().toISOString(), dig_points: [] };
+  }
+
+  async traceChain(id: string): Promise<TraceChainResponse> {
+    return { id, chain: [], direction: "both" };
+  }
+
+  async superseded(): Promise<SupersedeListResponse> {
+    return { supersessions: [], total: 0 };
+  }
+
+  async supersedeChain(path: string): Promise<SupersedeChainResponse> {
+    return { path, chain: [] };
+  }
+
+  async schedule(): Promise<ScheduleResponse> {
+    return { items: [], total: 0 };
+  }
 }
 
 export class RealBackend implements BackendClient {
@@ -76,6 +254,18 @@ export class RealBackend implements BackendClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(args),
     });
+    if (!res.ok) throw new Error(`Backend error ${res.status}: ${await res.text()}`);
+    return res.json() as Promise<T>;
+  }
+
+  private async get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
+    const qs = query
+      ? "?" + Object.entries(query)
+          .filter(([, v]) => v !== undefined && v !== null)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join("&")
+      : "";
+    const res = await fetch(`${this.baseUrl}${path}${qs}`);
     if (!res.ok) throw new Error(`Backend error ${res.status}: ${await res.text()}`);
     return res.json() as Promise<T>;
   }
@@ -105,7 +295,65 @@ export class RealBackend implements BackendClient {
   }
 
   async stats(): Promise<Record<string, unknown>> {
-    return this.post("arra_stats", {});
+    return this.get("/api/stats");
+  }
+
+  async health(): Promise<HealthResponse> {
+    return this.get("/api/health");
+  }
+
+  async reflect(): Promise<ReflectResponse> {
+    return this.get("/api/reflect");
+  }
+
+  async consult(q: string, threadId?: number): Promise<ConsultResponse> {
+    const res = await fetch(`${this.baseUrl}/api/thread`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: q, thread_id: threadId, role: "human" }),
+    });
+    if (!res.ok) throw new Error(`Backend error ${res.status}: ${await res.text()}`);
+    return res.json() as Promise<ConsultResponse>;
+  }
+
+  async graph(): Promise<GraphResponse> {
+    return this.get("/api/graph");
+  }
+
+  async threads(): Promise<ThreadListResponse> {
+    return this.get("/api/threads");
+  }
+
+  async thread(id: number): Promise<ThreadDetail> {
+    return this.get(`/api/thread/${id}`);
+  }
+
+  async sendMessage(threadId: number, message: string): Promise<ConsultResponse> {
+    return this.consult(message, threadId);
+  }
+
+  async traces(): Promise<TraceListResponse> {
+    return this.get("/api/traces");
+  }
+
+  async traceGet(id: string): Promise<TraceDetail> {
+    return this.get(`/api/traces/${encodeURIComponent(id)}`);
+  }
+
+  async traceChain(id: string): Promise<TraceChainResponse> {
+    return this.get(`/api/traces/${encodeURIComponent(id)}/chain`);
+  }
+
+  async superseded(): Promise<SupersedeListResponse> {
+    return this.get("/api/supersede");
+  }
+
+  async supersedeChain(path: string): Promise<SupersedeChainResponse> {
+    return this.get(`/api/supersede/chain/${encodeURIComponent(path)}`);
+  }
+
+  async schedule(): Promise<ScheduleResponse> {
+    return this.get("/api/schedule");
   }
 }
 
