@@ -1,14 +1,16 @@
 {
-  "name": "arra-oracle-v2",
+  "name": "arra-oracle-v3",
   "version": "0.5.0",
   "description": "Arra Oracle - MCP Memory Layer with semantic search, philosophy, and knowledge management",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
+    "arra-oracle-v3": "./bin/arra.ts",
     "arra-oracle-v2": "./src/index.ts",
     "neo-arra": "./cli/src/cli.ts"
   },
   "files": [
+    "bin",
     "src",
     "cli",
     "README.md"
