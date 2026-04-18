@@ -1,0 +1,16 @@
+{
+  "name": "neo-arra",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "neo-arra": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build": "bun build src/cli.ts --outfile dist/neo-arra --target=bun --minify",
+    "test": "bun test"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "cli": {
+    "command": "hello",
+    "help": "neo-arra hello — sample plugin"
+  }
+}
