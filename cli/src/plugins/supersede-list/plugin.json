@@ -1,0 +1,17 @@
+{
+  "name": "arra-supersede-list",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 40,
+  "description": "List supersession log entries",
+  "cli": {
+    "command": "supersede-list",
+    "help": "neo-arra supersede-list [--project X] [--limit N] [--offset N]",
+    "flags": {
+      "--project": "Filter by project name",
+      "--limit": "Max results (default: 50)",
+      "--offset": "Pagination offset (default: 0)"
+    }
+  }
+}

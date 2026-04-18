@@ -1,0 +1,13 @@
+{
+  "name": "arra-supersede-chain",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 41,
+  "description": "Show supersede chain for a document",
+  "cli": {
+    "command": "supersede-chain",
+    "help": "neo-arra supersede-chain <path>",
+    "flags": {}
+  }
+}

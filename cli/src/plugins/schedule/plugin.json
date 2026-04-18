@@ -1,0 +1,20 @@
+{
+  "name": "arra-schedule",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 50,
+  "description": "List scheduled events",
+  "cli": {
+    "command": "schedule",
+    "help": "neo-arra schedule [--date YYYY-MM-DD] [--from X] [--to Y] [--status S] [--limit N]",
+    "flags": {
+      "--date": "Filter by specific date (YYYY-MM-DD)",
+      "--from": "Range start date",
+      "--to": "Range end date",
+      "--filter": "Text filter",
+      "--status": "pending|done|cancelled|all",
+      "--limit": "Max results"
+    }
+  }
+}
