@@ -100,6 +100,7 @@ class OracleMCPServer {
 
     this.vectorStore = createVectorStore({
       dataPath: CHROMADB_DIR,
+      embeddingModel: 'bge-m3',
     });
 
     const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname || __dirname, '..', 'package.json'), 'utf-8'));
