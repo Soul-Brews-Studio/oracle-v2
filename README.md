@@ -13,6 +13,8 @@ Phukhao Oracle is landing here: https://phukhao.buildwithoracle.com/presentation
 
 TypeScript MCP server for semantic search over Oracle philosophy — SQLite FTS5 + ChromaDB hybrid search, HTTP API, and vault CLI.
 
+See [docs/LOCAL-DEV.md](docs/LOCAL-DEV.md) for local development.
+
 ## Architecture
 
 ```
