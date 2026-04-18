@@ -1,8 +1,9 @@
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";
 import { discoverPlugins } from "../../plugin/loader.ts";
-import { join } from "path";
+import { join, resolve } from "path";
 import { homedir } from "os";
-import { existsSync, mkdirSync, rmSync } from "fs";
+import { existsSync, mkdirSync, cpSync, symlinkSync, rmSync } from "fs";
+import { createHash } from "crypto";
 
 const USER_PLUGIN_DIR = join(homedir(), ".neo-arra", "plugins");
 
@@ -11,11 +12,11 @@ const USAGE = `neo-arra plugin — manage plugins
 Usage: neo-arra plugin <subcommand> [args]
 
 Subcommands:
-  init <name>       Scaffold a new plugin in ~/.neo-arra/plugins/<name>/
-  list              List all installed plugins
-  install <url>     Install a plugin from a GitHub URL
-  build             Build plugin in current directory (bun build)
-  remove <name>     Remove an installed user plugin`;
+  init <name>             Scaffold a new plugin in ~/.neo-arra/plugins/<name>/
+  list                    List installed plugins (bundled + user)
+  install <path> [--link] Install plugin dir by copy (--link to symlink for dev)
+  build [path]            Hash entry file, update plugin.json artifact field
+  remove <name>           Archive then remove user plugin (Principle 1: Nothing is Deleted)`;
 
 async function cmdInit(name: string): Promise<InvokeResult> {
   if (!name) return { ok: false, error: "usage: neo-arra plugin init <name>" };
@@ -46,78 +47,91 @@ async function cmdInit(name: string): Promise<InvokeResult> {
 async function cmdList(): Promise<InvokeResult> {
   const { plugins, bundled, user } = await discoverPlugins();
   if (!plugins.length) return { ok: true, output: "no plugins installed" };
+  const header = `${"COMMAND".padEnd(20)} ${"VERSION".padEnd(10)} ${"SOURCE".padEnd(8)} DESCRIPTION`;
+  const divider = "-".repeat(70);
   const lines = plugins.map(p => {
     const cmd = p.manifest.cli?.command ?? p.manifest.name;
     const ver = p.manifest.version;
+    const source = p.dir.startsWith(USER_PLUGIN_DIR) ? "user" : "bundled";
     const desc = p.manifest.cli?.help ?? p.manifest.description ?? "";
-    return `  ${cmd.padEnd(20)} ${ver.padEnd(10)} ${desc}`;
+    return `${cmd.padEnd(20)} ${ver.padEnd(10)} ${source.padEnd(8)} ${desc}`;
   });
   const summary = user > 0 ? `${bundled} bundled, ${user} user` : `${bundled} bundled`;
-  return {
-    ok: true,
-    output: [`plugins (${plugins.length} — ${summary}):`, ...lines].join("\n"),
-  };
+  return { ok: true, output: [`plugins (${plugins.length} — ${summary}):`, header, divider, ...lines].join("\n") };
 }
 
-async function cmdInstall(url: string): Promise<InvokeResult> {
-  if (!url) return { ok: false, error: "usage: neo-arra plugin install <url>" };
-  mkdirSync(USER_PLUGIN_DIR, { recursive: true });
+async function cmdInstall(args: string[]): Promise<InvokeResult> {
+  const link = args.includes("--link");
+  const pathArg = args.find(a => !a.startsWith("--"));
+  if (!pathArg) return { ok: false, error: "usage: neo-arra plugin install <path> [--link]" };
 
-  const name = url.split("/").pop()?.replace(/\.git$/, "") ?? "";
-  if (!name || !/^[a-z0-9-]+$/.test(name)) {
-    return { ok: false, error: `cannot infer valid plugin name from: ${url}` };
+  const src = resolve(pathArg);
+  if (!existsSync(src)) {
+    return { ok: false, error: `path not found: ${src}` };
   }
+  const manifestPath = join(src, "plugin.json");
+  if (!existsSync(manifestPath)) {
+    return { ok: false, error: `no plugin.json found in: ${src}` };
+  }
+
+  const raw = await Bun.file(manifestPath).json();
+  const name = raw.name as string;
+  if (!name) return { ok: false, error: "plugin.json missing 'name' field" };
+
+  mkdirSync(USER_PLUGIN_DIR, { recursive: true });
   const dest = join(USER_PLUGIN_DIR, name);
   if (existsSync(dest)) {
     return { ok: false, error: `plugin '${name}' already installed at ${dest}` };
   }
 
-  const proc = Bun.spawn(["git", "clone", "--depth=1", url, dest], {
-    stderr: "pipe",
-    stdout: "pipe",
-  });
-  const exit = await proc.exited;
-  if (exit !== 0) {
-    const err = await new Response(proc.stderr).text();
-    return { ok: false, error: `git clone failed: ${err.trim()}` };
+  if (link) {
+    symlinkSync(src, dest);
+    return { ok: true, output: `✓ linked '${name}' → ${dest}\n  symlink to ${src}` };
   }
+  cpSync(src, dest, { recursive: true });
   return { ok: true, output: `✓ installed '${name}' → ${dest}` };
 }
 
-async function cmdBuild(): Promise<InvokeResult> {
-  const cwd = process.cwd();
-  const manifestPath = join(cwd, "plugin.json");
+async function cmdBuild(pathArg: string): Promise<InvokeResult> {
+  const dir = pathArg ? resolve(pathArg) : process.cwd();
+  const manifestPath = join(dir, "plugin.json");
   if (!existsSync(manifestPath)) {
-    return { ok: false, error: `no plugin.json found in ${cwd}` };
+    return { ok: false, error: `no plugin.json found in ${dir}` };
   }
   const raw = await Bun.file(manifestPath).json();
   const entry = raw.entry as string;
   if (!entry) return { ok: false, error: "plugin.json missing 'entry' field" };
 
-  const outDir = join(cwd, "dist");
-  mkdirSync(outDir, { recursive: true });
-  const outFile = join(outDir, "plugin.js");
-
-  const proc = Bun.spawn(
-    ["bun", "build", entry, "--outfile", outFile, "--target=bun"],
-    { cwd, stderr: "pipe", stdout: "pipe" }
-  );
-  const exit = await proc.exited;
-  if (exit !== 0) {
-    const err = await new Response(proc.stderr).text();
-    return { ok: false, error: `build failed: ${err.trim()}` };
+  const entryPath = resolve(dir, entry);
+  if (!existsSync(entryPath)) {
+    return { ok: false, error: `entry file not found: ${entryPath}` };
   }
-  return { ok: true, output: `✓ built → ${outFile}` };
+
+  const contents = await Bun.file(entryPath).arrayBuffer();
+  const sha256 = createHash("sha256").update(new Uint8Array(contents)).digest("hex");
+
+  raw.artifact = { path: entry, sha256 };
+  await Bun.write(manifestPath, JSON.stringify(raw, null, 2) + "\n");
+
+  return {
+    ok: true,
+    output: `✓ build: ${raw.name as string}@${raw.version as string}\n  entry:  ${entryPath}\n  sha256: ${sha256}`,
+  };
 }
 
-function cmdRemove(name: string): InvokeResult {
+async function cmdRemove(name: string): Promise<InvokeResult> {
   if (!name) return { ok: false, error: "usage: neo-arra plugin remove <name>" };
   const dir = join(USER_PLUGIN_DIR, name);
   if (!existsSync(dir)) {
     return { ok: false, error: `plugin '${name}' not found in ${USER_PLUGIN_DIR}` };
   }
+
+  // Principle 1: Nothing is Deleted — archive to /tmp before removing
+  const archive = `/tmp/neo-arra-removed-${name}-${Date.now()}`;
+  cpSync(dir, archive, { recursive: true });
   rmSync(dir, { recursive: true, force: true });
-  return { ok: true, output: `✓ removed '${name}'` };
+
+  return { ok: true, output: `✓ removed '${name}'\n  archived → ${archive}` };
 }
 
 export default async function handler(ctx: InvokeContext): Promise<InvokeResult> {
@@ -130,9 +144,9 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
     case "ls":
       return cmdList();
     case "install":
-      return cmdInstall(rest[0] ?? "");
+      return cmdInstall(rest);
     case "build":
-      return cmdBuild();
+      return cmdBuild(rest[0] ?? "");
     case "remove":
     case "rm":
       return cmdRemove(rest[0] ?? "");
