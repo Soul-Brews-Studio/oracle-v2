@@ -5,10 +5,12 @@
   "type": "module",
   "main": "src/index.ts",
   "bin": {
-    "arra-oracle-v2": "./src/index.ts"
+    "arra-oracle-v2": "./src/index.ts",
+    "neo-arra": "./cli/src/cli.ts"
   },
   "files": [
     "src",
+    "cli",
     "README.md"
   ],
   "engines": {

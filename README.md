@@ -43,8 +43,14 @@ oracle-studio (separate repo)
 Distributed via GitHub — no npm publish needed:
 
 ```bash
-# MCP server (stdio, for Claude Code)
-bunx --bun arra-oracle-v2@github:Soul-Brews-Studio/arra-oracle-v2#main
+# Backend (MCP server)
+bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle-v3
+
+# CLI (plugin runner)
+bunx --bun neo-arra@github:Soul-Brews-Studio/arra-oracle-v3 --help
+
+# UI (dashboard — separate repo)
+bunx --bun oracle-studio@github:Soul-Brews-Studio/oracle-studio
 
 # Vault CLI (secondary bin — use --package)
 bunx --bun --package arra-oracle-v2@github:Soul-Brews-Studio/arra-oracle-v2#main oracle-vault --help
