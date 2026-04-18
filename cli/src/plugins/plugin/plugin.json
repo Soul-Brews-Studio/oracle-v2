@@ -1,0 +1,11 @@
+{
+  "name": "plugin",
+  "version": "0.1.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 90,
+  "cli": {
+    "command": "plugin",
+    "help": "manage plugins — init|list|install|build|remove"
+  }
+}
