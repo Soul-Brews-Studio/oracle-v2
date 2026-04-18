@@ -67,20 +67,33 @@ registerSignalHandlers(async () => {
 // Create Hono app
 const app = new Hono();
 
-// CORS middleware — restrict to same-origin in production
+// CORS middleware — allow studio + neo + localhost, plus ORACLE_CORS_ORIGIN override
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://studio.buildwithoracle.com',
+  'https://neo.buildwithoracle.com',
+];
+const envExtraOrigins = (process.env.ORACLE_CORS_ORIGIN ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const legacyOrigin = process.env.CORS_ORIGIN?.trim();
+const ALLOWED_ORIGINS = [
+  ...DEFAULT_ALLOWED_ORIGINS,
+  ...envExtraOrigins,
+  ...(legacyOrigin ? [legacyOrigin] : []),
+];
+
 app.use('*', cors({
   origin: (origin) => {
-    // Allow same-origin (no origin header) and localhost variants
     if (!origin) return origin;
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
       return origin;
     }
-    // In production, only allow configured origin
-    const allowedOrigin = process.env.CORS_ORIGIN;
-    if (allowedOrigin && origin === allowedOrigin) return origin;
-    return null; // Reject unknown origins
+    if (ALLOWED_ORIGINS.includes(origin)) return origin;
+    return null;
   },
   credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 
 // Security headers middleware
