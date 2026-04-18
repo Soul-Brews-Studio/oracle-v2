@@ -15,6 +15,16 @@ TypeScript MCP server for semantic search over Oracle philosophy — SQLite FTS5
 
 See [docs/LOCAL-DEV.md](docs/LOCAL-DEV.md) for local development.
 
+## Quick Start
+
+Run the Oracle HTTP server anywhere (no clone needed):
+
+```bash
+bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle-v3
+```
+
+Starts on :47778. Then: `bunx oracle-studio` (in another terminal) to open the UI.
+
 ## Architecture
 
 ```
