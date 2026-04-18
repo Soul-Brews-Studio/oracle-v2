@@ -1,0 +1,15 @@
+{
+  "name": "arra-trace",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 40,
+  "description": "List or search discovery traces in ARRA Oracle",
+  "cli": {
+    "command": "trace",
+    "help": "neo-arra trace [query] [--limit N]",
+    "flags": {
+      "--limit": "Max results (default: 20)"
+    }
+  }
+}

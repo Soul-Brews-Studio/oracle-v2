@@ -1,0 +1,13 @@
+{
+  "name": "arra-read",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 50,
+  "description": "Read a full document from ARRA Oracle by ID or file path",
+  "cli": {
+    "command": "read",
+    "help": "neo-arra read <id-or-path>",
+    "flags": {}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "arra-search",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 10,
+  "description": "Search the ARRA Oracle knowledge base",
+  "cli": {
+    "command": "search",
+    "help": "neo-arra search \"<query>\" [--limit N] [--type X]",
+    "flags": {
+      "--limit": "Max results (default: 10)",
+      "--type": "Filter: principle|pattern|learning|retro|all (default: all)"
+    }
+  }
+}

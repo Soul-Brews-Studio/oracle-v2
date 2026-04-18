@@ -1,0 +1,16 @@
+{
+  "name": "arra-list",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 30,
+  "description": "Browse all documents in ARRA Oracle",
+  "cli": {
+    "command": "list",
+    "help": "neo-arra list [--type X] [--limit N]",
+    "flags": {
+      "--type": "Filter: principle|pattern|learning|retro|all (default: all)",
+      "--limit": "Max results (default: 20)"
+    }
+  }
+}

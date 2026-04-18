@@ -1,0 +1,16 @@
+{
+  "name": "arra-learn",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 20,
+  "description": "Add a new pattern or learning to ARRA Oracle",
+  "cli": {
+    "command": "learn",
+    "help": "neo-arra learn \"<pattern>\" [--concepts a,b] [--source s]",
+    "flags": {
+      "--concepts": "Comma-separated concept tags",
+      "--source": "Source file or context label"
+    }
+  }
+}
