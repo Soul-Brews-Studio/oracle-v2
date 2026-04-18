@@ -1,0 +1,15 @@
+{
+  "name": "arra-reflect",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 10,
+  "description": "Get a random reflection / wisdom from the Oracle",
+  "cli": {
+    "command": "reflect",
+    "help": "neo-arra reflect [--json]",
+    "flags": {
+      "--json": "Output raw JSON instead of formatted reflection"
+    }
+  }
+}
