@@ -1,22 +1,32 @@
 ---
 import Base from "../layouts/Base.astro";
+
+const CARDS = [
+  { href: "/search", title: "Search", body: "Hybrid semantic + keyword over your Oracle memory." },
+  { href: "/learn", title: "Learn", body: "Ingest documents and URLs into your knowledge base." },
+  { href: "/tools", title: "Tools", body: "Browse all 22 MCP tools — trace, concepts, stats…" },
+  { href: "/canvas/", title: "Canvas", body: "Three.js host with pluggable ESM modules — cube, galaxy, torus." },
+];
+
+const INSTALL = [
+  { label: "Backend (MCP server)", cmd: "bunx --bun arra-oracle-v3@github:Soul-Brews-Studio/arra-oracle-v3" },
+  { label: "CLI (plugin runner)", cmd: "bunx --bun neo-arra@github:Soul-Brews-Studio/arra-oracle-v3 --help" },
+  { label: "UI (Oracle Studio)", cmd: "bunx --bun oracle-studio@github:Soul-Brews-Studio/oracle-studio" },
+];
 ---
 
 <Base title="Neo ARRA V3 | Build with Oracle">
   <main class="oracle-hero-bg max-w-4xl mx-auto px-6 py-20">
-    <!-- Hero -->
-    <div class="text-center mb-16">
+    <div class="text-center mb-14">
       <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
         Neo ARRA V3
       </h1>
       <p class="text-2xl text-teal-400 font-mono mb-4">
         <span class="text-gray-600">|</span> Build with Oracle
       </p>
-      <p class="text-gray-400 text-lg max-w-xl mx-auto mb-10">
+      <p class="text-gray-400 text-lg max-w-xl mx-auto mb-8">
         Hybrid-search MCP memory layer — bring your own localhost.
       </p>
-
-      <!-- Connection UI — managed by client script below -->
       <div id="connect-ui">
         <a
           href="/?api=http://localhost:47778"
@@ -27,60 +37,41 @@ import Base from "../layouts/Base.astro";
       </div>
     </div>
 
-    <!-- Navigation cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <a
-        href="/search"
-        class="bg-gray-900/80 border border-gray-800 rounded-xl p-6 hover:border-teal-700/70 hover:ring-1 hover:ring-teal-500/30 hover:scale-[1.02] transition-all duration-200 group"
-      >
-        <h3 class="font-semibold text-lg mb-2">Search</h3>
-        <p class="text-gray-400 text-sm mb-4">
-          Hybrid semantic + keyword search across your Oracle memory.
-        </p>
-        <span
-          class="text-teal-400 group-hover:translate-x-1 inline-block transition-transform"
-          >→</span
+    <div class="mb-14">
+      <h2 class="text-sm font-mono text-gray-500 uppercase tracking-widest mb-4">Install — one-liners</h2>
+      <div class="space-y-2">
+        {INSTALL.map((i) => (
+          <div class="bg-gray-900/80 border border-gray-800 rounded-lg px-4 py-3 flex items-center gap-4">
+            <span class="text-xs text-gray-500 min-w-[9rem] shrink-0">{i.label}</span>
+            <code class="text-teal-300 text-sm font-mono overflow-x-auto">{i.cmd}</code>
+          </div>
+        ))}
+      </div>
+      <p class="text-xs text-gray-500 mt-3">
+        Live UI (landing only): <a href="https://studio.buildwithoracle.com" class="text-teal-400 hover:text-teal-300">studio.buildwithoracle.com</a>
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {CARDS.map((c) => (
+        <a
+          href={c.href}
+          class="bg-gray-900/80 border border-gray-800 rounded-xl p-6 hover:border-teal-700/70 hover:ring-1 hover:ring-teal-500/30 hover:scale-[1.02] transition-all duration-200 group"
         >
-      </a>
-      <a
-        href="/learn"
-        class="bg-gray-900/80 border border-gray-800 rounded-xl p-6 hover:border-teal-700/70 hover:ring-1 hover:ring-teal-500/30 hover:scale-[1.02] transition-all duration-200 group"
-      >
-        <h3 class="font-semibold text-lg mb-2">Learn</h3>
-        <p class="text-gray-400 text-sm mb-4">
-          Ingest documents and URLs into your knowledge base.
-        </p>
-        <span
-          class="text-teal-400 group-hover:translate-x-1 inline-block transition-transform"
-          >→</span
-        >
-      </a>
-      <a
-        href="/tools"
-        class="bg-gray-900/80 border border-gray-800 rounded-xl p-6 hover:border-teal-700/70 hover:ring-1 hover:ring-teal-500/30 hover:scale-[1.02] transition-all duration-200 group"
-      >
-        <h3 class="font-semibold text-lg mb-2">Tools</h3>
-        <p class="text-gray-400 text-sm mb-4">
-          Browse all MCP tools — trace, concepts, stats, and more.
-        </p>
-        <span
-          class="text-teal-400 group-hover:translate-x-1 inline-block transition-transform"
-          >→</span
-        >
-      </a>
+          <h3 class="font-semibold text-lg mb-2">{c.title}</h3>
+          <p class="text-gray-400 text-sm mb-4">{c.body}</p>
+          <span class="text-teal-400 group-hover:translate-x-1 inline-block transition-transform">→</span>
+        </a>
+      ))}
     </div>
   </main>
 
   <script>
-    (function () {
-      const params = new URLSearchParams(window.location.search);
-      const apiUrl =
-        params.get("api") || localStorage.getItem("NEO_ARRA_API") || "";
-
-      if (!apiUrl) return;
-
+    const params = new URLSearchParams(window.location.search);
+    const apiUrl = params.get("api") || localStorage.getItem("NEO_ARRA_API") || "";
+    if (!apiUrl) { /* nothing to do */ }
+    else {
       localStorage.setItem("NEO_ARRA_API", apiUrl);
-
       const ui = document.getElementById("connect-ui");
       if (ui) {
         ui.innerHTML = `
@@ -90,50 +81,24 @@ import Base from "../layouts/Base.astro";
               <span class="text-teal-300 text-sm font-mono">connected: ${apiUrl}</span>
               <span id="status-label" class="text-gray-500 text-xs">checking…</span>
             </div>
-            <button id="disconnect-btn" class="text-gray-500 hover:text-gray-300 text-xs underline transition-colors">
-              disconnect
-            </button>
-          </div>
-        `;
+            <button id="disconnect-btn" class="text-gray-500 hover:text-gray-300 text-xs underline transition-colors">disconnect</button>
+          </div>`;
       }
-
       document.getElementById("disconnect-btn")?.addEventListener("click", () => {
         localStorage.removeItem("NEO_ARRA_API");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("api");
-        window.location.href = url.toString();
+        const u = new URL(location.href); u.searchParams.delete("api"); location.href = u.toString();
       });
-
       const dot = document.getElementById("status-dot");
       const label = document.getElementById("status-label");
-
-      function setOk() {
-        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0";
-        if (label) label.textContent = "";
-      }
-      function setErr() {
-        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shrink-0";
-        if (label) label.textContent = "unreachable";
-      }
-
-      const ctrl1 = new AbortController();
-      const t1 = setTimeout(() => ctrl1.abort(), 2000);
-
-      fetch(`${apiUrl}/_health`, { signal: ctrl1.signal })
-        .then((r) => {
-          clearTimeout(t1);
-          r.ok ? setOk() : setErr();
-        })
+      const ok = () => { if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0"; if (label) label.textContent = ""; };
+      const err = () => { if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"; if (label) label.textContent = "unreachable"; };
+      const c1 = new AbortController(); const t1 = setTimeout(() => c1.abort(), 2000);
+      fetch(`${apiUrl}/_health`, { signal: c1.signal }).then((r) => { clearTimeout(t1); r.ok ? ok() : err(); })
         .catch(() => {
-          const ctrl2 = new AbortController();
-          const t2 = setTimeout(() => ctrl2.abort(), 2000);
-          fetch(`${apiUrl}/`, { method: "HEAD", signal: ctrl2.signal })
-            .then((r) => {
-              clearTimeout(t2);
-              r.ok ? setOk() : setErr();
-            })
-            .catch(() => setErr());
+          const c2 = new AbortController(); const t2 = setTimeout(() => c2.abort(), 2000);
+          fetch(`${apiUrl}/`, { method: "HEAD", signal: c2.signal })
+            .then((r) => { clearTimeout(t2); r.ok ? ok() : err(); }).catch(() => err());
         });
-    })();
+    }
   </script>
 </Base>
