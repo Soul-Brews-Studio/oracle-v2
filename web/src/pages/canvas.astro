@@ -1,0 +1,82 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Canvas — Neo ARRA V3">
+  <main class="max-w-5xl mx-auto px-6 py-20">
+    <div class="mb-8">
+      <a href="/" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← home</a>
+      <h1 class="text-4xl font-bold tracking-tight mt-4 mb-2">Canvas</h1>
+      <p class="text-gray-400 text-lg">
+        A Three.js host for Neo ARRA V3 visual plugins. The rotating cube below
+        is a placeholder — future plugins mount onto the same scene.
+      </p>
+    </div>
+
+    <div id="neo-canvas-wrap" class="w-full h-[70vh] bg-black rounded-lg overflow-hidden">
+      <canvas id="neo-canvas" class="w-full h-full block"></canvas>
+    </div>
+  </main>
+
+  <script>
+    import * as THREE from "three";
+
+    const canvas = document.getElementById("neo-canvas") as HTMLCanvasElement | null;
+    const wrap = document.getElementById("neo-canvas-wrap");
+    if (canvas && wrap) {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+
+      const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+      camera.position.z = 3;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.4, metalness: 0.2 });
+      const cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+
+      const light = new THREE.PointLight(0xffffff, 50, 100);
+      light.position.set(3, 3, 5);
+      scene.add(light);
+      scene.add(new THREE.AmbientLight(0x404060, 1));
+
+      const setSize = () => {
+        const w = wrap.clientWidth;
+        const h = wrap.clientHeight;
+        if (w > 0 && h > 0) {
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+      };
+      setSize();
+
+      const ro = new ResizeObserver(setSize);
+      ro.observe(wrap);
+
+      let raf = 0;
+      let disposed = false;
+      const tick = () => {
+        if (disposed) return;
+        cube.rotation.x += 0.01;
+        cube.rotation.y += 0.012;
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+
+      const cleanup = () => {
+        disposed = true;
+        cancelAnimationFrame(raf);
+        ro.disconnect();
+        geometry.dispose();
+        material.dispose();
+        renderer.dispose();
+      };
+      window.addEventListener("beforeunload", cleanup, { once: true });
+    }
+  </script>
+</Base>
