@@ -20,7 +20,7 @@ See [docs/LOCAL-DEV.md](docs/LOCAL-DEV.md) for local development.
 Run the Oracle HTTP server anywhere (no clone needed):
 
 ```bash
-bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle-v3
+bunx --bun arra-oracle-v3@github:Soul-Brews-Studio/arra-oracle-v3
 ```
 
 Starts on :47778. Then: `bunx oracle-studio` (in another terminal) to open the UI.

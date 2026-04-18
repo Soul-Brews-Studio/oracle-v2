@@ -2,10 +2,10 @@
 const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`arra-oracle — Arra Oracle HTTP server
+  console.log(`arra-oracle-v3 — Arra Oracle HTTP server
 
 Usage:
-  bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle-v3 [options]
+  bunx --bun arra-oracle-v3@github:Soul-Brews-Studio/arra-oracle-v3 [options]
 
 Options:
   --port <n>    Port to listen on (default: 47778, env: ORACLE_PORT)
