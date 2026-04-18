@@ -63,9 +63,7 @@ bun run db:push
 echo "🌱 Creating seed philosophy files..."
 ./scripts/seed.sh
 
-# Build frontend
-echo "🎨 Building frontend..."
-cd frontend && bun install && bun run build && cd ..
+# Frontend build removed 2026-04-19 — UI lives in Soul-Brews-Studio/oracle-studio now.
 
 # Index seed data
 echo "📚 Indexing seed data..."
