@@ -34,6 +34,7 @@ import { registerKnowledgeRoutes } from './routes/knowledge.ts';
 import { registerSupersedeRoutes } from './routes/supersede.ts';
 import { registerFileRoutes } from './routes/files.ts';
 import { registerOracleNetRoutes } from './routes/oraclenet.ts';
+import { registerPluginRoutes } from './routes/plugins.ts';
 
 // Reset stale indexing status on startup using Drizzle
 try {
@@ -119,6 +120,7 @@ registerKnowledgeRoutes(app);
 registerSupersedeRoutes(app);
 registerFileRoutes(app);
 registerOracleNetRoutes(app);
+registerPluginRoutes(app);
 
 // Startup banner
 console.log(`
