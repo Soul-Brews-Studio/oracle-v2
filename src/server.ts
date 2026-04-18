@@ -96,6 +96,16 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 
+// Private Network Access (Chrome 117+): allow https origins to reach our
+// http://localhost when they preflight with Access-Control-Request-Private-Network.
+// This lets studio.buildwithoracle.com fetch a user's local MCP at :47778.
+app.use('*', async (c, next) => {
+  if (c.req.header('access-control-request-private-network') === 'true') {
+    c.header('Access-Control-Allow-Private-Network', 'true');
+  }
+  await next();
+});
+
 // Security headers middleware
 app.use('*', async (c, next) => {
   await next();
