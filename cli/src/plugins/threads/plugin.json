@@ -1,0 +1,17 @@
+{
+  "name": "arra-threads",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 50,
+  "description": "List forum threads in ARRA Oracle",
+  "cli": {
+    "command": "threads",
+    "help": "neo-arra threads [--status X] [--limit N] [--offset N]",
+    "flags": {
+      "--status": "Filter by status (e.g. open|closed)",
+      "--limit": "Max results (default: 20)",
+      "--offset": "Pagination offset (default: 0)"
+    }
+  }
+}

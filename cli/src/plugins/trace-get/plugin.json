@@ -1,0 +1,13 @@
+{
+  "name": "arra-trace-get",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 42,
+  "description": "Show a single trace by ID",
+  "cli": {
+    "command": "trace-get",
+    "help": "neo-arra trace-get <id>",
+    "flags": {}
+  }
+}

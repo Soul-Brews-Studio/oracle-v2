@@ -1,0 +1,13 @@
+{
+  "name": "arra-thread",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 51,
+  "description": "Show a single forum thread with messages",
+  "cli": {
+    "command": "thread",
+    "help": "neo-arra thread <id>",
+    "flags": {}
+  }
+}

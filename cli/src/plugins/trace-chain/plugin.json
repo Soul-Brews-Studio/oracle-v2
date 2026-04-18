@@ -1,0 +1,15 @@
+{
+  "name": "arra-trace-chain",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 43,
+  "description": "Show the chain (up/down/both) for a trace",
+  "cli": {
+    "command": "trace-chain",
+    "help": "neo-arra trace-chain <id> [--direction up|down|both]",
+    "flags": {
+      "--direction": "Chain direction: up|down|both (default: both)"
+    }
+  }
+}

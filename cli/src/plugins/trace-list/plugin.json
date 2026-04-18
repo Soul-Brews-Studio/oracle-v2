@@ -1,0 +1,19 @@
+{
+  "name": "arra-trace-list",
+  "version": "1.0.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 41,
+  "description": "List traces with filters (status, project, query)",
+  "cli": {
+    "command": "trace-list",
+    "help": "neo-arra trace-list [--query Q] [--status X] [--project P] [--limit N] [--offset N]",
+    "flags": {
+      "--query": "Text query to match",
+      "--status": "Filter: raw|reviewed|distilled",
+      "--project": "Filter by project",
+      "--limit": "Max results (default: 50)",
+      "--offset": "Pagination offset (default: 0)"
+    }
+  }
+}
