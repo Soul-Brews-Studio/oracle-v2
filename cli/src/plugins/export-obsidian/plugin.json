@@ -1,0 +1,23 @@
+{
+  "name": "arra-export-obsidian",
+  "version": "0.1.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 20,
+  "description": "Export ARRA Oracle knowledge base to an Obsidian vault (markdown + wikilinks from embedding similarity)",
+  "cli": {
+    "command": "export-obsidian",
+    "help": "arra-cli export-obsidian --out <path> [--model bge-m3|nomic|qwen3] [--threshold 0.75] [--max-links 8] [--types principle,learning,retro] [--project <glob>] [--dry-run] [--incremental] [--format standard|dataview]",
+    "flags": {
+      "--out": "Vault directory (required, mkdir -p)",
+      "--model": "Embedder for similarity edges: bge-m3 | nomic | qwen3 (default: bge-m3)",
+      "--threshold": "Cosine similarity cutoff for wikilink, 0.0–1.0 (default: 0.75)",
+      "--max-links": "Cap wikilinks per doc (default: 8)",
+      "--types": "Comma-separated doc types to include: principle,learning,retro,... (default: all)",
+      "--project": "Filter docs by project path glob (default: all)",
+      "--dry-run": "Report counts, write nothing",
+      "--incremental": "Only write changed docs (content hash match → skip)",
+      "--format": "Frontmatter style: standard | dataview (default: standard)"
+    }
+  }
+}
