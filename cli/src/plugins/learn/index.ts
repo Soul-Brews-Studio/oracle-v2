@@ -1,4 +1,4 @@
-// neo-arra learn "<pattern>" [--concepts a,b] [--source s]
+// arra-cli learn "<pattern>" [--concepts a,b] [--source s]
 // Calls: POST /api/learn { pattern, concepts?, source? }
 // Note: issue #770 listed this as POST /api/arra_learn — using actual POST /api/learn route
 
@@ -23,7 +23,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   }
 
   if (!pattern) {
-    return { ok: false, error: 'Usage: neo-arra learn "<pattern>" [--concepts a,b] [--source s]' };
+    return { ok: false, error: 'Usage: arra-cli learn "<pattern>" [--concepts a,b] [--source s]' };
   }
 
   const body: Record<string, unknown> = { pattern };

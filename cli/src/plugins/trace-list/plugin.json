@@ -7,7 +7,7 @@
   "description": "List traces with filters (status, project, query)",
   "cli": {
     "command": "trace-list",
-    "help": "neo-arra trace-list [--query Q] [--status X] [--project P] [--limit N] [--offset N]",
+    "help": "arra-cli trace-list [--query Q] [--status X] [--project P] [--limit N] [--offset N]",
     "flags": {
       "--query": "Text query to match",
       "--status": "Filter: raw|reviewed|distilled",

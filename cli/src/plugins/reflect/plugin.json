@@ -7,7 +7,7 @@
   "description": "Get a random reflection / wisdom from the Oracle",
   "cli": {
     "command": "reflect",
-    "help": "neo-arra reflect [--json]",
+    "help": "arra-cli reflect [--json]",
     "flags": {
       "--json": "Output raw JSON instead of formatted reflection"
     }

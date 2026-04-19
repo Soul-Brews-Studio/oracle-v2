@@ -1,4 +1,4 @@
-// neo-arra trace-list [--query Q] [--status X] [--project P] [--limit N] [--offset N]
+// arra-cli trace-list [--query Q] [--status X] [--project P] [--limit N] [--offset N]
 // Calls: GET /api/traces?query=&status=&project=&limit=&offset=
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

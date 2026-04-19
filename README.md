@@ -47,7 +47,7 @@ Distributed via GitHub — no npm publish needed:
 bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle-v3
 
 # CLI (plugin runner)
-bunx --bun neo-arra@github:Soul-Brews-Studio/arra-oracle-v3 --help
+bunx --bun arra-cli@github:Soul-Brews-Studio/arra-oracle-v3 --help
 
 # UI (dashboard — separate repo)
 bunx --bun oracle-studio@github:Soul-Brews-Studio/oracle-studio

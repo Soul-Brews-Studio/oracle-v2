@@ -7,7 +7,7 @@
   "description": "Show the chain (up/down/both) for a trace",
   "cli": {
     "command": "trace-chain",
-    "help": "neo-arra trace-chain <id> [--direction up|down|both]",
+    "help": "arra-cli trace-chain <id> [--direction up|down|both]",
     "flags": {
       "--direction": "Chain direction: up|down|both (default: both)"
     }

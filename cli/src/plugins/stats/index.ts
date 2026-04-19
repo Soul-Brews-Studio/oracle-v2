@@ -1,4 +1,4 @@
-// neo-arra stats [--json]
+// arra-cli stats [--json]
 // Calls: GET /api/stats
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

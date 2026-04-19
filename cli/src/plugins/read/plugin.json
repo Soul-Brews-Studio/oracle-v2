@@ -7,7 +7,7 @@
   "description": "Read a full document from ARRA Oracle by ID or file path",
   "cli": {
     "command": "read",
-    "help": "neo-arra read <id-or-path>",
+    "help": "arra-cli read <id-or-path>",
     "flags": {}
   }
 }

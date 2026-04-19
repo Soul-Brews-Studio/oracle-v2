@@ -1,4 +1,4 @@
-// neo-arra trace [query] [--limit N]
+// arra-cli trace [query] [--limit N]
 // Calls: GET /api/traces?query=<query>&limit=N
 // Note: issue #770 listed this as /api/arra_trace — using GET /api/traces (list/search).
 // There is no HTTP POST endpoint to create traces; use the MCP tool arra_trace for that.

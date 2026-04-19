@@ -7,7 +7,7 @@
   "description": "Show a single trace by ID",
   "cli": {
     "command": "trace-get",
-    "help": "neo-arra trace-get <id>",
+    "help": "arra-cli trace-get <id>",
     "flags": {}
   }
 }

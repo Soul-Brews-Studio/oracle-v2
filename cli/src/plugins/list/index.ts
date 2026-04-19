@@ -1,4 +1,4 @@
-// neo-arra list [--type X] [--limit N]
+// arra-cli list [--type X] [--limit N]
 // Calls: GET /api/list?type=X&limit=N
 // Note: issue #770 listed this as /api/arra_list — using actual GET /api/list route
 

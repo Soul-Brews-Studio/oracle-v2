@@ -18,7 +18,7 @@ export async function pluginsRemove(args: string[]): Promise<number> {
   const name = args.find(a => !a.startsWith("-"));
 
   if (!name) {
-    console.error("usage: neo-arra plugin remove <name> [--yes]");
+    console.error("usage: arra-cli plugin remove <name> [--yes]");
     return 1;
   }
 

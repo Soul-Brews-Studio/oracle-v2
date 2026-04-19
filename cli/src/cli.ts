@@ -13,8 +13,8 @@ const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
 
 function printHelp(commands: Array<{ command: string; help?: string }>) {
-  console.log(`neo-arra v${VERSION} — ARRA Oracle V3 CLI\n`);
-  console.log("Usage: neo-arra <command> [args...]\n");
+  console.log(`arra-cli v${VERSION} — ARRA Oracle V3 CLI\n`);
+  console.log("Usage: arra-cli <command> [args...]\n");
   console.log("Commands:");
   console.log(`  ${"plugin".padEnd(16)}manage plugins (install)`);
   for (const { command, help } of commands) {
@@ -56,7 +56,7 @@ async function main() {
   const cmd = args[0]?.toLowerCase();
 
   if (cmd === "--version" || cmd === "version") {
-    console.log(`neo-arra v${VERSION}`);
+    console.log(`arra-cli v${VERSION}`);
     return;
   }
 
@@ -68,13 +68,13 @@ async function main() {
       process.exit(code);
     }
     if (!sub || sub === "--help" || sub === "-h") {
-      console.log("neo-arra plugin <subcommand>\n");
+      console.log("arra-cli plugin <subcommand>\n");
       console.log("Subcommands:");
       console.log("  install <url-or-path>   install a plugin (see --help)");
       return;
     }
     console.error(`\x1b[31m✗\x1b[0m unknown plugin subcommand: ${args[1]}`);
-    console.error("  try: neo-arra plugin install <url-or-path>");
+    console.error("  try: arra-cli plugin install <url-or-path>");
     process.exit(1);
   }
 
@@ -125,7 +125,7 @@ async function main() {
   const plugin = resolveCommand(cmd);
   if (!plugin) {
     console.error(`\x1b[31m✗\x1b[0m unknown command: ${args[0]}`);
-    console.error(`  run 'neo-arra --help' to see available commands`);
+    console.error(`  run 'arra-cli --help' to see available commands`);
     process.exit(1);
   }
 

@@ -1,4 +1,4 @@
-// neo-arra trace-get <id>
+// arra-cli trace-get <id>
 // Calls: GET /api/traces/:id
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";
@@ -9,7 +9,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   const id = args.find((a) => !a.startsWith("--"));
 
   if (!id) {
-    return { ok: false, error: "Usage: neo-arra trace-get <id>" };
+    return { ok: false, error: "Usage: arra-cli trace-get <id>" };
   }
 
   const res = await apiFetch(`/api/traces/${encodeURIComponent(id)}`);

@@ -1,9 +1,9 @@
 /**
- * ARRA Oracle HTTP API helper for neo-arra plugins.
+ * ARRA Oracle HTTP API helper for arra-cli plugins.
  *
  * Reads NEO_ARRA_API env (default http://localhost:47778).
  * Note: issue #770 spec listed 3457 — real oracle default is 47778 (ORACLE_DEFAULT_PORT).
- * Override: NEO_ARRA_API=http://localhost:47778 neo-arra <cmd>
+ * Override: NEO_ARRA_API=http://localhost:47778 arra-cli <cmd>
  */
 
 export const BASE_URL = (process.env.NEO_ARRA_API ?? "http://localhost:47778").replace(/\/$/, "");

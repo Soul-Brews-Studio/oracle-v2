@@ -30,7 +30,7 @@ async function printWasmExports(wasmPath: string): Promise<void> {
 export async function pluginsInfo(args: string[]): Promise<number> {
   const name = args.find(a => !a.startsWith("-"));
   if (!name) {
-    console.error("usage: neo-arra plugin info <name>");
+    console.error("usage: arra-cli plugin info <name>");
     return 1;
   }
 

@@ -7,7 +7,7 @@
   "description": "Search the ARRA Oracle knowledge base",
   "cli": {
     "command": "search",
-    "help": "neo-arra search \"<query>\" [--limit N] [--type X]",
+    "help": "arra-cli search \"<query>\" [--limit N] [--type X]",
     "flags": {
       "--limit": "Max results (default: 10)",
       "--type": "Filter: principle|pattern|learning|retro|all (default: all)"
