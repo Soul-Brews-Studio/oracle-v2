@@ -1,0 +1,22 @@
+{
+  "name": "arra-import-obsidian",
+  "version": "0.1.0",
+  "entry": "./index.ts",
+  "sdk": "^0.0.1",
+  "weight": 21,
+  "description": "Import edits from an Obsidian vault back into ARRA Oracle (round-trip — closes #938)",
+  "cli": {
+    "command": "import-obsidian",
+    "help": "arra-cli import-obsidian --in <path> [--dry-run] [--only-changed|--all] [--types principle,learning,retro] [--create-new] [--delete-missing] [--verbose]",
+    "flags": {
+      "--in": "Vault directory (required)",
+      "--dry-run": "Report planned changes, write nothing",
+      "--only-changed": "Skip files whose content hash matches last-export state (default: on)",
+      "--all": "Override --only-changed, re-push every file",
+      "--types": "Comma-separated doc types to include",
+      "--create-new": "Create docs that have no arra_id (default: skip + warn)",
+      "--delete-missing": "Tombstone docs in state but missing from vault (default: off)",
+      "--verbose": "Print per-file decisions"
+    }
+  }
+}
