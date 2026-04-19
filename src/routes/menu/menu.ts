@@ -71,8 +71,8 @@ export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
       const parsed = orderTag ? parseInt(orderTag.slice('order:'.length), 10) : NaN;
       const order = Number.isFinite(parsed) ? parsed : 999;
 
-      const summary = typeof detail.summary === 'string' ? detail.summary : '';
-      const label = summary || studio.replace('/', '') || 'Home';
+      const slug = studio.replace(/^\//, '') || 'home';
+      const label = slug.charAt(0).toUpperCase() + slug.slice(1);
 
       items.push({ path: studio, label, group, order, source: 'api' });
     }
