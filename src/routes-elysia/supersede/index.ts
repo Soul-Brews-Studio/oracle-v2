@@ -3,11 +3,11 @@
  */
 
 import { Elysia } from 'elysia';
-import { supersedeListEndpoint } from './supersede.ts';
+import { supersedeListEndpoint } from './list.ts';
 import { supersedeChainEndpoint } from './chain.ts';
-import { supersedeLogEndpoint } from './log.ts';
+import { supersedeCreateEndpoint } from './create.ts';
 
 export const supersedeRoutes = new Elysia({ prefix: '/api' })
   .use(supersedeListEndpoint)
   .use(supersedeChainEndpoint)
-  .use(supersedeLogEndpoint);
+  .use(supersedeCreateEndpoint);

@@ -9,7 +9,7 @@ import { Elysia } from 'elysia';
 import { db, supersedeLog } from '../../db/index.ts';
 import { SupersedeBody } from './model.ts';
 
-export const supersedeLogEndpoint = new Elysia().post(
+export const supersedeCreateEndpoint = new Elysia().post(
   '/supersede',
   ({ body, set }) => {
     try {
