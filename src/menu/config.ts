@@ -1,11 +1,29 @@
 import type { MenuItem } from '../routes/menu/model.ts';
 import { getSetting } from '../db/index.ts';
-import { fetchGistMenu } from './gist.ts';
+import { fetchGistMenu, invalidateGistCache } from './gist.ts';
 
 export type MenuConfig = {
   items: MenuItem[];
   disable: Set<string>;
 };
+
+export type MenuSource = {
+  url: string | null;
+  hash: string | null;
+  loaded_at: number | null;
+  status: 'ok' | 'stale' | 'error' | 'none';
+};
+
+let sourceState: MenuSource = {
+  url: null,
+  hash: null,
+  loaded_at: null,
+  status: 'none',
+};
+
+export function getMenuSource(): MenuSource {
+  return { ...sourceState };
+}
 
 function readEnvDisable(): string[] {
   const raw = process.env.ORACLE_NAV_DISABLE;
@@ -33,15 +51,43 @@ export async function getMenuConfig(): Promise<MenuConfig> {
   for (const p of readDbDisable()) disable.add(p);
 
   const gistUrl = process.env.ORACLE_MENU_GIST;
-  if (gistUrl) {
-    const gist = await fetchGistMenu(gistUrl);
-    if (gist) {
-      if (Array.isArray(gist.items)) items.push(...gist.items);
-      if (Array.isArray(gist.disable)) {
-        for (const p of gist.disable) if (typeof p === 'string') disable.add(p);
-      }
-    }
+  if (!gistUrl) {
+    sourceState = { url: null, hash: null, loaded_at: null, status: 'none' };
+    return { items, disable };
   }
 
+  const result = await fetchGistMenu(gistUrl);
+  if (!result) {
+    sourceState = {
+      url: gistUrl,
+      hash: null,
+      loaded_at: sourceState.url === gistUrl ? sourceState.loaded_at : null,
+      status: 'error',
+    };
+    return { items, disable };
+  }
+
+  if (Array.isArray(result.data.items)) items.push(...result.data.items);
+  if (Array.isArray(result.data.disable)) {
+    for (const p of result.data.disable) if (typeof p === 'string') disable.add(p);
+  }
+
+  sourceState = {
+    url: gistUrl,
+    hash: result.hash,
+    loaded_at: result.loadedAt,
+    status: result.stale ? 'stale' : 'ok',
+  };
+
   return { items, disable };
+}
+
+export async function reloadMenuConfig(): Promise<MenuConfig> {
+  const gistUrl = process.env.ORACLE_MENU_GIST;
+  if (gistUrl) invalidateGistCache(gistUrl);
+  return getMenuConfig();
+}
+
+export function _resetMenuSource(): void {
+  sourceState = { url: null, hash: null, loaded_at: null, status: 'none' };
 }

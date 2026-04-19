@@ -6,10 +6,10 @@
  * API_TO_STUDIO (kept in sync with oracle-studio's Header.tsx).
  */
 
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
-import { getMenuConfig } from '../../menu/config.ts';
+import { getMenuConfig, getMenuSource, reloadMenuConfig } from '../../menu/config.ts';
 
 export type MenuExtras = {
   items?: MenuItem[];
@@ -107,20 +107,54 @@ export function buildMenuItems(sources: HasRoutes[], extras?: MenuExtras): MenuI
   return filtered;
 }
 
+const MenuSourceSchema = t.Object({
+  url: t.Nullable(t.String()),
+  hash: t.Nullable(t.String()),
+  loaded_at: t.Nullable(t.Number()),
+  status: t.Union([
+    t.Literal('ok'),
+    t.Literal('stale'),
+    t.Literal('error'),
+    t.Literal('none'),
+  ]),
+});
+
 export function createMenuEndpoint(sources: HasRoutes[]) {
-  return new Elysia().get(
-    '/menu',
-    async () => {
-      const { items, disable } = await getMenuConfig();
-      return { items: buildMenuItems(sources, { items, disable }) };
-    },
-    {
+  return new Elysia()
+    .get(
+      '/menu',
+      async () => {
+        const { items, disable } = await getMenuConfig();
+        return { items: buildMenuItems(sources, { items, disable }) };
+      },
+      {
+        detail: {
+          tags: ['menu', 'nav:hidden'],
+          summary: 'Aggregated studio navigation from swagger nav tags',
+        },
+      },
+    )
+    .get('/menu/source', () => getMenuSource(), {
+      response: MenuSourceSchema,
       detail: {
         tags: ['menu', 'nav:hidden'],
-        summary: 'Aggregated studio navigation from swagger nav tags',
+        summary: 'Current gist source: url, revision hash, loaded_at, status',
       },
-    },
-  );
+    })
+    .post(
+      '/menu/reload',
+      async () => {
+        await reloadMenuConfig();
+        return getMenuSource();
+      },
+      {
+        response: MenuSourceSchema,
+        detail: {
+          tags: ['menu', 'nav:hidden'],
+          summary: 'Force refetch of gist menu source, bypassing cache',
+        },
+      },
+    );
 }
 
 export { MenuItemSchema };
