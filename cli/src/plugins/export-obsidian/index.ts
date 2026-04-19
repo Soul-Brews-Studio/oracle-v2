@@ -1,27 +1,28 @@
 // arra-cli export-obsidian --out <path> [flags]
 // Issue #933 — CLI: export ARRA → Obsidian vault.
 //
-// Pipeline (3 concerns, 3 agents):
-//   weaver  (this file)          — arg parsing, orchestration, vault writer, slugify, shared types
-//   threader (lib/fetch-*.ts)    — HTTP fetch + similarity batching
-//   scribe  (lib/render-*.ts)    — markdown + frontmatter + index rendering
-//
-// The imports below reference files owned by threader and scribe. Until those
-// PRs land, the @ts-expect-error pragmas keep the CLI subpackage typecheck-clean.
-// Once both PRs merge, the pragmas can be removed in a follow-up commit.
+// Pipeline:
+//   - fetchAllDocs (threader) → ApiDoc[]
+//   - fetchSimilar per doc (threader) → similarity edges
+//   - renderDocMarkdown per doc (scribe) → body .md
+//   - renderIndex + renderConceptHub (scribe) → _index.md + _concepts/*.md
+//   - writeVault (weaver) → atomic write with incremental hash skip
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";
-import type { ApiDoc, ExportOptions, SimilarResult, VaultFile } from "./lib/types.ts";
-import { slugifyPath } from "./lib/slugify.ts";
+import type {
+  ApiDoc,
+  ExportOptions,
+  SimilarResult,
+  VaultFile,
+  VaultStats,
+} from "./lib/types.ts";
+import { slugify, slugifyPath } from "./lib/slugify.ts";
 import { writeVault } from "./lib/vault-writer.ts";
-// @ts-expect-error — threader PR lands separately (issue #933)
 import { fetchAllDocs } from "./lib/fetch-docs.ts";
-// @ts-expect-error — threader PR lands separately (issue #933)
 import { fetchSimilar } from "./lib/fetch-similar.ts";
-// @ts-expect-error — scribe PR lands separately (issue #933)
 import { renderDocMarkdown } from "./lib/render-body.ts";
-// @ts-expect-error — scribe PR lands separately (issue #933)
 import { renderIndex } from "./lib/render-index.ts";
+import { renderConceptHub } from "./lib/concept-hub.ts";
 
 export default async function handler(ctx: InvokeContext): Promise<InvokeResult> {
   let opts: ExportOptions;
@@ -31,35 +32,59 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
-  // Fetch
   const docs: ApiDoc[] = await fetchAllDocs({
-    types: opts.types,
-    project: opts.project,
+    types: opts.types ?? undefined,
+    project: opts.project ?? undefined,
   });
 
-  // Similarity edges per doc
+  // Build id → slug map (without trailing .md; wikilinks omit extension).
+  const slugById = new Map<string, string>();
+  for (const doc of docs) {
+    const rel = slugifyPath(doc.type, doc.id, doc.title ?? doc.id);
+    slugById.set(doc.id, rel.replace(/\.md$/, ""));
+  }
+  const slugForId = (id: string) => slugById.get(id) ?? id;
+
+  // Similarity edges.
   const similarByDoc = new Map<string, SimilarResult[]>();
   for (const doc of docs) {
-    const neighbours: SimilarResult[] = await fetchSimilar(doc.id, {
+    const edges = await fetchSimilar(doc.id, {
       model: opts.model,
       threshold: opts.threshold,
       limit: opts.maxLinks,
     });
-    similarByDoc.set(doc.id, neighbours);
+    similarByDoc.set(doc.id, edges);
   }
 
-  // Render
   const files: VaultFile[] = [];
+
+  // Per-doc bodies.
   for (const doc of docs) {
-    const relPath = slugifyPath(doc.type, doc.id, doc.title ?? doc.id);
-    const content: string = renderDocMarkdown(doc, similarByDoc.get(doc.id) ?? [], opts);
+    const relPath = `${slugForId(doc.id)}.md`;
+    const content = renderDocMarkdown(doc, {
+      similar: similarByDoc.get(doc.id) ?? [],
+      slugForId,
+      model: opts.model,
+      threshold: opts.threshold,
+    });
     files.push({ relPath, content });
   }
 
-  const indexFiles: VaultFile[] = renderIndex(docs, similarByDoc, opts);
-  files.push(...indexFiles);
+  // _index.md
+  const stats = buildStats(docs, similarByDoc, slugForId);
+  files.push({ relPath: "_index.md", content: renderIndex(stats) });
 
-  // Write
+  // Per-concept hubs (top concepts only).
+  const docsByConcept = groupByConcept(docs);
+  for (const { name } of stats.topConcepts) {
+    const related = docsByConcept.get(name) ?? [];
+    if (related.length === 0) continue;
+    files.push({
+      relPath: `_concepts/${slugify(name)}.md`,
+      content: renderConceptHub(name, related, slugForId),
+    });
+  }
+
   const report = await writeVault(opts.out, files, {
     dryRun: opts.dryRun,
     incremental: opts.incremental,
@@ -79,6 +104,55 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
 
   const ok = report.errors.length === 0;
   return ok ? { ok, output: lines.join("\n") } : { ok, error: lines.join("\n") };
+}
+
+function buildStats(
+  docs: ApiDoc[],
+  similar: Map<string, SimilarResult[]>,
+  slugForId: (id: string) => string,
+): VaultStats {
+  const byType: Record<string, number> = {};
+  const byProject: Record<string, number> = {};
+  const conceptCount: Record<string, number> = {};
+  for (const d of docs) {
+    byType[d.type] = (byType[d.type] ?? 0) + 1;
+    if (d.project) byProject[d.project] = (byProject[d.project] ?? 0) + 1;
+    for (const c of d.concepts ?? []) conceptCount[c] = (conceptCount[c] ?? 0) + 1;
+  }
+
+  const topConcepts = Object.entries(conceptCount)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 30)
+    .map(([name, count]) => ({ name, count }));
+
+  const topLinked = docs
+    .map((d) => ({
+      slug: slugForId(d.id),
+      linkCount: (similar.get(d.id) ?? []).length,
+    }))
+    .filter((x) => x.linkCount > 0)
+    .sort((a, b) => b.linkCount - a.linkCount)
+    .slice(0, 20);
+
+  return {
+    total: docs.length,
+    byType,
+    byProject,
+    topConcepts,
+    topLinked,
+    generatedAt: new Date(),
+  };
+}
+
+function groupByConcept(docs: ApiDoc[]): Map<string, ApiDoc[]> {
+  const out = new Map<string, ApiDoc[]>();
+  for (const d of docs) {
+    for (const c of d.concepts ?? []) {
+      if (!out.has(c)) out.set(c, []);
+      out.get(c)!.push(d);
+    }
+  }
+  return out;
 }
 
 export function parseArgs(args: string[]): ExportOptions {
