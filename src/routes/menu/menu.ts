@@ -13,13 +13,7 @@ import { Elysia, t } from 'elysia';
 import { asc } from 'drizzle-orm';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem, type MenuMeta } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
-import {
-  getMenuConfig,
-  getMenuSource,
-  reloadMenuConfig,
-  setMenuGistUrl,
-} from '../../menu/config.ts';
-import { parseGistUrl } from '../../menu/gist.ts';
+import { getMenuConfig, getMenuSource, reloadMenuConfig } from '../../menu/config.ts';
 import { listCustomMenuItems } from '../../menu/custom-store.ts';
 import { db, menuItems } from '../../db/index.ts';
 
@@ -225,49 +219,6 @@ export function createMenuEndpoint() {
           tags: ['menu'],
           menu: { group: 'hidden' },
           summary: 'Force refetch of gist menu source, bypassing cache',
-        },
-      },
-    )
-    .post(
-      '/menu/source',
-      async ({ body, set }) => {
-        const raw = body.url.trim();
-        if (!raw) {
-          set.status = 400;
-          return { error: 'url required' };
-        }
-        if (!parseGistUrl(raw)) {
-          set.status = 400;
-          return {
-            error: 'invalid gist URL (expected https://gist.github.com/<user>/<id>[/<hash>])',
-          };
-        }
-        setMenuGistUrl(raw);
-        await reloadMenuConfig();
-        return getMenuSource();
-      },
-      {
-        body: t.Object({ url: t.String() }),
-        detail: {
-          tags: ['menu'],
-          menu: { group: 'hidden' },
-          summary: 'Set gist URL for menu source (persists via settings)',
-        },
-      },
-    )
-    .delete(
-      '/menu/source',
-      async () => {
-        setMenuGistUrl(null);
-        await reloadMenuConfig();
-        return getMenuSource();
-      },
-      {
-        response: MenuSourceSchema,
-        detail: {
-          tags: ['menu'],
-          menu: { group: 'hidden' },
-          summary: 'Clear gist URL from menu source',
         },
       },
     );

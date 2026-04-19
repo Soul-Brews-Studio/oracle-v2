@@ -1,5 +1,5 @@
 import type { MenuItem } from '../routes/menu/model.ts';
-import { getSetting, setSetting } from '../db/index.ts';
+import { getSetting } from '../db/index.ts';
 import { fetchGistMenu, invalidateGistCache } from './gist.ts';
 
 export type MenuConfig = {
@@ -25,10 +25,8 @@ export function getMenuSource(): MenuSource {
   return { ...sourceState };
 }
 
-export const MENU_GIST_SETTING_KEY = 'menu_gist_url';
-
 function resolveGistUrl(): string | null {
-  const fromDb = getSetting(MENU_GIST_SETTING_KEY);
+  const fromDb = getSetting('menu_gist_url');
   if (fromDb && fromDb.trim()) return fromDb.trim();
   const fromEnvNew = process.env.ORACLE_MENU_GIST_URL;
   if (fromEnvNew && fromEnvNew.trim()) return fromEnvNew.trim();
@@ -99,12 +97,6 @@ export async function reloadMenuConfig(): Promise<MenuConfig> {
   if (gistUrl) invalidateGistCache(gistUrl);
   else invalidateGistCache();
   return getMenuConfig();
-}
-
-export function setMenuGistUrl(url: string | null): void {
-  setSetting(MENU_GIST_SETTING_KEY, url);
-  invalidateGistCache();
-  sourceState = { url: null, hash: null, loaded_at: null, status: 'none' };
 }
 
 export function _resetMenuSource(): void {

@@ -43,16 +43,21 @@ export async function menuGistStatus(args: string[]): Promise<number> {
 export async function menuGistUrl(args: string[]): Promise<number> {
   const url = args.find((a) => !a.startsWith("-"));
   if (!url) {
-    console.error("usage: arra-cli menu gist-url <url>");
+    console.error("usage: arra-cli menu gist-url <url> [--override]");
     return 1;
   }
+  const mode = args.includes("--override") ? "override" : "merge";
   const result = await fetchJson("/api/menu/source", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, mode }),
   });
   if (result.code !== 0) return 1;
-  emit({ api: sessionApiBase(), source: result.body }, args);
+  const body = (result.body ?? {}) as { source?: unknown; mode?: string };
+  emit(
+    { api: sessionApiBase(), mode: body.mode ?? mode, source: body.source ?? body },
+    args,
+  );
   return 0;
 }
 
