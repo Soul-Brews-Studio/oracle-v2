@@ -21,6 +21,7 @@ import {
 import { PORT, ORACLE_DATA_DIR } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 import { db, closeDb, indexingStatus } from './db/index.ts';
+import { seedMenuItems, type HasRoutes as SeedHasRoutes } from './db/seeders/menu-seeder.ts';
 
 // Elysia sub-apps — one per cluster
 import { authRoutes } from './routes/auth/index.ts';
@@ -179,7 +180,16 @@ const apiModules = [
   sessionsRoutes,
 ];
 
-const menuRoutes = createMenuRoutes(apiModules as unknown as Parameters<typeof createMenuRoutes>[0]);
+try {
+  const result = seedMenuItems(apiModules as unknown as SeedHasRoutes[]);
+  console.log(
+    `🔮 Menu seeded: ${result.inserted} inserted, ${result.updated} updated, ${result.preserved} preserved`,
+  );
+} catch (e) {
+  console.error('⚠️  Menu seeder failed:', e);
+}
+
+const menuRoutes = createMenuRoutes();
 
 const modules = [...apiModules, menuRoutes];
 

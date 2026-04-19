@@ -1,16 +1,21 @@
 /**
- * GET /api/menu — aggregates navigation from `detail.menu` on mounted routes.
+ * GET /api/menu — returns studio navigation, seeded from `detail.menu` on
+ * mounted routes and persisted in the `menu_items` table.
  *
- * Reads typed `detail.menu: { group, order }` off each endpoint. Maps API
- * prefixes to studio routes using API_TO_STUDIO (kept in sync with
- * oracle-studio's Header.tsx).
+ * Flow:
+ *   1. Boot-time seeder (src/db/seeders/menu-seeder.ts) upserts route-declared
+ *      items into DB, preserving user-edited rows (`touchedAt != null`).
+ *   2. This endpoint reads `menu_items` via Drizzle, merges frontend pages,
+ *      gist extras, and custom items — preserving /api/menu response shape.
  */
 
 import { Elysia, t } from 'elysia';
+import { asc } from 'drizzle-orm';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem, type MenuMeta } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
 import { getMenuConfig, getMenuSource, reloadMenuConfig } from '../../menu/config.ts';
 import { listCustomMenuItems } from '../../menu/custom-store.ts';
+import { db, menuItems } from '../../db/index.ts';
 
 export type MenuExtras = {
   items?: MenuItem[];
@@ -45,20 +50,17 @@ type HasRoutes = { routes: RouteLike[] };
 
 const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, admin: 2, hidden: 3 };
 
-export function buildMenuItems(
-  sources: HasRoutes[],
-  extras?: MenuExtras,
-  customItems: MenuItem[] = [],
-): MenuItem[] {
+/**
+ * Pure scan of Elysia route sources into MenuItems (source='api').
+ * Used by tests and exported for callers that need pre-DB scanning.
+ */
+export function menuItemsFromRoutes(sources: HasRoutes[]): MenuItem[] {
   const items: MenuItem[] = [];
   const seen = new Set<string>();
-  const disableSet = new Set<string>(extras?.disable ?? []);
 
   for (const src of sources) {
     for (const route of src.routes) {
-      const detail = (route.hooks?.detail ?? {}) as {
-        menu?: MenuMeta;
-      };
+      const detail = (route.hooks?.detail ?? {}) as { menu?: MenuMeta };
       const menu = detail.menu;
       if (!menu || !menu.group) continue;
 
@@ -69,13 +71,70 @@ export function buildMenuItems(
       if (seen.has(key)) continue;
       seen.add(key);
 
-      const order = typeof menu.order === 'number' && Number.isFinite(menu.order) ? menu.order : 999;
-
+      const order =
+        typeof menu.order === 'number' && Number.isFinite(menu.order) ? menu.order : 999;
       const slug = studio.replace(/^\//, '') || 'home';
       const label = menu.label ?? slug.charAt(0).toUpperCase() + slug.slice(1);
 
       items.push({ path: studio, label, group: menu.group, order, source: 'api' });
     }
+  }
+
+  return items;
+}
+
+/**
+ * Read API-sourced menu items from the `menu_items` DB table.
+ * Only enabled rows are returned. Source is always 'api' for studio consumers.
+ */
+export function readApiMenuItemsFromDb(): MenuItem[] {
+  const rows = db
+    .select()
+    .from(menuItems)
+    .orderBy(asc(menuItems.position))
+    .all();
+
+  const items: MenuItem[] = [];
+  for (const row of rows) {
+    if (row.enabled === false) continue;
+    const group = (['main', 'tools', 'admin', 'hidden'] as const).includes(
+      row.groupKey as MenuItem['group'],
+    )
+      ? (row.groupKey as MenuItem['group'])
+      : 'hidden';
+    const item: MenuItem = {
+      path: row.path,
+      label: row.label,
+      group,
+      order: row.position,
+      source: 'api',
+    };
+    if (row.icon) item.icon = row.icon;
+    if (row.access === 'public' || row.access === 'auth') item.access = row.access;
+    items.push(item);
+  }
+  return items;
+}
+
+/**
+ * Merge pre-resolved API items with frontend pages, gist extras, and custom
+ * items into the final /api/menu response. First-seen wins on dedupe; disable
+ * filters any path.
+ */
+export function buildMenuItems(
+  apiItems: MenuItem[],
+  extras?: MenuExtras,
+  customItems: MenuItem[] = [],
+): MenuItem[] {
+  const items: MenuItem[] = [];
+  const seen = new Set<string>();
+  const disableSet = new Set<string>(extras?.disable ?? []);
+
+  for (const item of apiItems) {
+    const key = `${item.group}:${item.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
   }
 
   for (const item of getFrontendMenuItems()) {
@@ -118,21 +177,25 @@ const MenuSourceSchema = t.Object({
   ]),
 });
 
-export function createMenuEndpoint(sources: HasRoutes[]) {
+export function createMenuEndpoint() {
   return new Elysia()
     .get(
       '/menu',
       async () => {
         const { items, disable } = await getMenuConfig();
         return {
-          items: buildMenuItems(sources, { items, disable }, listCustomMenuItems()),
+          items: buildMenuItems(
+            readApiMenuItemsFromDb(),
+            { items, disable },
+            listCustomMenuItems(),
+          ),
         };
       },
       {
         detail: {
           tags: ['menu'],
           menu: { group: 'hidden' },
-          summary: 'Aggregated studio navigation from swagger nav tags',
+          summary: 'Aggregated studio navigation from menu_items table',
         },
       },
     )

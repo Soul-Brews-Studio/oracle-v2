@@ -29,5 +29,6 @@ export default defineConfig({
     'activity_log',   // User activity tracking
     'settings',       // Auth & app settings
     'schedule',       // Appointments & events
+    'menu_items',     // Studio navigation (seeded from route detail.menu)
   ],
 });

@@ -1,14 +1,24 @@
 /**
  * Unit tests for /api/menu — aggregates nav tags off mounted Elysia routes.
  *
- * These exercise the menu builder in isolation with synthetic sub-apps so
- * they run without a live server. The real server wires `apiModules` into
- * `createMenuRoutes` in src/server.ts.
+ * Post-migration: items live in the `menu_items` table; the endpoint reads
+ * DB. Tests seed via `seedMenuItems` after clearing the table for isolation.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { createMenuRoutes, buildMenuItems, type MenuItem } from '../../../src/routes/menu/index.ts';
+import {
+  createMenuRoutes,
+  buildMenuItems,
+  menuItemsFromRoutes,
+  type MenuItem,
+} from '../../../src/routes/menu/index.ts';
+import { db, menuItems } from '../../../src/db/index.ts';
+import { seedMenuItems } from '../../../src/db/seeders/menu-seeder.ts';
+
+function clearMenu() {
+  db.delete(menuItems).run();
+}
 
 function fakeApiModule() {
   return new Elysia({ prefix: '/api' })
@@ -37,8 +47,13 @@ function fakeApiModule() {
 }
 
 describe('/api/menu', () => {
+  beforeEach(() => {
+    clearMenu();
+  });
+
   test('groups routes into main / tools / hidden', async () => {
-    const app = createMenuRoutes([fakeApiModule()]);
+    seedMenuItems([fakeApiModule()]);
+    const app = createMenuRoutes();
     const res = await app.handle(new Request('http://localhost/api/menu'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: MenuItem[] };
@@ -58,8 +73,7 @@ describe('/api/menu', () => {
   });
 
   test('respects menu.order and studio path dedupe', () => {
-    const sub = fakeApiModule();
-    const items = buildMenuItems([sub]).filter((i) => i.source === 'api');
+    const items = menuItemsFromRoutes([fakeApiModule()]);
     const main = items.filter((i) => i.group === 'main');
     const tools = items.filter((i) => i.group === 'tools');
     expect(main[0]).toMatchObject({ path: '/search', label: 'Search', order: 10, source: 'api' });
@@ -76,12 +90,12 @@ describe('/api/menu', () => {
       .get('/plain', () => ({}), {
         detail: { tags: [], summary: 'plain' },
       });
-    const items = buildMenuItems([sub]).filter((i) => i.source === 'api');
+    const items = menuItemsFromRoutes([sub]);
     expect(items).toHaveLength(0);
   });
 
   test('menu endpoint self-marks as hidden via detail.menu', () => {
-    const app = createMenuRoutes([]);
+    const app = createMenuRoutes();
     const menuRoute = app.routes.find((r) => r.path === '/api/menu');
     expect(menuRoute).toBeDefined();
     const detail = (menuRoute!.hooks as { detail?: { tags?: string[]; menu?: { group?: string } } })

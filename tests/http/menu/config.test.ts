@@ -5,8 +5,17 @@
 
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { buildMenuItems, type MenuItem } from '../../../src/routes/menu/index.ts';
+import {
+  buildMenuItems,
+  menuItemsFromRoutes,
+  type MenuItem,
+} from '../../../src/routes/menu/index.ts';
 import { createMenuEndpoint } from '../../../src/routes/menu/menu.ts';
+import { db, menuItems } from '../../../src/db/index.ts';
+
+function clearMenu() {
+  db.delete(menuItems).run();
+}
 import {
   fetchGistMenu,
   toRawGistUrl,
@@ -36,7 +45,7 @@ describe('buildMenuItems with extras', () => {
     const sub = new Elysia({ prefix: '/api' }).get('/search', () => ({}), {
       detail: { menu: { group: 'main', order: 10 }, summary: 'Search' },
     });
-    const items = buildMenuItems([sub], { disable: ['/search'] });
+    const items = buildMenuItems(menuItemsFromRoutes([sub]), { disable: ['/search'] });
     expect(items.find((i) => i.path === '/search')).toBeUndefined();
   });
 
@@ -247,7 +256,7 @@ describe('/api/menu/source and /api/menu/reload', () => {
   });
 
   test('source returns status:none when no gist configured', async () => {
-    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint([]));
+    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint());
     await app.handle(new Request('http://localhost/api/menu'));
     const res = await app.handle(new Request('http://localhost/api/menu/source'));
     expect(res.status).toBe(200);
@@ -266,7 +275,7 @@ describe('/api/menu/source and /api/menu/reload', () => {
       return res;
     }) as typeof fetch;
 
-    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint([]));
+    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint());
     await app.handle(new Request('http://localhost/api/menu'));
     const res = await app.handle(new Request('http://localhost/api/menu/source'));
     const body = await res.json();
@@ -282,7 +291,7 @@ describe('/api/menu/source and /api/menu/reload', () => {
       throw new Error('ENOTFOUND');
     }) as typeof fetch;
 
-    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint([]));
+    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint());
     await app.handle(new Request('http://localhost/api/menu'));
     const res = await app.handle(new Request('http://localhost/api/menu/source'));
     const body = await res.json();
@@ -297,7 +306,7 @@ describe('/api/menu/source and /api/menu/reload', () => {
       return new Response(JSON.stringify({ items: [] }), { status: 200 });
     }) as typeof fetch;
 
-    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint([]));
+    const app = new Elysia({ prefix: '/api' }).use(createMenuEndpoint());
     await app.handle(new Request('http://localhost/api/menu'));
     await app.handle(new Request('http://localhost/api/menu')); // cached
     expect(callCount).toBe(1);
