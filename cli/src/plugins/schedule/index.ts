@@ -1,4 +1,4 @@
-// neo-arra schedule [--date YYYY-MM-DD] [--from X] [--to Y] [--status S] [--limit N]
+// arra-cli schedule [--date YYYY-MM-DD] [--from X] [--to Y] [--status S] [--limit N]
 // Calls: GET /api/schedule?date=...&from=...&to=...&filter=...&status=...&limit=N
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

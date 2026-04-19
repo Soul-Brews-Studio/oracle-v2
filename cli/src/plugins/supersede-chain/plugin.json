@@ -7,7 +7,7 @@
   "description": "Show supersede chain for a document",
   "cli": {
     "command": "supersede-chain",
-    "help": "neo-arra supersede-chain <path>",
+    "help": "arra-cli supersede-chain <path>",
     "flags": {}
   }
 }

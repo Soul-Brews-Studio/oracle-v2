@@ -1,4 +1,4 @@
-// neo-arra read <id-or-path>
+// arra-cli read <id-or-path>
 // Calls: GET /api/read?id=<id>  — when arg has no path separators
 //        GET /api/read?file=<path> — when arg looks like a file path
 // Note: issue #770 listed this as /api/arra_read — using actual GET /api/read route
@@ -10,7 +10,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   const target = ctx.args.find(a => !a.startsWith("--"));
 
   if (!target) {
-    return { ok: false, error: "Usage: neo-arra read <id-or-path>" };
+    return { ok: false, error: "Usage: arra-cli read <id-or-path>" };
   }
 
   // Treat as file path if it contains / or . (looks like a path), otherwise as id

@@ -7,7 +7,7 @@
   "description": "Browse all documents in ARRA Oracle",
   "cli": {
     "command": "list",
-    "help": "neo-arra list [--type X] [--limit N]",
+    "help": "arra-cli list [--type X] [--limit N]",
     "flags": {
       "--type": "Filter: principle|pattern|learning|retro|all (default: all)",
       "--limit": "Max results (default: 20)"

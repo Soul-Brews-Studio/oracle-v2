@@ -1,4 +1,4 @@
-// neo-arra search "<q>" [--limit N] [--type X]
+// arra-cli search "<q>" [--limit N] [--type X]
 // Calls: GET /api/search?q=<q>&limit=N&type=X
 // Note: issue #770 listed this as POST /api/arra_search — using actual GET /api/search route
 
@@ -23,7 +23,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   }
 
   if (!query) {
-    return { ok: false, error: 'Usage: neo-arra search "<query>" [--limit N] [--type X]' };
+    return { ok: false, error: 'Usage: arra-cli search "<query>" [--limit N] [--type X]' };
   }
 
   const params = new URLSearchParams({ q: query, limit: String(limit), type });

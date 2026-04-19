@@ -7,7 +7,7 @@
   "description": "Show ARRA Oracle database statistics",
   "cli": {
     "command": "stats",
-    "help": "neo-arra stats [--json]",
+    "help": "arra-cli stats [--json]",
     "flags": {
       "--json": "Output raw JSON instead of summary"
     }

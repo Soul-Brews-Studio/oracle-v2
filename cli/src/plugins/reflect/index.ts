@@ -1,4 +1,4 @@
-// neo-arra reflect [--json]
+// arra-cli reflect [--json]
 // Calls: GET /api/reflect — returns a random wisdom fragment
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

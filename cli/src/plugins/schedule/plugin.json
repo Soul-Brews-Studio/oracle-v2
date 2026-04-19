@@ -7,7 +7,7 @@
   "description": "List scheduled events",
   "cli": {
     "command": "schedule",
-    "help": "neo-arra schedule [--date YYYY-MM-DD] [--from X] [--to Y] [--status S] [--limit N]",
+    "help": "arra-cli schedule [--date YYYY-MM-DD] [--from X] [--to Y] [--status S] [--limit N]",
     "flags": {
       "--date": "Filter by specific date (YYYY-MM-DD)",
       "--from": "Range start date",

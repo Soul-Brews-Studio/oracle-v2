@@ -1,4 +1,4 @@
-// neo-arra threads [--status X] [--limit N] [--offset N]
+// arra-cli threads [--status X] [--limit N] [--offset N]
 // Calls: GET /api/threads?status=X&limit=N&offset=N
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

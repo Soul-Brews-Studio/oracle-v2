@@ -1,4 +1,4 @@
-// neo-arra supersede-list [--project X] [--limit N] [--offset N]
+// arra-cli supersede-list [--project X] [--limit N] [--offset N]
 // Calls: GET /api/supersede?project=X&limit=N&offset=N
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";

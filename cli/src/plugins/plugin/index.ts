@@ -7,9 +7,9 @@ import { createHash } from "crypto";
 
 const USER_PLUGIN_DIR = join(homedir(), ".neo-arra", "plugins");
 
-const USAGE = `neo-arra plugin — manage plugins
+const USAGE = `arra-cli plugin — manage plugins
 
-Usage: neo-arra plugin <subcommand> [args]
+Usage: arra-cli plugin <subcommand> [args]
 
 Subcommands:
   init <name>             Scaffold a new plugin in ~/.neo-arra/plugins/<name>/
@@ -19,7 +19,7 @@ Subcommands:
   remove <name>           Archive then remove user plugin (Principle 1: Nothing is Deleted)`;
 
 async function cmdInit(name: string): Promise<InvokeResult> {
-  if (!name) return { ok: false, error: "usage: neo-arra plugin init <name>" };
+  if (!name) return { ok: false, error: "usage: arra-cli plugin init <name>" };
   if (!/^[a-z0-9-]+$/.test(name)) {
     return { ok: false, error: `plugin name must match /^[a-z0-9-]+$/, got: ${JSON.stringify(name)}` };
   }
@@ -63,7 +63,7 @@ async function cmdList(): Promise<InvokeResult> {
 async function cmdInstall(args: string[]): Promise<InvokeResult> {
   const link = args.includes("--link");
   const pathArg = args.find(a => !a.startsWith("--"));
-  if (!pathArg) return { ok: false, error: "usage: neo-arra plugin install <path> [--link]" };
+  if (!pathArg) return { ok: false, error: "usage: arra-cli plugin install <path> [--link]" };
 
   const src = resolve(pathArg);
   if (!existsSync(src)) {
@@ -120,14 +120,14 @@ async function cmdBuild(pathArg: string): Promise<InvokeResult> {
 }
 
 async function cmdRemove(name: string): Promise<InvokeResult> {
-  if (!name) return { ok: false, error: "usage: neo-arra plugin remove <name>" };
+  if (!name) return { ok: false, error: "usage: arra-cli plugin remove <name>" };
   const dir = join(USER_PLUGIN_DIR, name);
   if (!existsSync(dir)) {
     return { ok: false, error: `plugin '${name}' not found in ${USER_PLUGIN_DIR}` };
   }
 
   // Principle 1: Nothing is Deleted — archive to /tmp before removing
-  const archive = `/tmp/neo-arra-removed-${name}-${Date.now()}`;
+  const archive = `/tmp/arra-cli-removed-${name}-${Date.now()}`;
   cpSync(dir, archive, { recursive: true });
   rmSync(dir, { recursive: true, force: true });
 

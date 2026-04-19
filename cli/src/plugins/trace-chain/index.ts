@@ -1,4 +1,4 @@
-// neo-arra trace-chain <id> [--direction up|down|both]
+// arra-cli trace-chain <id> [--direction up|down|both]
 // Calls: GET /api/traces/:id/chain?direction=...
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";
@@ -18,7 +18,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   }
 
   if (!id) {
-    return { ok: false, error: "Usage: neo-arra trace-chain <id> [--direction up|down|both]" };
+    return { ok: false, error: "Usage: arra-cli trace-chain <id> [--direction up|down|both]" };
   }
 
   const params = new URLSearchParams({ direction });

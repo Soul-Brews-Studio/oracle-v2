@@ -1,4 +1,4 @@
-// neo-arra supersede-chain <path>
+// arra-cli supersede-chain <path>
 // Calls: GET /api/supersede/chain/:path
 
 import type { InvokeContext, InvokeResult } from "../../plugin/types.ts";
@@ -9,7 +9,7 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
 
   const docPath = args.find(a => !a.startsWith("--"));
   if (!docPath) {
-    return { ok: false, error: "Usage: neo-arra supersede-chain <path>" };
+    return { ok: false, error: "Usage: arra-cli supersede-chain <path>" };
   }
 
   const res = await apiFetch(`/api/supersede/chain/${encodeURIComponent(docPath)}`);

@@ -7,7 +7,7 @@
   "description": "Show a single forum thread with messages",
   "cli": {
     "command": "thread",
-    "help": "neo-arra thread <id>",
+    "help": "arra-cli thread <id>",
     "flags": {}
   }
 }

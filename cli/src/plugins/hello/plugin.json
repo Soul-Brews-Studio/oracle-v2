@@ -5,6 +5,6 @@
   "sdk": "^0.0.1",
   "cli": {
     "command": "hello",
-    "help": "neo-arra hello — sample plugin"
+    "help": "arra-cli hello — sample plugin"
   }
 }

@@ -7,7 +7,7 @@
   "description": "List or search discovery traces in ARRA Oracle",
   "cli": {
     "command": "trace",
-    "help": "neo-arra trace [query] [--limit N]",
+    "help": "arra-cli trace [query] [--limit N]",
     "flags": {
       "--limit": "Max results (default: 20)"
     }

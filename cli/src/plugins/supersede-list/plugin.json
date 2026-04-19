@@ -7,7 +7,7 @@
   "description": "List supersession log entries",
   "cli": {
     "command": "supersede-list",
-    "help": "neo-arra supersede-list [--project X] [--limit N] [--offset N]",
+    "help": "arra-cli supersede-list [--project X] [--limit N] [--offset N]",
     "flags": {
       "--project": "Filter by project name",
       "--limit": "Max results (default: 50)",
