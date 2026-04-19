@@ -56,20 +56,20 @@
     "vault:rsync": "./scripts/vault-rsync.sh"
   },
   "dependencies": {
-    "@lancedb/lancedb": "^0.26.2",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@lancedb/lancedb": "^0.27.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@qdrant/js-client-rest": "^1.17.0",
     "commander": "^14.0.3",
-    "drizzle-orm": "^0.45.1",
-    "hono": "^4.11.3",
-    "sqlite-vec": "^0.1.7-alpha.2"
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.14",
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.17.9",
-    "better-sqlite3": "^12.6.0",
-    "bun-types": "^1.3.6",
-    "drizzle-kit": "^0.31.8",
+    "better-sqlite3": "^12.9.0",
+    "bun-types": "^1.3.12",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.7.2"
   },
   "keywords": [
