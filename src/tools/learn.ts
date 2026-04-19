@@ -11,6 +11,7 @@ import { oracleDocuments } from '../db/schema.ts';
 import { detectProject } from '../server/project-detect.ts';
 import { getVaultPsiRoot } from '../vault/handler.ts';
 import { getVectorStoreByModel } from '../vector/factory.ts';
+import { REPO_ROOT } from '../config.ts';
 import type { ToolContext, ToolResponse, OracleLearnInput } from './types.ts';
 
 /** Coerce concepts to string[] — handles string, array, or undefined from MCP input */
@@ -135,7 +136,10 @@ export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Pr
     filePath = path.join(dir, filename);
     sourceFileRel = `${projectDir}/ψ/memory/learnings/${filename}`;
   } else {
-    const dir = path.join(ctx.repoRoot, 'ψ/memory/learnings');
+    // Write to canonical REPO_ROOT, not ctx.repoRoot (the MCP server's cwd):
+    // the dashboard's /api/file resolves source_file against REPO_ROOT, so
+    // writing relative to cwd produces "local file not found" (#557).
+    const dir = path.join(REPO_ROOT, 'ψ/memory/learnings');
     fs.mkdirSync(dir, { recursive: true });
     filePath = path.join(dir, filename);
     sourceFileRel = `ψ/memory/learnings/${filename}`;
