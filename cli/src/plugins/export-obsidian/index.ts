@@ -16,7 +16,7 @@ import type {
   VaultFile,
   VaultStats,
 } from "./lib/types.ts";
-import { slugify, slugifyPath } from "./lib/slugify.ts";
+import { slugify, slugifyPath, shortIdHash } from "./lib/slugify.ts";
 import { writeVault, writeStateFile } from "./lib/vault-writer.ts";
 import { fetchAllDocs } from "./lib/fetch-docs.ts";
 import { fetchSimilar } from "./lib/fetch-similar.ts";
@@ -40,11 +40,30 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   });
   console.error(`[fetch] ${docs.length} docs`);
 
-  // Build id → slug map (without trailing .md; wikilinks omit extension).
+  // Build id → slug map. On collision, append short hash of id so distinct
+  // docs don't clobber each other. Track path uniqueness, not slug — two
+  // folders may share the same slug (e.g. learnings/foo.md + retros/foo.md).
   const slugById = new Map<string, string>();
+  const usedPaths = new Set<string>();
+  let slugCollisions = 0;
   for (const doc of docs) {
-    const rel = slugifyPath(doc.type, doc.id, doc.title ?? doc.id);
-    slugById.set(doc.id, rel.replace(/\.md$/, ""));
+    const base = slugifyPath(doc.type, doc.id, doc.title ?? doc.id).replace(/\.md$/, "");
+    let slug = base;
+    if (usedPaths.has(slug)) {
+      slugCollisions++;
+      const suffix = shortIdHash(doc.id);
+      slug = `${base}-${suffix}`;
+      // Very defensive: if even the suffixed slug collides, keep extending.
+      let n = 2;
+      while (usedPaths.has(slug)) {
+        slug = `${base}-${suffix}-${n++}`;
+      }
+    }
+    usedPaths.add(slug);
+    slugById.set(doc.id, slug);
+  }
+  if (slugCollisions > 0) {
+    console.error(`[slug] ${slugCollisions} collisions resolved via id-hash suffix`);
   }
   const slugForId = (id: string) => slugById.get(id) ?? id;
 

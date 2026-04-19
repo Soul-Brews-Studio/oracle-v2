@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { slugify, slugifyPath } from "../lib/slugify.ts";
+import { slugify, slugifyPath, shortIdHash } from "../lib/slugify.ts";
 
 describe("slugify", () => {
   test("lowercases ASCII", () => {
@@ -82,5 +82,26 @@ describe("slugifyPath", () => {
     expect(slugifyPath("learning", "0197abc-def", "")).toBe(
       "learnings/0197abc-def.md",
     );
+  });
+});
+
+describe("shortIdHash", () => {
+  test("deterministic — same id produces same hash", () => {
+    expect(shortIdHash("abc-123")).toBe(shortIdHash("abc-123"));
+  });
+
+  test("distinct ids produce distinct hashes (high probability)", () => {
+    expect(shortIdHash("retro_2026-04-19_a")).not.toBe(
+      shortIdHash("retro_2026-04-19_b"),
+    );
+  });
+
+  test("length default 8, custom length respected", () => {
+    expect(shortIdHash("abc").length).toBe(8);
+    expect(shortIdHash("abc", 4).length).toBe(4);
+  });
+
+  test("returns only [0-9a-z]", () => {
+    expect(shortIdHash("anything")).toMatch(/^[0-9a-z]+$/);
   });
 });

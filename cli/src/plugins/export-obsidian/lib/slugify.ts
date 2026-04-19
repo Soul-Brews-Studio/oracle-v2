@@ -42,6 +42,19 @@ export function slugifyPath(type: string, id: string, title: string): string {
   return `${folder}/${slug}.md`;
 }
 
+/**
+ * Short deterministic id hash for slug-collision disambiguation.
+ * Not cryptographic — FNV-1a 32-bit, base36, capped to 8 chars.
+ */
+export function shortIdHash(id: string, len = 8): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36).padStart(len, "0").slice(-len);
+}
+
 function folderForType(type: string): string {
   const t = type.toLowerCase();
   if (t === "principle") return "principles";
