@@ -1,3 +1,7 @@
+/**
+ * TypeBox schemas for /api/menu.
+ */
+
 import { t } from 'elysia';
 
 export const MenuItemSchema = t.Recursive((Self) =>
@@ -17,14 +21,14 @@ export const MenuItemSchema = t.Recursive((Self) =>
     children: t.Optional(t.Array(Self)),
     source: t.Union([
       t.Literal('api'),
-      t.Literal('frontend'),
+      t.Literal('page'),
       t.Literal('plugin'),
     ]),
   }),
 );
 
 export type MenuGroup = 'main' | 'tools' | 'hidden' | 'admin';
-export type MenuSource = 'api' | 'frontend' | 'plugin';
+export type MenuSource = 'api' | 'page' | 'plugin';
 
 export interface MenuItem {
   path: string;
@@ -36,4 +40,12 @@ export interface MenuItem {
   access?: 'public' | 'auth';
   children?: MenuItem[];
   source: MenuSource;
+}
+
+export const MenuResponseSchema = t.Object({
+  items: t.Array(MenuItemSchema),
+});
+
+export interface MenuResponse {
+  items: MenuItem[];
 }

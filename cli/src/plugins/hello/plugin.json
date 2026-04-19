@@ -6,5 +6,11 @@
   "cli": {
     "command": "hello",
     "help": "arra-cli hello — sample plugin"
+  },
+  "menu": {
+    "label": "Hello",
+    "group": "tools",
+    "order": 100,
+    "icon": "wave"
   }
 }

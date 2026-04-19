@@ -5,12 +5,22 @@
  *
  * Logic is identical to src/routes/plugins.ts (the Hono twin, scheduled for
  * removal once the Elysia migration wires up). During transition both exist. */
-import { t } from 'elysia';
+import { t, type Static } from 'elysia';
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { homedir } from 'os';
 
 export const PLUGIN_DIR = join(homedir(), '.oracle', 'plugins');
+
+export const PluginMenuSchema = t.Object({
+  label: t.String(),
+  group: t.Optional(t.Union([t.Literal('main'), t.Literal('tools'), t.Literal('hidden')])),
+  order: t.Optional(t.Number()),
+  icon: t.Optional(t.String()),
+  path: t.Optional(t.String()),
+});
+
+export type PluginMenu = Static<typeof PluginMenuSchema>;
 
 export type PluginEntry = {
   name: string;
@@ -19,9 +29,32 @@ export type PluginEntry = {
   modified: string;
   version?: string;
   description?: string;
+  menu?: PluginMenu;
+};
+
+export type MenuItem = {
+  label: string;
+  path: string;
+  group: 'main' | 'tools' | 'hidden';
+  order: number;
+  icon?: string;
+  source: 'plugin';
+  sourceName: string;
 };
 
 export const pluginNameParams = t.Object({ name: t.String() });
+
+function parseMenu(raw: unknown): PluginMenu | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const m = raw as Record<string, unknown>;
+  if (typeof m.label !== 'string' || !m.label) return undefined;
+  const group =
+    m.group === 'main' || m.group === 'tools' || m.group === 'hidden' ? m.group : undefined;
+  const order = typeof m.order === 'number' ? m.order : undefined;
+  const icon = typeof m.icon === 'string' ? m.icon : undefined;
+  const path = typeof m.path === 'string' ? m.path : undefined;
+  return { label: m.label, group, order, icon, path };
+}
 
 export function readNestedPlugin(
   dir: string,
@@ -29,7 +62,13 @@ export function readNestedPlugin(
 ): PluginEntry | null {
   const manifestPath = join(dir, 'plugin.json');
   if (!existsSync(manifestPath)) return null;
-  let manifest: { name?: string; version?: string; description?: string; wasm?: string };
+  let manifest: {
+    name?: string;
+    version?: string;
+    description?: string;
+    wasm?: string;
+    menu?: unknown;
+  };
   try {
     manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   } catch {
@@ -57,6 +96,7 @@ export function readNestedPlugin(
     modified: st.mtime.toISOString(),
     version: typeof manifest.version === 'string' ? manifest.version : undefined,
     description: typeof manifest.description === 'string' ? manifest.description : undefined,
+    menu: parseMenu(manifest.menu),
   };
 }
 
@@ -109,4 +149,22 @@ export function scanPlugins(): { plugins: PluginEntry[]; dir: string } {
     }
   }
   return { plugins, dir: PLUGIN_DIR };
+}
+
+export function getPluginMenuItems(): MenuItem[] {
+  const { plugins } = scanPlugins();
+  const items: MenuItem[] = [];
+  for (const p of plugins) {
+    if (!p.menu) continue;
+    items.push({
+      label: p.menu.label,
+      path: p.menu.path ?? `/plugins/${p.name}`,
+      group: p.menu.group ?? 'tools',
+      order: p.menu.order ?? 999,
+      icon: p.menu.icon,
+      source: 'plugin',
+      sourceName: p.name,
+    });
+  }
+  return items;
 }

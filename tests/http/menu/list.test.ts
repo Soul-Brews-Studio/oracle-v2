@@ -1,0 +1,86 @@
+/**
+ * Unit tests for /api/menu — aggregates nav tags off mounted Elysia routes.
+ *
+ * These exercise the menu builder in isolation with synthetic sub-apps so
+ * they run without a live server. The real server wires `apiModules` into
+ * `createMenuRoutes` in src/server.ts.
+ */
+
+import { describe, test, expect } from 'bun:test';
+import { Elysia } from 'elysia';
+import { createMenuRoutes, buildMenuItems, type MenuItem } from '../../../src/routes/menu/index.ts';
+
+function fakeApiModule() {
+  return new Elysia({ prefix: '/api' })
+    .get('/search', () => ({}), {
+      detail: { tags: ['search', 'nav:main', 'order:10'], summary: 'Search' },
+    })
+    .get('/list', () => ({}), {
+      detail: { tags: ['search', 'nav:main', 'order:20'], summary: 'List oracle documents' },
+    })
+    .get('/map', () => ({}), {
+      detail: { tags: ['map', 'nav:tools', 'order:20'], summary: 'Map 2D' },
+    })
+    .get('/map3d', () => ({}), {
+      detail: { tags: ['map', 'nav:tools', 'order:30'], summary: 'Map 3D' },
+    })
+    .get('/settings', () => ({}), {
+      detail: { tags: ['settings', 'nav:hidden'], summary: 'Settings' },
+    })
+    .get('/untagged', () => ({}), {
+      detail: { tags: ['internal'], summary: 'Internal' },
+    });
+}
+
+describe('/api/menu', () => {
+  test('groups routes into main / tools / hidden', async () => {
+    const app = createMenuRoutes([fakeApiModule()]);
+    const res = await app.handle(new Request('http://localhost/api/menu'));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: MenuItem[] };
+    const groups = new Map<string, MenuItem[]>();
+    for (const item of body.items) {
+      const arr = groups.get(item.group) ?? [];
+      arr.push(item);
+      groups.set(item.group, arr);
+    }
+    const main = groups.get('main') ?? [];
+    const tools = groups.get('tools') ?? [];
+    const hidden = groups.get('hidden') ?? [];
+    expect(main.map((i) => i.path)).toEqual(['/search', '/feed']);
+    expect(tools.map((i) => i.path)).toEqual(['/map']);
+    expect(hidden.length).toBe(0);
+  });
+
+  test('respects order:N tag and studio path dedupe', () => {
+    const sub = fakeApiModule();
+    const items = buildMenuItems([sub]);
+    const main = items.filter((i) => i.group === 'main');
+    const tools = items.filter((i) => i.group === 'tools');
+    expect(main[0]).toMatchObject({ path: '/search', label: 'Search', order: 10, source: 'api' });
+    expect(main[1]).toMatchObject({ path: '/feed', label: 'List oracle documents', order: 20 });
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({ path: '/map', order: 20 });
+  });
+
+  test('unmapped or untagged paths are skipped', () => {
+    const sub = new Elysia({ prefix: '/api' })
+      .get('/unknown', () => ({}), {
+        detail: { tags: ['nav:main', 'order:1'], summary: 'Unknown' },
+      })
+      .get('/plain', () => ({}), {
+        detail: { tags: [], summary: 'plain' },
+      });
+    const items = buildMenuItems([sub]);
+    expect(items).toHaveLength(0);
+  });
+
+  test('menu endpoint self-tags as nav:hidden', () => {
+    const app = createMenuRoutes([]);
+    const menuRoute = app.routes.find((r) => r.path === '/api/menu');
+    expect(menuRoute).toBeDefined();
+    const detail = (menuRoute!.hooks as { detail?: { tags?: string[] } }).detail;
+    expect(detail?.tags).toContain('menu');
+    expect(detail?.tags).toContain('nav:hidden');
+  });
+});

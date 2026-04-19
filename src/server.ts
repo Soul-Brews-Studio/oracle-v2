@@ -38,6 +38,7 @@ import { filesRouter } from './routes/files/index.ts';
 import { pluginsRouter } from './routes/plugins/index.ts';
 import { oraclenetRoutes } from './routes/oraclenet/index.ts';
 import { sessionsRoutes } from './routes/sessions/index.ts';
+import { createMenuRoutes } from './routes/menu/index.ts';
 
 import pkg from '../package.json' with { type: 'json' };
 
@@ -154,7 +155,7 @@ const app = new Elysia()
     api: '/api',
   }));
 
-const modules = [
+const apiModules = [
   authRoutes,
   settingsRoutes,
   feedRoutes,
@@ -171,6 +172,10 @@ const modules = [
   oraclenetRoutes,
   sessionsRoutes,
 ];
+
+const menuRoutes = createMenuRoutes(apiModules as unknown as Parameters<typeof createMenuRoutes>[0]);
+
+const modules = [...apiModules, menuRoutes];
 
 for (const mod of modules) app.use(mod as any);
 
