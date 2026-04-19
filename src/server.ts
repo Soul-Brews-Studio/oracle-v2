@@ -84,28 +84,47 @@ const ALLOWED_ORIGINS = [
   ...(legacyOrigin ? [legacyOrigin] : []),
 ];
 
+function originAllowed(origin: string | undefined): string | null {
+  if (!origin) return null;
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    return origin;
+  }
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  return null;
+}
+
+// Private Network Access preflight (Chrome 117+): must run BEFORE hono/cors,
+// because hono/cors responds to OPTIONS directly and bypasses later middleware.
+// Lets studio.buildwithoracle.com fetch a user's local MCP at :47778.
+app.use('*', async (c, next) => {
+  if (
+    c.req.method === 'OPTIONS' &&
+    c.req.header('access-control-request-private-network') === 'true'
+  ) {
+    const origin = originAllowed(c.req.header('origin'));
+    if (!origin) return next();
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers':
+          c.req.header('access-control-request-headers') ?? 'content-type',
+        'Access-Control-Allow-Private-Network': 'true',
+        'Access-Control-Max-Age': '86400',
+        Vary: 'Origin',
+      },
+    });
+  }
+  return next();
+});
+
 app.use('*', cors({
-  origin: (origin) => {
-    if (!origin) return origin;
-    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-      return origin;
-    }
-    if (ALLOWED_ORIGINS.includes(origin)) return origin;
-    return null;
-  },
+  origin: (origin) => originAllowed(origin) ?? null,
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
-
-// Private Network Access (Chrome 117+): allow https origins to reach our
-// http://localhost when they preflight with Access-Control-Request-Private-Network.
-// This lets studio.buildwithoracle.com fetch a user's local MCP at :47778.
-app.use('*', async (c, next) => {
-  if (c.req.header('access-control-request-private-network') === 'true') {
-    c.header('Access-Control-Allow-Private-Network', 'true');
-  }
-  await next();
-});
 
 // Security headers middleware
 app.use('*', async (c, next) => {
