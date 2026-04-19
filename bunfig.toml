@@ -1,4 +1,4 @@
 [test]
-# Unit, integration, and HTTP contract tests with bun test
+# Scan src/ (unit + integration) and tests/ (HTTP contract tests).
 # E2E tests use Playwright (run with: bun run test:e2e)
-root = "."
+roots = ["src", "tests"]

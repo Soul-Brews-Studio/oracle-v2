@@ -8,6 +8,9 @@ import type { LoadedPlugin } from "./plugin/types.ts";
 import { pluginsList } from "./commands/plugins-list.ts";
 import { pluginsRemove } from "./commands/plugins-remove.ts";
 import { pluginsInfo } from "./commands/plugins-info.ts";
+import { sessionList } from "./commands/session-list.ts";
+import { sessionShow } from "./commands/session-show.ts";
+import { sessionContext } from "./commands/session-context.ts";
 
 const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
@@ -17,6 +20,7 @@ function printHelp(commands: Array<{ command: string; help?: string }>) {
   console.log("Usage: arra-cli <command> [args...]\n");
   console.log("Commands:");
   console.log(`  ${"plugin".padEnd(16)}manage plugins (install)`);
+  console.log(`  ${"session".padEnd(16)}inspect sessions (list, show, context)`);
   for (const { command, help } of commands) {
     console.log(`  ${command.padEnd(16)}${help ?? ""}`);
   }
@@ -58,6 +62,33 @@ async function main() {
   if (cmd === "--version" || cmd === "version") {
     console.log(`arra-cli v${VERSION}`);
     return;
+  }
+
+  if (cmd === "session") {
+    const sub = args[1]?.toLowerCase();
+    const rest = args.slice(2);
+    if (sub === "list" || sub === "ls") {
+      process.exit(await sessionList(rest));
+    }
+    if (sub === "show") {
+      process.exit(await sessionShow(rest));
+    }
+    if (sub === "context") {
+      process.exit(await sessionContext(rest));
+    }
+    if (!sub || sub === "--help" || sub === "-h") {
+      console.log("arra-cli session <subcommand>\n");
+      console.log("Subcommands:");
+      console.log("  list                list all sessions");
+      console.log("  show <id>           show session summary");
+      console.log("  context <id>        dump full session context (--json for machine output)");
+      console.log("\nEnv:");
+      console.log("  ORACLE_API          API base URL (default http://localhost:47778)");
+      return;
+    }
+    console.error(`\x1b[31m✗\x1b[0m unknown session subcommand: ${args[1]}`);
+    console.error("  try: arra-cli session list|show|context");
+    process.exit(1);
   }
 
   if (cmd === "plugin") {
