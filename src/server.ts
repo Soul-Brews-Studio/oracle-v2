@@ -40,6 +40,7 @@ import { filesRouter } from './routes/files/index.ts';
 import { pluginsRouter } from './routes/plugins/index.ts';
 import { oraclenetRoutes } from './routes/oraclenet/index.ts';
 import { sessionsRoutes } from './routes/sessions/index.ts';
+import { vaultRoutes } from './routes/vault/index.ts';
 import { createMenuRoutes } from './routes/menu/index.ts';
 
 import pkg from '../package.json' with { type: 'json' };
@@ -180,6 +181,7 @@ const apiModules = [
   pluginsRouter,
   oraclenetRoutes,
   sessionsRoutes,
+  vaultRoutes,
 ];
 
 try {
