@@ -15,7 +15,8 @@ export const presenceEndpoint = new Elysia().get('/presence', async ({ set }) =>
   }
 }, {
   detail: {
-    tags: ['oraclenet', 'nav:hidden'],
+    tags: ['oraclenet'],
+    menu: { group: 'hidden' },
     summary: 'Active oracle presence heartbeats',
   },
 });

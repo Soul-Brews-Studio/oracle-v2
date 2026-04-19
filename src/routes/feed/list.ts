@@ -74,7 +74,8 @@ export const listFeedRoute = new Elysia().get('/', async ({ query, set }) => {
 }, {
   query: FeedQuery,
   detail: {
-    tags: ['feed', 'nav:hidden'],
+    tags: ['feed'],
+    menu: { group: 'hidden' },
     summary: 'Merged local + maw-js feed events',
   },
 });

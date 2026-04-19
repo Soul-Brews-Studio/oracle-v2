@@ -32,7 +32,8 @@ export const learnEndpoint = new Elysia()
     {
       body: LearnBody,
       detail: {
-        tags: ['knowledge', 'nav:hidden'],
+        tags: ['knowledge'],
+        menu: { group: 'hidden' },
         summary: 'Record a learning pattern',
       },
     },

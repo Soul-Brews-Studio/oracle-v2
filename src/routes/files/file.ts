@@ -111,7 +111,8 @@ export const fileRoute = new Elysia().get(
   {
     query: fileQuery,
     detail: {
-      tags: ['files', 'nav:hidden'],
+      tags: ['files'],
+      menu: { group: 'hidden' },
       summary: 'Cross-repo file read with traversal guard',
     },
   },

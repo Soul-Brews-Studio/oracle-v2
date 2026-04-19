@@ -24,7 +24,8 @@ export const traceLinkRoute = new Elysia().post('/api/traces/:prevId/link', asyn
   params: prevIdParam,
   body: linkBody,
   detail: {
-    tags: ['traces', 'nav:hidden'],
+    tags: ['traces'],
+    menu: { group: 'hidden' },
     summary: 'Link two traces',
   },
 });

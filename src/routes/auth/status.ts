@@ -17,7 +17,8 @@ export const statusRoute = new Elysia().get('/status', ({ server, request, cooki
   return { authenticated, authEnabled, hasPassword, localBypass, isLocal };
 }, {
   detail: {
-    tags: ['auth', 'nav:hidden'],
+    tags: ['auth'],
+    menu: { group: 'hidden' },
     summary: 'Current auth + session state',
   },
 });

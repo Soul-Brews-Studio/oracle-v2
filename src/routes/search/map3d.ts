@@ -20,7 +20,8 @@ export const map3dEndpoint = new Elysia().get(
   {
     query: Map3dQuery,
     detail: {
-      tags: ['map', 'nav:tools', 'order:30'],
+      tags: ['map'],
+      menu: { group: 'tools', order: 30 },
       summary: '3D PCA projection of embeddings',
     },
   },

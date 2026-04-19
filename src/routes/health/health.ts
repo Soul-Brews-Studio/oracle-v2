@@ -11,7 +11,8 @@ export const healthEndpoint = new Elysia().get('/health', () => ({
   oracle: 'connected',
 }), {
   detail: {
-    tags: ['health', 'nav:hidden'],
+    tags: ['health'],
+    menu: { group: 'hidden' },
     summary: 'Server liveness check',
   },
 });

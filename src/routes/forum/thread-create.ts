@@ -29,7 +29,8 @@ export const threadCreateRoute = new Elysia().post('/api/thread', async ({ body,
 }, {
   body: threadCreateBody,
   detail: {
-    tags: ['forum', 'nav:hidden'],
+    tags: ['forum'],
+    menu: { group: 'hidden' },
     summary: 'Post a message to a forum thread',
   },
 });

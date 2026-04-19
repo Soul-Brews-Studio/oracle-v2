@@ -9,7 +9,8 @@ export const activityEndpoint = new Elysia().get('/dashboard/activity', ({ query
 }, {
   query: ActivityQuery,
   detail: {
-    tags: ['dashboard', 'nav:hidden'],
+    tags: ['dashboard'],
+    menu: { group: 'hidden' },
     summary: 'Activity counts over N days',
   },
 });

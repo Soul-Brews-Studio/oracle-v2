@@ -13,7 +13,8 @@ export const statsEndpoint = new Elysia().get('/stats', async () => {
   return { ...stats, ...vectorStats, vault_repo: vaultRepo };
 }, {
   detail: {
-    tags: ['health', 'nav:tools', 'order:50'],
+    tags: ['health'],
+    menu: { group: 'tools', order: 50 },
     summary: 'Database and vector stats',
   },
 });

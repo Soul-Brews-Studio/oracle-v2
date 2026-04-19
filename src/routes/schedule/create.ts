@@ -13,7 +13,8 @@ export const scheduleCreateRoute = new Elysia().post('/api/schedule', async ({ b
 }, {
   body: createBody,
   detail: {
-    tags: ['schedule', 'nav:hidden'],
+    tags: ['schedule'],
+    menu: { group: 'hidden' },
     summary: 'Create a schedule entry',
   },
 });

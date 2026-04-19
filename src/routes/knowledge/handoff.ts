@@ -51,7 +51,8 @@ export const handoffEndpoint = new Elysia().post(
   {
     body: HandoffBody,
     detail: {
-      tags: ['knowledge', 'nav:hidden'],
+      tags: ['knowledge'],
+      menu: { group: 'hidden' },
       summary: 'Write a handoff markdown file',
     },
   },

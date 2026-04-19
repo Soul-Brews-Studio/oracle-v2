@@ -24,7 +24,8 @@ export const traceUnlinkRoute = new Elysia().delete('/api/traces/:id/link', asyn
   params: traceIdParam,
   query: unlinkQuery,
   detail: {
-    tags: ['traces', 'nav:hidden'],
+    tags: ['traces'],
+    menu: { group: 'hidden' },
     summary: 'Unlink traces in a direction',
   },
 });

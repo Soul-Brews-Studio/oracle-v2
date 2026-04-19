@@ -23,7 +23,8 @@ export const pluginGetByNameRoute = new Elysia().get(
   {
     params: pluginNameParams,
     detail: {
-      tags: ['plugins', 'nav:hidden'],
+      tags: ['plugins'],
+      menu: { group: 'hidden' },
       summary: 'Fetch plugin wasm bytes',
     },
   },

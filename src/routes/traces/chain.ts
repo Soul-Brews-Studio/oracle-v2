@@ -9,7 +9,8 @@ export const traceChainRoute = new Elysia().get('/api/traces/:id/chain', ({ para
   params: traceIdParam,
   query: chainQuery,
   detail: {
-    tags: ['traces', 'nav:hidden'],
+    tags: ['traces'],
+    menu: { group: 'hidden' },
     summary: 'Get causal chain for a trace',
   },
 });

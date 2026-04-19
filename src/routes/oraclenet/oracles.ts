@@ -16,7 +16,8 @@ export const oraclesEndpoint = new Elysia().get('/oracles', async ({ query, set 
 }, {
   query: OraclesQuery,
   detail: {
-    tags: ['oraclenet', 'nav:hidden'],
+    tags: ['oraclenet'],
+    menu: { group: 'hidden' },
     summary: 'Proxy OracleNet oracle records',
   },
 });

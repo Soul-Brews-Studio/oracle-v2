@@ -9,7 +9,8 @@ export const getSettingsRoute = new Elysia().get('/', () => {
   return { authEnabled, localBypass, hasPassword, vaultRepo };
 }, {
   detail: {
-    tags: ['settings', 'nav:hidden'],
+    tags: ['settings'],
+    menu: { group: 'hidden' },
     summary: 'Read oracle settings',
   },
 });

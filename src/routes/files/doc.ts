@@ -38,7 +38,8 @@ export const docRoute = new Elysia().get(
   {
     params: docParams,
     detail: {
-      tags: ['files', 'nav:hidden'],
+      tags: ['files'],
+      menu: { group: 'hidden' },
       summary: 'Get one oracle document by id',
     },
   },

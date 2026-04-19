@@ -42,7 +42,8 @@ export const loginRoute = new Elysia().post('/login', async ({ body, server, req
 }, {
   body: LoginBody,
   detail: {
-    tags: ['auth', 'nav:hidden'],
+    tags: ['auth'],
+    menu: { group: 'hidden' },
     summary: 'Authenticate with password',
   },
 });

@@ -11,7 +11,8 @@ export const graphRoute = new Elysia().get(
   {
     query: graphQuery,
     detail: {
-      tags: ['files', 'nav:tools', 'order:10'],
+      tags: ['files'],
+      menu: { group: 'tools', order: 10 },
       summary: 'Graph visualization data',
     },
   },

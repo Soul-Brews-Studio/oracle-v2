@@ -8,7 +8,8 @@ export const growthEndpoint = new Elysia().get('/dashboard/growth', ({ query }) 
 }, {
   query: GrowthQuery,
   detail: {
-    tags: ['dashboard', 'nav:hidden'],
+    tags: ['dashboard'],
+    menu: { group: 'hidden' },
     summary: 'Growth over a period',
   },
 });

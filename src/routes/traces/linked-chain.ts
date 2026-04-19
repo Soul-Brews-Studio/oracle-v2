@@ -13,7 +13,8 @@ export const traceLinkedChainRoute = new Elysia().get('/api/traces/:id/linked-ch
 }, {
   params: traceIdParam,
   detail: {
-    tags: ['traces', 'nav:hidden'],
+    tags: ['traces'],
+    menu: { group: 'hidden' },
     summary: 'Walk explicit trace link graph',
   },
 });

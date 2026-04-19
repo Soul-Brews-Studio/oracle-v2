@@ -21,7 +21,8 @@ export const summaryRoute = new Elysia().post(
     params: SummaryParams,
     body: SummaryBody,
     detail: {
-      tags: ['sessions', 'nav:hidden'],
+      tags: ['sessions'],
+      menu: { group: 'hidden' },
       summary: 'Record a session summary',
     },
   },

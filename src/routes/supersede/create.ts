@@ -46,7 +46,8 @@ export const supersedeCreateEndpoint = new Elysia().post(
   {
     body: SupersedeBody,
     detail: {
-      tags: ['supersede', 'nav:hidden'],
+      tags: ['supersede'],
+      menu: { group: 'hidden' },
       summary: 'Append to legacy supersede_log',
     },
   },

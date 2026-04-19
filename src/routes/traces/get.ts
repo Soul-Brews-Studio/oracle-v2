@@ -12,7 +12,8 @@ export const traceGetRoute = new Elysia().get('/api/traces/:id', ({ params, set 
 }, {
   params: traceIdParam,
   detail: {
-    tags: ['traces', 'nav:hidden'],
+    tags: ['traces'],
+    menu: { group: 'hidden' },
     summary: 'Get a single trace',
   },
 });

@@ -15,7 +15,8 @@ export const scheduleUpdateRoute = new Elysia().patch('/api/schedule/:id', async
   params: scheduleIdParam,
   body: updateBody,
   detail: {
-    tags: ['schedule', 'nav:hidden'],
+    tags: ['schedule'],
+    menu: { group: 'hidden' },
     summary: 'Update a schedule entry',
   },
 });

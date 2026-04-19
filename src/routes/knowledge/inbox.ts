@@ -53,7 +53,8 @@ export const inboxEndpoint = new Elysia().get(
   {
     query: InboxQuery,
     detail: {
-      tags: ['knowledge', 'nav:hidden'],
+      tags: ['knowledge'],
+      menu: { group: 'hidden' },
       summary: 'List inbox handoff files',
     },
   },

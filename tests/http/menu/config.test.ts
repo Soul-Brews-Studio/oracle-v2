@@ -34,7 +34,7 @@ function resetState() {
 describe('buildMenuItems with extras', () => {
   test('disable set filters out items', () => {
     const sub = new Elysia({ prefix: '/api' }).get('/search', () => ({}), {
-      detail: { tags: ['nav:main', 'order:10'], summary: 'Search' },
+      detail: { menu: { group: 'main', order: 10 }, summary: 'Search' },
     });
     const items = buildMenuItems([sub], { disable: ['/search'] });
     expect(items.find((i) => i.path === '/search')).toBeUndefined();

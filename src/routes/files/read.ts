@@ -32,7 +32,8 @@ export const readRoute = new Elysia().get(
   {
     query: readQuery,
     detail: {
-      tags: ['files', 'nav:hidden'],
+      tags: ['files'],
+      menu: { group: 'hidden' },
       summary: 'Read a file or doc by id',
     },
   },

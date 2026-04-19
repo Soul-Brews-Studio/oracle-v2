@@ -26,7 +26,8 @@ export const similarEndpoint = new Elysia().get(
   {
     query: SimilarQuery,
     detail: {
-      tags: ['search', 'nav:hidden'],
+      tags: ['search'],
+      menu: { group: 'hidden' },
       summary: 'Vector nearest-neighbor lookup by doc id',
     },
   },

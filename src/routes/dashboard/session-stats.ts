@@ -25,7 +25,8 @@ export const sessionStatsEndpoint = new Elysia().get('/session/stats', ({ query 
 }, {
   query: SessionStatsQuery,
   detail: {
-    tags: ['dashboard', 'nav:hidden'],
+    tags: ['dashboard'],
+    menu: { group: 'hidden' },
     summary: 'Session-level search + learn counts',
   },
 });

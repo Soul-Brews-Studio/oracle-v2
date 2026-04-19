@@ -10,7 +10,8 @@ export const scheduleMdRoute = new Elysia().get('/api/schedule/md', ({ set }) =>
   return '';
 }, {
   detail: {
-    tags: ['schedule', 'nav:hidden'],
+    tags: ['schedule'],
+    menu: { group: 'hidden' },
     summary: 'Raw schedule markdown',
   },
 });

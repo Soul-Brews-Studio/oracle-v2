@@ -60,7 +60,8 @@ export const supersedeChainEndpoint = new Elysia().get(
   },
   {
     detail: {
-      tags: ['supersede', 'nav:tools', 'order:70'],
+      tags: ['supersede'],
+      menu: { group: 'tools', order: 70 },
       summary: 'Supersession chain for a doc path',
     },
   },

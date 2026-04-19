@@ -5,6 +5,20 @@
 import { t } from 'elysia';
 import type { Static } from 'elysia';
 
+export interface MenuMeta {
+  group: 'main' | 'tools' | 'admin' | 'hidden';
+  order?: number;
+  label?: string;
+  icon?: string;
+  access?: 'public' | 'auth';
+}
+
+declare module 'elysia' {
+  interface DocumentDecoration {
+    menu?: MenuMeta;
+  }
+}
+
 export const MenuItemSchema = t.Object({
   path: t.String(),
   label: t.String(),

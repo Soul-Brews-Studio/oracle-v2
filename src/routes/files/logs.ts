@@ -30,7 +30,8 @@ export const logsRoute = new Elysia().get(
   {
     query: logsQuery,
     detail: {
-      tags: ['files', 'nav:hidden'],
+      tags: ['files'],
+      menu: { group: 'hidden' },
       summary: 'Recent search log entries',
     },
   },

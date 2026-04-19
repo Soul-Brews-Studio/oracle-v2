@@ -30,7 +30,8 @@ export function createCustomMenuRoutes() {
       () => ({ items: listCustomMenuItems().map((i) => ({ ...i, added: true })) }),
       {
         detail: {
-          tags: ['menu', 'nav:hidden'],
+          tags: ['menu'],
+          menu: { group: 'hidden' },
           summary: 'List user-added custom menu items',
         },
         response: t.Object({ items: t.Array(MenuItemSchema) }),
@@ -52,7 +53,8 @@ export function createCustomMenuRoutes() {
           icon: t.Optional(t.String()),
         }),
         detail: {
-          tags: ['menu', 'nav:hidden'],
+          tags: ['menu'],
+          menu: { group: 'hidden' },
           summary: 'Add or replace a user-added custom menu item',
         },
       },
@@ -68,7 +70,8 @@ export function createCustomMenuRoutes() {
       },
       {
         detail: {
-          tags: ['menu', 'nav:hidden'],
+          tags: ['menu'],
+          menu: { group: 'hidden' },
           summary: 'Remove a user-added custom menu item by path',
         },
       },

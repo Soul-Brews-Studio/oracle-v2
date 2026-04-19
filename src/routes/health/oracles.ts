@@ -54,7 +54,8 @@ export const oraclesEndpoint = new Elysia().get('/oracles', ({ query }) => {
 }, {
   query: OraclesQuery,
   detail: {
-    tags: ['health', 'nav:hidden'],
+    tags: ['health'],
+    menu: { group: 'hidden' },
     summary: 'Oracle identities + project activity',
   },
 });

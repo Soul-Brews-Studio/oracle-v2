@@ -11,7 +11,8 @@ export const logoutRoute = new Elysia().post('/logout', ({ cookie }) => {
   return { success: true };
 }, {
   detail: {
-    tags: ['auth', 'nav:hidden'],
+    tags: ['auth'],
+    menu: { group: 'hidden' },
     summary: 'Clear session cookie',
   },
 });

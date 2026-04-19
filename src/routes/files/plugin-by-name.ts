@@ -25,7 +25,8 @@ export const pluginByNameRoute = new Elysia().get(
   {
     params: pluginParams,
     detail: {
-      tags: ['plugins', 'nav:hidden'],
+      tags: ['plugins'],
+      menu: { group: 'hidden' },
       summary: 'Legacy flat plugin wasm fetch',
     },
   },

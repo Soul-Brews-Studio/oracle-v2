@@ -36,7 +36,8 @@ export const threadGetRoute = new Elysia().get('/api/thread/:id', ({ params, set
 }, {
   params: threadIdParam,
   detail: {
-    tags: ['forum', 'nav:hidden'],
+    tags: ['forum'],
+    menu: { group: 'hidden' },
     summary: 'Get one forum thread',
   },
 });

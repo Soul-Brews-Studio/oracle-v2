@@ -20,7 +20,8 @@ export const threadStatusRoute = new Elysia().patch('/api/thread/:id/status', as
   params: threadIdParam,
   body: threadStatusBody,
   detail: {
-    tags: ['forum', 'nav:hidden'],
+    tags: ['forum'],
+    menu: { group: 'hidden' },
     summary: 'Update a thread status',
   },
 });
