@@ -23,6 +23,7 @@ export const MenuItemSchema = t.Object({
     t.Literal('page'),
     t.Literal('plugin'),
   ]),
+  added: t.Optional(t.Boolean()),
 });
 
 export type MenuItem = Static<typeof MenuItemSchema>;

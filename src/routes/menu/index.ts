@@ -7,11 +7,14 @@
 
 import { Elysia } from 'elysia';
 import { createMenuEndpoint } from './menu.ts';
+import { createCustomMenuRoutes } from './custom.ts';
 
 type HasRoutes = { routes: Array<{ path: string; hooks?: { detail?: unknown } }> };
 
 export function createMenuRoutes(sources: HasRoutes[]) {
-  return new Elysia({ prefix: '/api' }).use(createMenuEndpoint(sources));
+  return new Elysia({ prefix: '/api' })
+    .use(createMenuEndpoint(sources))
+    .use(createCustomMenuRoutes());
 }
 
 export { buildMenuItems, API_TO_STUDIO } from './menu.ts';

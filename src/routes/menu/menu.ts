@@ -9,6 +9,7 @@
 import { Elysia } from 'elysia';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
+import { listCustomMenuItems } from '../../menu/custom-store.ts';
 
 export const API_TO_STUDIO: ReadonlyArray<readonly [string, string]> = [
   ['/api/supersede', '/superseded'],
@@ -38,7 +39,10 @@ type HasRoutes = { routes: RouteLike[] };
 
 const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, admin: 2, hidden: 3 };
 
-export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
+export function buildMenuItems(
+  sources: HasRoutes[],
+  customItems: MenuItem[] = [],
+): MenuItem[] {
   const items: MenuItem[] = [];
   const seen = new Set<string>();
 
@@ -86,6 +90,13 @@ export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
     items.push(item);
   }
 
+  for (const item of customItems) {
+    const key = `${item.group}:${item.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push({ ...item, added: true });
+  }
+
   items.sort((a, b) => GROUP_RANK[a.group] - GROUP_RANK[b.group] || a.order - b.order);
   return items;
 }
@@ -93,7 +104,7 @@ export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
 export function createMenuEndpoint(sources: HasRoutes[]) {
   return new Elysia().get(
     '/menu',
-    () => ({ items: buildMenuItems(sources) }),
+    () => ({ items: buildMenuItems(sources, listCustomMenuItems()) }),
     {
       detail: {
         tags: ['menu', 'nav:hidden'],

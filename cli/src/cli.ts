@@ -11,6 +11,9 @@ import { pluginsInfo } from "./commands/plugins-info.ts";
 import { sessionList } from "./commands/session-list.ts";
 import { sessionShow } from "./commands/session-show.ts";
 import { sessionContext } from "./commands/session-context.ts";
+import { menuList } from "./commands/menu-list.ts";
+import { menuAdd } from "./commands/menu-add.ts";
+import { menuRemove } from "./commands/menu-remove.ts";
 
 const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
@@ -21,6 +24,7 @@ function printHelp(commands: Array<{ command: string; help?: string }>) {
   console.log("Commands:");
   console.log(`  ${"plugin".padEnd(16)}manage plugins (install)`);
   console.log(`  ${"session".padEnd(16)}inspect sessions (list, show, context)`);
+  console.log(`  ${"menu".padEnd(16)}inspect and customize studio menu (list, add, remove)`);
   for (const { command, help } of commands) {
     console.log(`  ${command.padEnd(16)}${help ?? ""}`);
   }
@@ -89,6 +93,35 @@ async function main() {
     }
     console.error(`\x1b[31m✗\x1b[0m unknown session subcommand: ${args[1]}`);
     console.error("  try: arra-cli session list|show|context");
+    process.exit(1);
+  }
+
+  if (cmd === "menu") {
+    const sub = args[1]?.toLowerCase();
+    const rest = args.slice(2);
+    if (sub === "list" || sub === "ls") {
+      process.exit(await menuList(rest));
+    }
+    if (sub === "add") {
+      process.exit(await menuAdd(rest));
+    }
+    if (sub === "remove" || sub === "rm") {
+      process.exit(await menuRemove(rest));
+    }
+    if (!sub || sub === "--help" || sub === "-h") {
+      console.log("arra-cli menu <subcommand>\n");
+      console.log("Subcommands:");
+      console.log("  list [--custom]                         list menu items (JSON array)");
+      console.log("  add --path /p --label L [--group g] [--order N] [--icon i]");
+      console.log("                                          add or replace a custom menu item");
+      console.log("  remove <path>                           remove a custom menu item");
+      console.log("\nOutput defaults to JSON; pass --yml for YAML.");
+      console.log("\nEnv:");
+      console.log("  ORACLE_API          API base URL (default http://localhost:47778)");
+      return;
+    }
+    console.error(`\x1b[31m✗\x1b[0m unknown menu subcommand: ${args[1]}`);
+    console.error("  try: arra-cli menu list|add|remove");
     process.exit(1);
   }
 
