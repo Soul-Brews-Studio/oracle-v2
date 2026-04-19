@@ -9,6 +9,12 @@
 import { Elysia } from 'elysia';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
+import { getMenuConfig } from '../../menu/config.ts';
+
+export type MenuExtras = {
+  items?: MenuItem[];
+  disable?: Iterable<string>;
+};
 
 export const API_TO_STUDIO: ReadonlyArray<readonly [string, string]> = [
   ['/api/supersede', '/superseded'],
@@ -38,9 +44,10 @@ type HasRoutes = { routes: RouteLike[] };
 
 const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, admin: 2, hidden: 3 };
 
-export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
+export function buildMenuItems(sources: HasRoutes[], extras?: MenuExtras): MenuItem[] {
   const items: MenuItem[] = [];
   const seen = new Set<string>();
+  const disableSet = new Set<string>(extras?.disable ?? []);
 
   for (const src of sources) {
     for (const route of src.routes) {
@@ -86,14 +93,27 @@ export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
     items.push(item);
   }
 
-  items.sort((a, b) => GROUP_RANK[a.group] - GROUP_RANK[b.group] || a.order - b.order);
-  return items;
+  if (extras?.items) {
+    for (const item of extras.items) {
+      const key = `${item.group}:${item.path}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+  }
+
+  const filtered = disableSet.size ? items.filter((i) => !disableSet.has(i.path)) : items;
+  filtered.sort((a, b) => GROUP_RANK[a.group] - GROUP_RANK[b.group] || a.order - b.order);
+  return filtered;
 }
 
 export function createMenuEndpoint(sources: HasRoutes[]) {
   return new Elysia().get(
     '/menu',
-    () => ({ items: buildMenuItems(sources) }),
+    async () => {
+      const { items, disable } = await getMenuConfig();
+      return { items: buildMenuItems(sources, { items, disable }) };
+    },
     {
       detail: {
         tags: ['menu', 'nav:hidden'],
