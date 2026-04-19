@@ -10,6 +10,21 @@ import { db, menuItems } from '../../db/index.ts';
 
 type MenuRow = typeof menuItems.$inferSelect;
 
+function parseQuery(raw: string | null): Record<string, string> | null {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'string') out[k] = v;
+      }
+      return out;
+    }
+  } catch {}
+  return null;
+}
+
 const GroupSchema = t.Union([
   t.Literal('main'),
   t.Literal('tools'),
@@ -32,6 +47,7 @@ export function toResponse(row: MenuRow) {
     icon: row.icon,
     host: row.host,
     hidden: row.hidden,
+    query: parseQuery(row.query),
     touchedAt: row.touchedAt ? row.touchedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -107,6 +123,7 @@ export function createMenuAdminRoutes() {
               icon: body.icon ?? null,
               host: body.host ?? null,
               hidden: body.hidden ?? false,
+              query: body.query ? JSON.stringify(body.query) : null,
               touchedAt: now,
               createdAt: now,
               updatedAt: now,
@@ -132,6 +149,7 @@ export function createMenuAdminRoutes() {
           icon: t.Optional(t.String()),
           host: t.Optional(t.Nullable(t.String())),
           hidden: t.Optional(t.Boolean()),
+          query: t.Optional(t.Nullable(t.Record(t.String(), t.String()))),
         }),
         detail: {
           tags: ['menu'],
@@ -159,6 +177,7 @@ export function createMenuAdminRoutes() {
         if (body.icon !== undefined) patch.icon = body.icon;
         if (body.host !== undefined) patch.host = body.host;
         if (body.hidden !== undefined) patch.hidden = body.hidden;
+        if (body.query !== undefined) patch.query = body.query == null ? null : JSON.stringify(body.query);
 
         const updated = db
           .update(menuItems)
@@ -184,6 +203,7 @@ export function createMenuAdminRoutes() {
           icon: t.Optional(t.Nullable(t.String())),
           host: t.Optional(t.Nullable(t.String())),
           hidden: t.Optional(t.Boolean()),
+          query: t.Optional(t.Nullable(t.Record(t.String(), t.String()))),
         }),
         detail: {
           tags: ['menu'],
