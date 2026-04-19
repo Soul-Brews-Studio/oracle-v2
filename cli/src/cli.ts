@@ -5,6 +5,9 @@ import { discoverPlugins } from "./plugin/loader.ts";
 import { registerPlugins, resolveCommand, listPlugins } from "./plugin/registry.ts";
 import { invokePlugin } from "./plugin/invoke.ts";
 import type { LoadedPlugin } from "./plugin/types.ts";
+import { pluginsList } from "./commands/plugins-list.ts";
+import { pluginsRemove } from "./commands/plugins-remove.ts";
+import { pluginsInfo } from "./commands/plugins-info.ts";
 
 const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
@@ -82,6 +85,20 @@ async function main() {
     }
     printCommandHelp(plugin);
     return;
+  }
+
+  if (cmd === "plugin") {
+    const sub = args[1]?.toLowerCase();
+    const rest = args.slice(2);
+    if (sub === "list" || sub === "ls") {
+      process.exit(await pluginsList(rest));
+    }
+    if (sub === "remove" || sub === "rm") {
+      process.exit(await pluginsRemove(rest));
+    }
+    if (sub === "info") {
+      process.exit(await pluginsInfo(rest));
+    }
   }
 
   await loadAll();
