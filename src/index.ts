@@ -20,7 +20,7 @@ import type { VectorStoreAdapter } from './vector/types.ts';
 import path from 'path';
 import fs from 'fs';
 import { loadToolGroupConfig, getDisabledTools, type ToolGroupConfig } from './config/tool-groups.ts';
-import { ORACLE_DATA_DIR, DB_PATH } from './config.ts';
+import { ORACLE_DATA_DIR, DB_PATH, REPO_ROOT } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 
 // Tool handlers (all extracted to src/tools/)
@@ -89,7 +89,10 @@ class OracleMCPServer {
     if (this.readOnly) {
       console.error('[Oracle] Running in READ-ONLY mode');
     }
-    this.repoRoot = process.env.ORACLE_REPO_ROOT || process.cwd();
+    // Use safe REPO_ROOT from config.ts: never falls back to process.cwd(),
+    // which would create parasitic ψ/ dirs in whatever directory the MCP
+    // server was launched from. See #551.
+    this.repoRoot = REPO_ROOT;
 
     const groupConfig = options.toolGroups ?? loadToolGroupConfig(this.repoRoot);
     this.disabledTools = getDisabledTools(groupConfig);
