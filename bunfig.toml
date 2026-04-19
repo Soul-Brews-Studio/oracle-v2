@@ -1,4 +1,6 @@
 [test]
 # Scan src/ (unit + integration) and tests/ (HTTP contract tests).
-# E2E tests use Playwright (run with: bun run test:e2e)
+# E2E tests use Playwright (run with: bun run test:e2e) — they live in
+# tests/e2e/*.e2e.ts so bun's auto-discovery (*.test.ts, *.spec.ts) skips
+# them and does not try to import @playwright/test.
 roots = ["src", "tests"]
