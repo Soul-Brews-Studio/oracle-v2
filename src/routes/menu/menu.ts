@@ -10,6 +10,7 @@ import { Elysia, t } from 'elysia';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
 import { getMenuConfig, getMenuSource, reloadMenuConfig } from '../../menu/config.ts';
+import { listCustomMenuItems } from '../../menu/custom-store.ts';
 
 export type MenuExtras = {
   items?: MenuItem[];
@@ -44,7 +45,11 @@ type HasRoutes = { routes: RouteLike[] };
 
 const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, admin: 2, hidden: 3 };
 
-export function buildMenuItems(sources: HasRoutes[], extras?: MenuExtras): MenuItem[] {
+export function buildMenuItems(
+  sources: HasRoutes[],
+  extras?: MenuExtras,
+  customItems: MenuItem[] = [],
+): MenuItem[] {
   const items: MenuItem[] = [];
   const seen = new Set<string>();
   const disableSet = new Set<string>(extras?.disable ?? []);
@@ -102,6 +107,13 @@ export function buildMenuItems(sources: HasRoutes[], extras?: MenuExtras): MenuI
     }
   }
 
+  for (const item of customItems) {
+    const key = `${item.group}:${item.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push({ ...item, added: true } as MenuItem);
+  }
+
   const filtered = disableSet.size ? items.filter((i) => !disableSet.has(i.path)) : items;
   filtered.sort((a, b) => GROUP_RANK[a.group] - GROUP_RANK[b.group] || a.order - b.order);
   return filtered;
@@ -125,7 +137,9 @@ export function createMenuEndpoint(sources: HasRoutes[]) {
       '/menu',
       async () => {
         const { items, disable } = await getMenuConfig();
-        return { items: buildMenuItems(sources, { items, disable }) };
+        return {
+          items: buildMenuItems(sources, { items, disable }, listCustomMenuItems()),
+        };
       },
       {
         detail: {
