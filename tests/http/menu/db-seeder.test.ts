@@ -148,4 +148,18 @@ describe('readApiMenuItemsFromDb', () => {
     const items = readApiMenuItemsFromDb();
     expect(items.find((i) => i.path === '/map')).toBeUndefined();
   });
+
+  test('exposes populated studio column in /api/menu response', () => {
+    seedMenuItems([sampleSource()]);
+    db.update(menuItems)
+      .set({ studio: 'studio.buildwithoracle.com' })
+      .where(eq(menuItems.path, '/search'))
+      .run();
+
+    const items = readApiMenuItemsFromDb();
+    const search = items.find((i) => i.path === '/search');
+    expect(search?.studio).toBe('studio.buildwithoracle.com');
+    const map = items.find((i) => i.path === '/map');
+    expect(map?.studio).toBeUndefined();
+  });
 });

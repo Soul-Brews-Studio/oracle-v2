@@ -126,6 +126,7 @@ export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
     if (row.icon) item.icon = row.icon;
     if (row.access === 'public' || row.access === 'auth') item.access = row.access;
     if (row.hidden) item.hidden = true;
+    if (row.studio) item.studio = row.studio;
     if (row.query) {
       try {
         const parsed = JSON.parse(row.query);
