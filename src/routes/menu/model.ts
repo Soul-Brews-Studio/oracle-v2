@@ -39,6 +39,7 @@ export const MenuItemSchema = t.Object({
   ]),
   added: t.Optional(t.Boolean()),
   hidden: t.Optional(t.Boolean()),
+  query: t.Optional(t.Record(t.String(), t.String())),
 });
 
 export type MenuItem = Static<typeof MenuItemSchema>;

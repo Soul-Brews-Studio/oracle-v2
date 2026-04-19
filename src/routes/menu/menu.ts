@@ -126,6 +126,18 @@ export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
     if (row.icon) item.icon = row.icon;
     if (row.access === 'public' || row.access === 'auth') item.access = row.access;
     if (row.hidden) item.hidden = true;
+    if (row.query) {
+      try {
+        const parsed = JSON.parse(row.query);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const q: Record<string, string> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === 'string') q[k] = v;
+          }
+          if (Object.keys(q).length > 0) item.query = q;
+        }
+      } catch {}
+    }
     items.push(item);
   }
   return items;
