@@ -14,7 +14,7 @@ export interface ApiDoc {
   /** Raw markdown body (without frontmatter). */
   content: string;
   /** Concept tags (array of snake_case slugs). */
-  concepts?: string[];
+  concepts: string[];
   /** Source project (e.g. "Soul-Brews-Studio/arra-oracle-v3"). */
   project?: string;
   /** ISO-8601 timestamp. */
@@ -33,6 +33,31 @@ export interface SimilarResult {
   score: number;
   /** Optional pre-resolved title for the target (scribe may supply). */
   title?: string;
+  /** Target doc type (threader may supply from /api/similar). */
+  type?: string;
+  /** Target source file path (threader may supply). */
+  source_file?: string;
+}
+
+/** Frontmatter metadata attached to each exported doc. */
+export interface DocMeta {
+  arra_id: string;
+  arra_type: string;
+  arra_project?: string;
+  arra_created?: string;
+  arra_concepts: string[];
+  arra_model: string;
+  arra_similarity_threshold: number;
+}
+
+/** Aggregate stats consumed by render-index.ts. */
+export interface VaultStats {
+  total: number;
+  byType: Record<string, number>;
+  byProject: Record<string, number>;
+  topConcepts: Array<{ name: string; count: number }>;
+  topLinked?: Array<{ slug: string; linkCount: number }>;
+  generatedAt: Date;
 }
 
 /** CLI flags parsed by index.ts and threaded through the pipeline. */
