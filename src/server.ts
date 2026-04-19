@@ -87,6 +87,12 @@ function originAllowed(origin: string | undefined | null): string | null {
     return origin;
   }
   if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol === 'https:' && (hostname === 'buildwithoracle.com' || hostname.endsWith('.buildwithoracle.com'))) {
+      return origin;
+    }
+  } catch {}
   return null;
 }
 
