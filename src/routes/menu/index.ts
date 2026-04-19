@@ -8,11 +8,15 @@
 import { Elysia } from 'elysia';
 import { createMenuEndpoint } from './menu.ts';
 import { createCustomMenuRoutes } from './custom.ts';
+import { createMenuAdminRoutes } from './admin.ts';
+import { createMenuOrderRoutes } from './admin-order.ts';
 
 export function createMenuRoutes() {
   return new Elysia({ prefix: '/api' })
     .use(createMenuEndpoint())
-    .use(createCustomMenuRoutes());
+    .use(createCustomMenuRoutes())
+    .use(createMenuAdminRoutes())
+    .use(createMenuOrderRoutes());
 }
 
 export {
