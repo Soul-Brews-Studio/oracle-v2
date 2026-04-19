@@ -1,6 +1,6 @@
 import type { LoadedPlugin, InvokeContext, InvokeResult } from "./types.ts";
 
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = Number(process.env.ARRA_PLUGIN_TIMEOUT_MS ?? 5000);
 
 export async function invokePlugin(plugin: LoadedPlugin, ctx: InvokeContext): Promise<InvokeResult> {
   try {

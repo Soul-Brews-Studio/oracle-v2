@@ -33,10 +33,12 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
+  console.error(`[fetch] listing docs (types=${opts.types?.join(",") ?? "all"}, project=${opts.project ?? "*"})...`);
   const docs: ApiDoc[] = await fetchAllDocs({
     types: opts.types ?? undefined,
     project: opts.project ?? undefined,
   });
+  console.error(`[fetch] ${docs.length} docs`);
 
   // Build id → slug map (without trailing .md; wikilinks omit extension).
   const slugById = new Map<string, string>();
@@ -46,29 +48,53 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
   }
   const slugForId = (id: string) => slugById.get(id) ?? id;
 
-  // Similarity edges.
+  // Similarity edges. Failure on one doc shouldn't abort the whole export.
   const similarByDoc = new Map<string, SimilarResult[]>();
-  for (const doc of docs) {
-    const edges = await fetchSimilar(doc.id, {
-      model: opts.model,
-      threshold: opts.threshold,
-      limit: opts.maxLinks,
-    });
-    similarByDoc.set(doc.id, edges);
+  let similarErrors = 0;
+  const progressEvery = Math.max(1, Math.floor(docs.length / 50));
+  for (let i = 0; i < docs.length; i++) {
+    const doc = docs[i];
+    try {
+      const edges = await fetchSimilar(doc.id, {
+        model: opts.model,
+        threshold: opts.threshold,
+        limit: opts.maxLinks,
+      });
+      similarByDoc.set(doc.id, edges);
+    } catch (err) {
+      similarErrors++;
+      similarByDoc.set(doc.id, []);
+      if (similarErrors <= 3) {
+        console.error(`[skip similar] ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    if ((i + 1) % progressEvery === 0 || i + 1 === docs.length) {
+      const pct = Math.round(((i + 1) / docs.length) * 100);
+      console.error(`[similar] ${i + 1}/${docs.length} (${pct}%) — errors=${similarErrors}`);
+    }
   }
 
   const files: VaultFile[] = [];
 
-  // Per-doc bodies.
+  // Per-doc bodies. Skip docs with null/undefined content defensively.
+  let renderSkipped = 0;
   for (const doc of docs) {
     const relPath = `${slugForId(doc.id)}.md`;
-    const content = renderDocMarkdown(doc, {
-      similar: similarByDoc.get(doc.id) ?? [],
-      slugForId,
-      model: opts.model,
-      threshold: opts.threshold,
-    });
-    files.push({ relPath, content });
+    try {
+      const safeDoc = { ...doc, content: doc.content ?? "", concepts: doc.concepts ?? [] };
+      const content = renderDocMarkdown(safeDoc, {
+        similar: similarByDoc.get(doc.id) ?? [],
+        slugForId,
+        model: opts.model,
+        threshold: opts.threshold,
+      });
+      files.push({ relPath, content });
+    } catch (err) {
+      renderSkipped++;
+      if (renderSkipped <= 3) {
+        console.error(`[skip render] ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   }
 
   // _index.md
