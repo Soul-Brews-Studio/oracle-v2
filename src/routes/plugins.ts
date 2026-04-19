@@ -11,7 +11,7 @@
 
 import type { Hono } from 'hono';
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { homedir } from 'os';
 
 const PLUGIN_DIR = join(homedir(), '.oracle', 'plugins');
@@ -36,12 +36,21 @@ function readNestedPlugin(dir: string, entryName: string): PluginEntry | null {
   }
   const wasmName = manifest.wasm;
   if (!wasmName || typeof wasmName !== 'string') return null;
-  const wasmPath = join(dir, wasmName);
-  if (!existsSync(wasmPath)) return null;
+  // Try manifest path as-is, then fall back to basename (plugins copied flat
+  // by `arra-cli plugin install` keep the source path in manifest.wasm).
+  let wasmPath = join(dir, wasmName);
+  let resolvedName = wasmName;
+  if (!existsSync(wasmPath)) {
+    const base = basename(wasmName);
+    const basePath = join(dir, base);
+    if (!existsSync(basePath)) return null;
+    wasmPath = basePath;
+    resolvedName = base;
+  }
   const st = statSync(wasmPath);
   return {
     name: typeof manifest.name === 'string' && manifest.name ? manifest.name : entryName,
-    file: wasmName,
+    file: resolvedName,
     size: st.size,
     modified: st.mtime.toISOString(),
     version: typeof manifest.version === 'string' ? manifest.version : undefined,
@@ -65,8 +74,10 @@ function resolveWasmPath(name: string): string | null {
     try {
       const manifest = JSON.parse(readFileSync(nestedManifest, 'utf8'));
       if (manifest.wasm && typeof manifest.wasm === 'string') {
-        const p = join(PLUGIN_DIR, name, manifest.wasm);
-        if (existsSync(p)) return p;
+        const full = join(PLUGIN_DIR, name, manifest.wasm);
+        if (existsSync(full)) return full;
+        const base = join(PLUGIN_DIR, name, basename(manifest.wasm));
+        if (existsSync(base)) return base;
       }
     } catch {
       // fall through to flat
