@@ -1,38 +1,14 @@
-/**
- * Feed Routes (Elysia) — /api/feed (GET + POST), MAW_JS_URL integration
- *
- * Behavior parity with src/routes/feed.ts (Hono).
- * Both GET and POST require auth (mirrors the Hono /api/* middleware).
- */
-
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import fs from 'fs';
-import os from 'os';
-import { FEED_LOG } from '../config.ts';
-import { SESSION_COOKIE_NAME, isAuthenticated } from './auth.ts';
+import { FEED_LOG } from '../../config.ts';
+import { authGuard } from './guard.ts';
+import { FeedQuery, type FeedEvent } from './model.ts';
 
 const MAW_JS_URL = process.env.MAW_JS_URL || 'http://localhost:3456';
 
-interface FeedEvent {
-  timestamp: string;
-  oracle: string;
-  host: string;
-  event: string;
-  project: string;
-  session_id: string;
-  message: string;
-  source: 'local' | 'maw-js';
-}
-
-export const feedApi = new Elysia()
-  .onBeforeHandle(({ server, request, cookie, set }) => {
-    const sessionValue = cookie[SESSION_COOKIE_NAME]?.value as string | undefined;
-    if (!isAuthenticated(server, request, sessionValue)) {
-      set.status = 401;
-      return { error: 'Unauthorized', requiresAuth: true };
-    }
-  })
-  .get('/api/feed', async ({ query, set }) => {
+export const listFeedRoute = new Elysia()
+  .use(authGuard)
+  .get('/', async ({ query, set }) => {
     try {
       const limit = Math.min(200, parseInt(query.limit || '50'));
       const oracle = query.oracle || undefined;
@@ -99,39 +75,5 @@ export const feedApi = new Elysia()
       return { error: e.message, events: [], total: 0 };
     }
   }, {
-    query: t.Object({
-      limit: t.Optional(t.String()),
-      oracle: t.Optional(t.String()),
-      event: t.Optional(t.String()),
-      since: t.Optional(t.String()),
-    }),
-  })
-  .post('/api/feed', async ({ body, set }) => {
-    try {
-      const b = body as {
-        oracle?: string;
-        event?: string;
-        project?: string;
-        session_id?: string;
-        message?: string;
-      };
-      const { oracle, event, project, session_id, message } = b;
-
-      if (!oracle || !event) {
-        set.status = 400;
-        return { error: 'Missing required fields: oracle, event' };
-      }
-
-      const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-      const host = os.hostname();
-      const line = `${timestamp} | ${oracle} | ${host} | ${event} | ${project || ''} | ${session_id || ''} » ${message || ''}\n`;
-
-      fs.appendFileSync(FEED_LOG, line);
-      return { success: true, timestamp };
-    } catch (e: any) {
-      set.status = 500;
-      return { error: e.message };
-    }
-  }, {
-    body: t.Unknown(),
+    query: FeedQuery,
   });
