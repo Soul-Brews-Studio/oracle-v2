@@ -1,5 +1,31 @@
 # CLAUDE.md - Generic AI Assistant Guidelines
 
+## Project Conventions (arra-oracle-v3)
+
+Updated 2026-04-19. These override anything below that conflicts.
+
+### Versioning
+- **Always alpha.** `v{YY}.{M}.{D}-alpha.{HOUR}` per `scripts/calver.ts`. README says "Always Nightly."
+- Stable release (`--stable` flag) only for rare intentional milestones — not the default.
+- Bumps go through a dedicated `bump/alpha.N` PR so auto-tag + release workflows can fire cleanly.
+
+### File size
+- **≤ 250 lines per file.** If a file would exceed, split by concern — don't pad with helpers.
+- Applies to source, tests, docs.
+
+### Test layout
+- **Nested, one behavior per file** — mirror the route tree:
+  `tests/http/<cluster>/<endpoint>.test.ts` (e.g. `tests/http/forum/thread-create.test.ts`).
+- `bunfig.toml` sets `roots = ["src", "tests"]`. `bun test tests/http/forum/` scopes to a cluster.
+- HTTP contract tests are fetch-based against a spawned server (see `src/integration/http.test.ts` pattern) — works against Hono today and Elysia after migration.
+
+### Web framework
+- **Migrating Hono → Elysia** (bun-native, TypeBox schemas, faster). maw-js is the reference implementation in this family.
+- During migration: new Elysia sub-apps live in `src/routes-elysia/`, old Hono code in `src/routes/`. Swap `src/server.ts` once all modules land.
+
+### Runtime
+- **Bun ≥ 1.2.** Use `bun test`, `bun run`, `bunx --bun`. Do not add Node-specific APIs.
+
 ## Table of Contents
 
 1.  [Executive Summary](#executive-summary)

@@ -56,11 +56,13 @@
     "vault:rsync": "./scripts/vault-rsync.sh"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.1",
     "@lancedb/lancedb": "^0.27.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@qdrant/js-client-rest": "^1.17.0",
     "commander": "^14.0.3",
     "drizzle-orm": "^0.45.2",
+    "elysia": "^1.4.28",
     "hono": "^4.12.14",
     "sqlite-vec": "^0.1.9"
   },
