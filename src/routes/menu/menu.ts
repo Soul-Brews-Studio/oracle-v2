@@ -35,7 +35,7 @@ function studioPathFor(apiPath: string): string | null {
 type RouteLike = { method?: string; path: string; hooks?: { detail?: unknown } };
 type HasRoutes = { routes: RouteLike[] };
 
-const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, hidden: 2 };
+const GROUP_RANK: Record<MenuItem['group'], number> = { main: 0, tools: 1, admin: 2, hidden: 3 };
 
 export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
   const items: MenuItem[] = [];
