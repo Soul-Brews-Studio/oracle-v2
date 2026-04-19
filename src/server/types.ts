@@ -19,6 +19,7 @@ export interface SearchResponse {
   total: number;
   offset: number;
   limit: number;
+  query?: string;
 }
 
 export interface StatsResponse {

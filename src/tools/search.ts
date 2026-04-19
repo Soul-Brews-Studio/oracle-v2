@@ -9,6 +9,7 @@
 import { logSearch } from '../server/logging.ts';
 import { detectProject } from '../server/project-detect.ts';
 import { ensureVectorStoreConnected } from '../vector/factory.ts';
+import type { SearchResult } from '../server/types.ts';
 import type { ToolContext, ToolResponse, OracleSearchInput } from './types.ts';
 
 export const searchToolDef = {
@@ -455,7 +456,7 @@ export async function handleSearch(ctx: ToolContext, input: OracleSearchInput): 
   console.error(`[MCP:SEARCH] "${query}" (${type}, ${mode}, model=${model || 'default'}) → ${results.length} results in ${searchTime}ms`);
 
   try {
-    logSearch(query, type, mode, results.length, searchTime, results);
+    logSearch(query, type, mode, results.length, searchTime, results as unknown as SearchResult[]);
   } catch (e) {
     console.error('[MCP:SEARCH] Failed to log search to database:', e);
   }
