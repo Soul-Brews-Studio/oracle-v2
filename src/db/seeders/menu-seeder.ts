@@ -70,6 +70,20 @@ export function collectRouteMenuRows(sources: HasRoutes[]): RouteMenuRow[] {
   return rows;
 }
 
+/**
+ * #958: submenu reparenting. Migration 0011 owns parent-row creation and
+ * data-migration on existing installs; the seeder only reconciles known
+ * children on every boot so route-seeded rows drop under the right parent.
+ */
+const CHILD_PARENTS: Record<string, string> = {
+  '/playground': '#tools',
+  '/forum': '#tools',
+  '/plugins': '#tools',
+  '/evolution': '#tools',
+  '/pulse': '#tools',
+  '/map': '#canvas',
+};
+
 export interface SeedResult {
   inserted: number;
   updated: number;
@@ -139,6 +153,25 @@ export function seedMenuItems(
       }
 
       preserved += 1;
+    }
+
+    for (const [childPath, parentPath] of Object.entries(CHILD_PARENTS)) {
+      const parent = tx
+        .select()
+        .from(schema.menuItems)
+        .where(eq(schema.menuItems.path, parentPath))
+        .get();
+      if (!parent) continue;
+      const child = tx
+        .select()
+        .from(schema.menuItems)
+        .where(eq(schema.menuItems.path, childPath))
+        .get();
+      if (!child || child.parentId === parent.id) continue;
+      tx.update(schema.menuItems)
+        .set({ parentId: parent.id, updatedAt: now })
+        .where(eq(schema.menuItems.id, child.id))
+        .run();
     }
   });
 
