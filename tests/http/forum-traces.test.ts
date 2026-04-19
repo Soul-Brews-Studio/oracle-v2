@@ -1,27 +1,53 @@
 // HTTP contract tests — forum, traces, schedule (14 endpoints).
+//
+// Spawns a dedicated server with an isolated ORACLE_DATA_DIR so this file is
+// not affected by env mutations from other test files (e.g. files-plugins)
+// or by a pre-existing dev server on the default port. Traces are seeded via
+// raw SQLite against the same DB the spawned server uses.
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import type { Subprocess } from "bun";
-import { createTrace } from "../../src/trace/handler.ts";
+import { Database } from "bun:sqlite";
+import { mkdtempSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { randomUUID } from "crypto";
 
-const BASE_URL = "http://localhost:47778";
+const PORT = 47790;
+const BASE_URL = `http://localhost:${PORT}`;
 const SERVER_CWD = import.meta.dir.replace(/\/tests\/http$/, "");
+
 let serverProcess: Subprocess | null = null;
+let tmpDir: string;
+let dbPath: string;
 
 async function ping(): Promise<boolean> {
   try { return (await fetch(`${BASE_URL}/api/health`)).ok; } catch { return false; }
 }
 
 beforeAll(async () => {
-  if (await ping()) return;
+  tmpDir = mkdtempSync(join(tmpdir(), "forum-traces-"));
+  dbPath = join(tmpDir, "oracle.db");
   serverProcess = Bun.spawn(["bun", "run", "src/server.ts"], {
-    cwd: SERVER_CWD, stdout: "pipe", stderr: "pipe",
-    env: { ...process.env, ORACLE_CHROMA_TIMEOUT: "3000" },
+    cwd: SERVER_CWD,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: {
+      ...process.env,
+      ORACLE_CHROMA_TIMEOUT: "3000",
+      ORACLE_DATA_DIR: tmpDir,
+      ORACLE_DB_PATH: dbPath,
+      ORACLE_REPO_ROOT: tmpDir,
+      ORACLE_PORT: String(PORT),
+    },
   });
   for (let i = 0; i < 30; i++) { if (await ping()) return; await Bun.sleep(500); }
   throw new Error("Server failed to start within 15s");
 }, 30_000);
 
-afterAll(() => { if (serverProcess) serverProcess.kill(); });
+afterAll(() => {
+  if (serverProcess) serverProcess.kill();
+  if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+});
 
 describe("Forum routes", () => {
   let createdThreadId: number | null = null;
@@ -105,8 +131,27 @@ describe("Trace routes", () => {
   let traceB: string;
 
   beforeAll(() => {
-    traceA = createTrace({ query: "contract-test trace A" }).traceId;
-    traceB = createTrace({ query: "contract-test trace B" }).traceId;
+    traceA = randomUUID();
+    traceB = randomUUID();
+    const db = new Database(dbPath);
+    try {
+      const now = Date.now();
+      const insert = db.prepare(`
+        INSERT INTO trace_log (
+          trace_id, query, query_type,
+          found_files, found_commits, found_issues,
+          found_retrospectives, found_learnings, found_resonance,
+          file_count, commit_count, issue_count,
+          depth, child_trace_ids,
+          scope, agent_count, status,
+          created_at, updated_at
+        ) VALUES (?, ?, 'general', '[]', '[]', '[]', '[]', '[]', '[]', 0, 0, 0, 0, '[]', 'project', 1, 'raw', ?, ?)
+      `);
+      insert.run(traceA, "contract-test trace A", now, now);
+      insert.run(traceB, "contract-test trace B", now, now);
+    } finally {
+      db.close();
+    }
   });
 
   test("GET /api/traces lists traces", async () => {
