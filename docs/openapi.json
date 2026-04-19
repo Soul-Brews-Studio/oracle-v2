@@ -1,0 +1,1692 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Arra Oracle API",
+    "description": "HTTP API for the Arra Oracle MCP memory layer.",
+    "version": "26.4.19-alpha.9"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getIndex",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/auth/status": {
+      "get": {
+        "operationId": "getApiAuthStatus",
+        "tags": [
+          "auth",
+          "nav:hidden"
+        ],
+        "summary": "Current auth + session state",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "parameters": [],
+        "operationId": "postApiAuthLogin",
+        "tags": [
+          "auth",
+          "nav:hidden"
+        ],
+        "summary": "Authenticate with password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "postApiAuthLogout",
+        "tags": [
+          "auth",
+          "nav:hidden"
+        ],
+        "summary": "Clear session cookie",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/settings/": {
+      "get": {
+        "operationId": "getApiSettings",
+        "tags": [
+          "settings",
+          "nav:hidden"
+        ],
+        "summary": "Read oracle settings",
+        "responses": {
+          "200": {}
+        }
+      },
+      "post": {
+        "parameters": [],
+        "operationId": "postApiSettings",
+        "tags": [
+          "settings",
+          "nav:hidden"
+        ],
+        "summary": "Update oracle settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "removePassword": {
+                    "type": "boolean"
+                  },
+                  "authEnabled": {
+                    "type": "boolean"
+                  },
+                  "localBypass": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "removePassword": {
+                    "type": "boolean"
+                  },
+                  "authEnabled": {
+                    "type": "boolean"
+                  },
+                  "localBypass": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "removePassword": {
+                    "type": "boolean"
+                  },
+                  "authEnabled": {
+                    "type": "boolean"
+                  },
+                  "localBypass": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/feed/": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "oracle",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "event",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "since",
+            "required": false
+          }
+        ],
+        "operationId": "getApiFeed",
+        "tags": [
+          "feed",
+          "nav:hidden"
+        ],
+        "summary": "Merged local + maw-js feed events",
+        "responses": {
+          "200": {}
+        }
+      },
+      "post": {
+        "parameters": [],
+        "operationId": "postApiFeed",
+        "tags": [
+          "feed",
+          "nav:hidden"
+        ],
+        "summary": "Append a feed event",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oracle": {
+                    "type": "string"
+                  },
+                  "event": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "session_id": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oracle": {
+                    "type": "string"
+                  },
+                  "event": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "session_id": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oracle": {
+                    "type": "string"
+                  },
+                  "event": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "session_id": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getApiHealth",
+        "tags": [
+          "health",
+          "nav:hidden"
+        ],
+        "summary": "Server liveness check",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "operationId": "getApiStats",
+        "tags": [
+          "health",
+          "nav:tools",
+          "order:50"
+        ],
+        "summary": "Database and vector stats",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/oracles": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "hours",
+            "required": false
+          }
+        ],
+        "operationId": "getApiOracles",
+        "tags": [
+          "health",
+          "nav:hidden"
+        ],
+        "summary": "Oracle identities + project activity",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "operationId": "getApiDashboard",
+        "tags": [
+          "dashboard",
+          "nav:hidden"
+        ],
+        "summary": "Dashboard summary",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "operationId": "getApiDashboardSummary",
+        "tags": [
+          "dashboard",
+          "nav:hidden"
+        ],
+        "summary": "Dashboard summary (alias)",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/dashboard/activity": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "days",
+            "required": false
+          }
+        ],
+        "operationId": "getApiDashboardActivity",
+        "tags": [
+          "dashboard",
+          "nav:hidden"
+        ],
+        "summary": "Activity counts over N days",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/dashboard/growth": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "period",
+            "required": false
+          }
+        ],
+        "operationId": "getApiDashboardGrowth",
+        "tags": [
+          "dashboard",
+          "nav:hidden"
+        ],
+        "summary": "Growth over a period",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/session/stats": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "since",
+            "required": false
+          }
+        ],
+        "operationId": "getApiSessionStats",
+        "tags": [
+          "dashboard",
+          "nav:hidden"
+        ],
+        "summary": "Session-level search + learn counts",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "q",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "mode",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "project",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cwd",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "model",
+            "required": false
+          }
+        ],
+        "operationId": "getApiSearch",
+        "tags": [
+          "search",
+          "nav:main",
+          "order:10"
+        ],
+        "summary": "Hybrid search over oracle docs",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/reflect": {
+      "get": {
+        "operationId": "getApiReflect",
+        "tags": [
+          "search",
+          "nav:main",
+          "order:30"
+        ],
+        "summary": "Oracle self-reflection snapshot",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/similar": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "model",
+            "required": false
+          }
+        ],
+        "operationId": "getApiSimilar",
+        "tags": [
+          "search",
+          "nav:hidden"
+        ],
+        "summary": "Vector nearest-neighbor lookup by doc id",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/map": {
+      "get": {
+        "operationId": "getApiMap",
+        "tags": [
+          "map",
+          "nav:tools",
+          "order:20"
+        ],
+        "summary": "2D projection of embeddings",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/map3d": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "model",
+            "required": false
+          }
+        ],
+        "operationId": "getApiMap3d",
+        "tags": [
+          "map",
+          "nav:tools",
+          "order:30"
+        ],
+        "summary": "3D PCA projection of embeddings",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/list": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "group",
+            "required": false
+          }
+        ],
+        "operationId": "getApiList",
+        "tags": [
+          "search",
+          "nav:main",
+          "order:20"
+        ],
+        "summary": "List oracle documents",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/learn": {
+      "post": {
+        "parameters": [],
+        "operationId": "postApiLearn",
+        "tags": [
+          "knowledge",
+          "nav:hidden"
+        ],
+        "summary": "Record a learning pattern",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/handoff": {
+      "post": {
+        "parameters": [],
+        "operationId": "postApiHandoff",
+        "tags": [
+          "knowledge",
+          "nav:hidden"
+        ],
+        "summary": "Write a handoff markdown file",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/inbox": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "type",
+            "required": false
+          }
+        ],
+        "operationId": "getApiInbox",
+        "tags": [
+          "knowledge",
+          "nav:hidden"
+        ],
+        "summary": "List inbox handoff files",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/supersede": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "project",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "operationId": "getApiSupersede",
+        "tags": [
+          "supersede",
+          "nav:tools",
+          "order:60"
+        ],
+        "summary": "List superseded documents",
+        "responses": {
+          "200": {}
+        }
+      },
+      "post": {
+        "parameters": [],
+        "operationId": "postApiSupersede",
+        "tags": [
+          "supersede",
+          "nav:hidden"
+        ],
+        "summary": "Append to legacy supersede_log",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/supersede/chain/{path}": {
+      "get": {
+        "operationId": "getApiSupersedeChainByPath",
+        "tags": [
+          "supersede",
+          "nav:tools",
+          "order:70"
+        ],
+        "summary": "Supersession chain for a doc path",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/threads": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "operationId": "getApiThreads",
+        "tags": [
+          "forum",
+          "nav:main",
+          "order:40"
+        ],
+        "summary": "List forum threads",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/thread": {
+      "post": {
+        "parameters": [],
+        "operationId": "postApiThread",
+        "tags": [
+          "forum",
+          "nav:hidden"
+        ],
+        "summary": "Post a message to a forum thread",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/thread/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "getApiThreadById",
+        "tags": [
+          "forum",
+          "nav:hidden"
+        ],
+        "summary": "Get one forum thread",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/thread/{id}/status": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "patchApiThreadByIdStatus",
+        "tags": [
+          "forum",
+          "nav:hidden"
+        ],
+        "summary": "Update a thread status",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "query",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "project",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "operationId": "getApiTraces",
+        "tags": [
+          "traces",
+          "nav:main",
+          "order:50"
+        ],
+        "summary": "List traces",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "getApiTracesById",
+        "tags": [
+          "traces",
+          "nav:hidden"
+        ],
+        "summary": "Get a single trace",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces/{id}/chain": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "direction",
+            "required": false
+          }
+        ],
+        "operationId": "getApiTracesByIdChain",
+        "tags": [
+          "traces",
+          "nav:hidden"
+        ],
+        "summary": "Get causal chain for a trace",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces/{prevId}/link": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "prevId",
+            "required": true
+          }
+        ],
+        "operationId": "postApiTracesByPrevIdLink",
+        "tags": [
+          "traces",
+          "nav:hidden"
+        ],
+        "summary": "Link two traces",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces/{id}/link": {
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "direction",
+            "required": false
+          }
+        ],
+        "operationId": "deleteApiTracesByIdLink",
+        "tags": [
+          "traces",
+          "nav:hidden"
+        ],
+        "summary": "Unlink traces in a direction",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/traces/{id}/linked-chain": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "getApiTracesByIdLinked-chain",
+        "tags": [
+          "traces",
+          "nav:hidden"
+        ],
+        "summary": "Walk explicit trace link graph",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/schedule/md": {
+      "get": {
+        "operationId": "getApiScheduleMd",
+        "tags": [
+          "schedule",
+          "nav:hidden"
+        ],
+        "summary": "Raw schedule markdown",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/schedule": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "filter",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "operationId": "getApiSchedule",
+        "tags": [
+          "schedule",
+          "nav:main",
+          "order:60"
+        ],
+        "summary": "List scheduled events",
+        "responses": {
+          "200": {}
+        }
+      },
+      "post": {
+        "parameters": [],
+        "operationId": "postApiSchedule",
+        "tags": [
+          "schedule",
+          "nav:hidden"
+        ],
+        "summary": "Create a schedule entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/schedule/{id}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "patchApiScheduleById",
+        "tags": [
+          "schedule",
+          "nav:hidden"
+        ],
+        "summary": "Update a schedule entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            },
+            "multipart/form-data": {
+              "schema": {}
+            },
+            "text/plain": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "operationId": "getApiGraph",
+        "tags": [
+          "files",
+          "nav:tools",
+          "order:10"
+        ],
+        "summary": "Graph visualization data",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/context": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cwd",
+            "required": false
+          }
+        ],
+        "operationId": "getApiContext",
+        "tags": [
+          "files",
+          "nav:tools",
+          "order:40"
+        ],
+        "summary": "Context for a working directory",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/file": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Repo- or project-relative path. No \"..\", no null-byte.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!.*\\.\\.)(?!.*\\x00).*$"
+            },
+            "in": "query",
+            "name": "path",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "project",
+            "required": false
+          }
+        ],
+        "operationId": "getApiFile",
+        "tags": [
+          "files",
+          "nav:hidden"
+        ],
+        "summary": "Cross-repo file read with traversal guard",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/read": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "file",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "id",
+            "required": false
+          }
+        ],
+        "operationId": "getApiRead",
+        "tags": [
+          "files",
+          "nav:hidden"
+        ],
+        "summary": "Read a file or doc by id",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/doc/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "getApiDocById",
+        "tags": [
+          "files",
+          "nav:hidden"
+        ],
+        "summary": "Get one oracle document by id",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "operationId": "getApiLogs",
+        "tags": [
+          "files",
+          "nav:hidden"
+        ],
+        "summary": "Recent search log entries",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/plugins": {
+      "get": {
+        "operationId": "getApiPlugins",
+        "tags": [
+          "plugins",
+          "nav:main",
+          "order:70"
+        ],
+        "summary": "List available plugins",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/plugins/{name}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "name",
+            "required": true
+          }
+        ],
+        "operationId": "getApiPluginsByName",
+        "tags": [
+          "plugins",
+          "nav:hidden"
+        ],
+        "summary": "Fetch plugin wasm bytes",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/oraclenet/feed": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "sort",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "operationId": "getApiOraclenetFeed",
+        "tags": [
+          "oraclenet",
+          "nav:hidden"
+        ],
+        "summary": "Proxy OracleNet feed records",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/oraclenet/oracles": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "operationId": "getApiOraclenetOracles",
+        "tags": [
+          "oraclenet",
+          "nav:hidden"
+        ],
+        "summary": "Proxy OracleNet oracle records",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/oraclenet/presence": {
+      "get": {
+        "operationId": "getApiOraclenetPresence",
+        "tags": [
+          "oraclenet",
+          "nav:hidden"
+        ],
+        "summary": "Active oracle presence heartbeats",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/oraclenet/status": {
+      "get": {
+        "operationId": "getApiOraclenetStatus",
+        "tags": [
+          "oraclenet",
+          "nav:hidden"
+        ],
+        "summary": "OracleNet upstream health",
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/api/session/{id}/summary": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "operationId": "postApiSessionByIdSummary",
+        "tags": [
+          "sessions",
+          "nav:hidden"
+        ],
+        "summary": "Record a session summary",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "summary"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "oracle": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "summary"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "oracle": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "summary"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "oracle": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {}
+  }
+}
