@@ -274,14 +274,14 @@ export async function doInstall(
   }
   if (!source) {
     throw new Error(
-      "missing <url-or-path>; see 'neo-arra plugin install --help'",
+      "missing <url-or-path>; see 'arra-cli plugin install --help'",
     );
   }
   await installFromSource(source, opts);
 }
 
 export function printInstallHelp(): void {
-  console.log("neo-arra plugin install <url-or-path> [flags]");
+  console.log("arra-cli plugin install <url-or-path> [flags]");
   console.log("");
   console.log("Sources:");
   console.log("  https://github.com/owner/repo");
