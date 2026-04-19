@@ -23,5 +23,11 @@ export const similarEndpoint = new Elysia().get(
       return { error: e.message, results: [], docId: id };
     }
   },
-  { query: SimilarQuery },
+  {
+    query: SimilarQuery,
+    detail: {
+      tags: ['search', 'nav:hidden'],
+      summary: 'Vector nearest-neighbor lookup by doc id',
+    },
+  },
 );

@@ -26,4 +26,10 @@ export const threadCreateRoute = new Elysia().post('/api/thread', async ({ body,
     set.status = 500;
     return { error: error instanceof Error ? error.message : 'Unknown error' };
   }
-}, { body: threadCreateBody });
+}, {
+  body: threadCreateBody,
+  detail: {
+    tags: ['forum', 'nav:hidden'],
+    summary: 'Post a message to a forum thread',
+  },
+});

@@ -11,4 +11,11 @@ export const scheduleUpdateRoute = new Elysia().patch('/api/schedule/:id', async
     .where(eq(schedule.id, id))
     .run();
   return { success: true, id };
-}, { params: scheduleIdParam, body: updateBody });
+}, {
+  params: scheduleIdParam,
+  body: updateBody,
+  detail: {
+    tags: ['schedule', 'nav:hidden'],
+    summary: 'Update a schedule entry',
+  },
+});

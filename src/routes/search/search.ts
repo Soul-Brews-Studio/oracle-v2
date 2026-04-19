@@ -40,5 +40,11 @@ export const searchEndpoint = new Elysia().get(
       return { results: [], total: 0, query: sanitizedQ, error: 'Search failed' };
     }
   },
-  { query: SearchQuery },
+  {
+    query: SearchQuery,
+    detail: {
+      tags: ['search', 'nav:main', 'order:10'],
+      summary: 'Hybrid search over oracle docs',
+    },
+  },
 );

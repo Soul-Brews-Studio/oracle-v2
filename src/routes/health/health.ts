@@ -7,4 +7,9 @@ export const healthEndpoint = new Elysia().get('/health', () => ({
   server: MCP_SERVER_NAME,
   port: PORT,
   oracle: 'connected',
-}));
+}), {
+  detail: {
+    tags: ['health', 'nav:hidden'],
+    summary: 'Server liveness check',
+  },
+});

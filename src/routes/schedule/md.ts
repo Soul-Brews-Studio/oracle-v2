@@ -8,4 +8,9 @@ export const scheduleMdRoute = new Elysia().get('/api/schedule/md', ({ set }) =>
   }
   set.status = 404;
   return '';
+}, {
+  detail: {
+    tags: ['schedule', 'nav:hidden'],
+    summary: 'Raw schedule markdown',
+  },
 });

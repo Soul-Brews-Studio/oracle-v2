@@ -20,5 +20,11 @@ export const pluginGetByNameRoute = new Elysia().get(
       headers: { 'content-type': 'application/wasm' },
     });
   },
-  { params: pluginNameParams },
+  {
+    params: pluginNameParams,
+    detail: {
+      tags: ['plugins', 'nav:hidden'],
+      summary: 'Fetch plugin wasm bytes',
+    },
+  },
 );

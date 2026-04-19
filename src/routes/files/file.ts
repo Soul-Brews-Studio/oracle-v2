@@ -108,5 +108,11 @@ export const fileRoute = new Elysia().get(
       return new Response(e.message, { status: 500 });
     }
   },
-  { query: fileQuery },
+  {
+    query: fileQuery,
+    detail: {
+      tags: ['files', 'nav:hidden'],
+      summary: 'Cross-repo file read with traversal guard',
+    },
+  },
 );

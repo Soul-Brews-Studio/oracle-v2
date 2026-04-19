@@ -17,4 +17,8 @@ export const feedEndpoint = new Elysia().get('/feed', async ({ query, set }) => 
   }
 }, {
   query: FeedQuery,
+  detail: {
+    tags: ['oraclenet', 'nav:hidden'],
+    summary: 'Proxy OracleNet feed records',
+  },
 });

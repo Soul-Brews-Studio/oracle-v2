@@ -53,4 +53,8 @@ export const updateSettingsRoute = new Elysia().post('/', async ({ body, set }) 
   };
 }, {
   body: UpdateSettingsBody,
+  detail: {
+    tags: ['settings', 'nav:hidden'],
+    summary: 'Update oracle settings',
+  },
 });

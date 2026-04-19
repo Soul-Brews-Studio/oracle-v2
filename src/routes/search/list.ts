@@ -15,5 +15,11 @@ export const listEndpoint = new Elysia().get(
     const group = query.group !== 'false';
     return handleList(type, limit, offset, group);
   },
-  { query: ListQuery },
+  {
+    query: ListQuery,
+    detail: {
+      tags: ['search', 'nav:main', 'order:20'],
+      summary: 'List oracle documents',
+    },
+  },
 );

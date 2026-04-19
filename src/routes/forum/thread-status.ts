@@ -16,4 +16,11 @@ export const threadStatusRoute = new Elysia().patch('/api/thread/:id/status', as
     set.status = 400;
     return { error: 'Invalid JSON' };
   }
-}, { params: threadIdParam, body: threadStatusBody });
+}, {
+  params: threadIdParam,
+  body: threadStatusBody,
+  detail: {
+    tags: ['forum', 'nav:hidden'],
+    summary: 'Update a thread status',
+  },
+});

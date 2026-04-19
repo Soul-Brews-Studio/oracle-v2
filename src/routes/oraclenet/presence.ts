@@ -13,4 +13,9 @@ export const presenceEndpoint = new Elysia().get('/presence', async ({ set }) =>
     set.status = 502;
     return { error: 'OracleNet unreachable' };
   }
+}, {
+  detail: {
+    tags: ['oraclenet', 'nav:hidden'],
+    summary: 'Active oracle presence heartbeats',
+  },
 });

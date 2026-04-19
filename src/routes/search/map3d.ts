@@ -17,5 +17,11 @@ export const map3dEndpoint = new Elysia().get(
       return { error: e.message, documents: [], total: 0 };
     }
   },
-  { query: Map3dQuery },
+  {
+    query: Map3dQuery,
+    detail: {
+      tags: ['map', 'nav:tools', 'order:30'],
+      summary: '3D PCA projection of embeddings',
+    },
+  },
 );

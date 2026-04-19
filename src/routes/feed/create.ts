@@ -25,4 +25,8 @@ export const createFeedRoute = new Elysia().post('/', async ({ body, set }) => {
   }
 }, {
   body: CreateFeedBody,
+  detail: {
+    tags: ['feed', 'nav:hidden'],
+    summary: 'Append a feed event',
+  },
 });

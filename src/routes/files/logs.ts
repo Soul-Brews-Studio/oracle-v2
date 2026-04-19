@@ -27,5 +27,11 @@ export const logsRoute = new Elysia().get(
       return { logs: [], error: 'Log table not found' };
     }
   },
-  { query: logsQuery },
+  {
+    query: logsQuery,
+    detail: {
+      tags: ['files', 'nav:hidden'],
+      summary: 'Recent search log entries',
+    },
+  },
 );

@@ -63,5 +63,11 @@ export const supersedeListEndpoint = new Elysia().get(
       offset,
     };
   },
-  { query: SupersedeQuery },
+  {
+    query: SupersedeQuery,
+    detail: {
+      tags: ['supersede', 'nav:tools', 'order:60'],
+      summary: 'List superseded documents',
+    },
+  },
 );

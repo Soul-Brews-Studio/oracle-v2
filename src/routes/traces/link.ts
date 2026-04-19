@@ -20,4 +20,11 @@ export const traceLinkRoute = new Elysia().post('/api/traces/:prevId/link', asyn
     set.status = 500;
     return { error: 'Failed to link traces' };
   }
-}, { params: prevIdParam, body: linkBody });
+}, {
+  params: prevIdParam,
+  body: linkBody,
+  detail: {
+    tags: ['traces', 'nav:hidden'],
+    summary: 'Link two traces',
+  },
+});

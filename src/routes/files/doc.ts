@@ -35,5 +35,11 @@ export const docRoute = new Elysia().get(
       return { error: e.message };
     }
   },
-  { params: docParams },
+  {
+    params: docParams,
+    detail: {
+      tags: ['files', 'nav:hidden'],
+      summary: 'Get one oracle document by id',
+    },
+  },
 );

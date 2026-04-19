@@ -9,4 +9,10 @@ export const traceGetRoute = new Elysia().get('/api/traces/:id', ({ params, set 
     return { error: 'Trace not found' };
   }
   return trace;
-}, { params: traceIdParam });
+}, {
+  params: traceIdParam,
+  detail: {
+    tags: ['traces', 'nav:hidden'],
+    summary: 'Get a single trace',
+  },
+});

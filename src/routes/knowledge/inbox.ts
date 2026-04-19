@@ -50,5 +50,11 @@ export const inboxEndpoint = new Elysia().get(
 
     return { files: paginated, total, limit, offset };
   },
-  { query: InboxQuery },
+  {
+    query: InboxQuery,
+    detail: {
+      tags: ['knowledge', 'nav:hidden'],
+      summary: 'List inbox handoff files',
+    },
+  },
 );

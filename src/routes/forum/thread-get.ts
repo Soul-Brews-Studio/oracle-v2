@@ -33,4 +33,10 @@ export const threadGetRoute = new Elysia().get('/api/thread/:id', ({ params, set
       created_at: new Date(m.createdAt).toISOString(),
     })),
   };
-}, { params: threadIdParam });
+}, {
+  params: threadIdParam,
+  detail: {
+    tags: ['forum', 'nav:hidden'],
+    summary: 'Get one forum thread',
+  },
+});

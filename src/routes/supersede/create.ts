@@ -43,5 +43,11 @@ export const supersedeCreateEndpoint = new Elysia().post(
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
-  { body: SupersedeBody },
+  {
+    body: SupersedeBody,
+    detail: {
+      tags: ['supersede', 'nav:hidden'],
+      summary: 'Append to legacy supersede_log',
+    },
+  },
 );

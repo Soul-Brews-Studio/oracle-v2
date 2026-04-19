@@ -12,4 +12,9 @@ export const mapEndpoint = new Elysia().get('/map', async ({ set }) => {
     set.status = 500;
     return { error: e.message, documents: [], total: 0 };
   }
+}, {
+  detail: {
+    tags: ['map', 'nav:tools', 'order:20'],
+    summary: '2D projection of embeddings',
+  },
 });

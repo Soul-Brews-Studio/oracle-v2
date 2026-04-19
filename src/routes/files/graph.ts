@@ -8,5 +8,11 @@ export const graphRoute = new Elysia().get(
     const limit = query.limit ? parseInt(query.limit, 10) : undefined;
     return handleGraph(limit);
   },
-  { query: graphQuery },
+  {
+    query: graphQuery,
+    detail: {
+      tags: ['files', 'nav:tools', 'order:10'],
+      summary: 'Graph visualization data',
+    },
+  },
 );

@@ -17,4 +17,10 @@ export const scheduleListRoute = new Elysia().get('/api/schedule', async ({ quer
   });
   const text = result.content[0]?.text || '{}';
   return JSON.parse(text);
-}, { query: listQuery });
+}, {
+  query: listQuery,
+  detail: {
+    tags: ['schedule', 'nav:main', 'order:60'],
+    summary: 'List scheduled events',
+  },
+});

@@ -10,4 +10,10 @@ export const traceLinkedChainRoute = new Elysia().get('/api/traces/:id/linked-ch
     set.status = 500;
     return { error: 'Failed to get linked chain' };
   }
-}, { params: traceIdParam });
+}, {
+  params: traceIdParam,
+  detail: {
+    tags: ['traces', 'nav:hidden'],
+    summary: 'Walk explicit trace link graph',
+  },
+});

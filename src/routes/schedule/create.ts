@@ -10,4 +10,10 @@ export const scheduleCreateRoute = new Elysia().post('/api/schedule', async ({ b
   const result = await handleScheduleAdd(ctx as ToolContext, body as any);
   const text = result.content[0]?.text || '{}';
   return JSON.parse(text);
-}, { body: createBody });
+}, {
+  body: createBody,
+  detail: {
+    tags: ['schedule', 'nav:hidden'],
+    summary: 'Create a schedule entry',
+  },
+});

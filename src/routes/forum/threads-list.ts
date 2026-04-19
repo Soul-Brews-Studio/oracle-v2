@@ -19,4 +19,10 @@ export const threadsListRoute = new Elysia().get('/api/threads', ({ query }) => 
     })),
     total: threadList.total,
   };
-}, { query: threadsQuery });
+}, {
+  query: threadsQuery,
+  detail: {
+    tags: ['forum', 'nav:main', 'order:40'],
+    summary: 'List forum threads',
+  },
+});

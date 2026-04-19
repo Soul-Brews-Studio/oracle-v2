@@ -17,5 +17,12 @@ export const summaryRoute = new Elysia().post(
     set.status = 201;
     return handleSessionSummary(params.id, summary, body.oracle);
   },
-  { params: SummaryParams, body: SummaryBody },
+  {
+    params: SummaryParams,
+    body: SummaryBody,
+    detail: {
+      tags: ['sessions', 'nav:hidden'],
+      summary: 'Record a session summary',
+    },
+  },
 );

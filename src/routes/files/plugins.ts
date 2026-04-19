@@ -24,4 +24,9 @@ export const pluginsListRoute = new Elysia().get('/api/plugins', () => {
   } catch (e: any) {
     return { plugins: [], error: e.message };
   }
+}, {
+  detail: {
+    tags: ['plugins', 'nav:hidden'],
+    summary: 'Legacy flat plugin list',
+  },
 });

@@ -20,4 +20,11 @@ export const traceUnlinkRoute = new Elysia().delete('/api/traces/:id/link', asyn
     set.status = 500;
     return { error: 'Failed to unlink traces' };
   }
-}, { params: traceIdParam, query: unlinkQuery });
+}, {
+  params: traceIdParam,
+  query: unlinkQuery,
+  detail: {
+    tags: ['traces', 'nav:hidden'],
+    summary: 'Unlink traces in a direction',
+  },
+});

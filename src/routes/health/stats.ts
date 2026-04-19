@@ -11,4 +11,9 @@ export const statsEndpoint = new Elysia().get('/stats', async () => {
     vectorStats = await handleVectorStats();
   } catch { /* vector unavailable */ }
   return { ...stats, ...vectorStats, vault_repo: vaultRepo };
+}, {
+  detail: {
+    tags: ['health', 'nav:tools', 'order:50'],
+    summary: 'Database and vector stats',
+  },
 });

@@ -7,4 +7,9 @@ export const getSettingsRoute = new Elysia().get('/', () => {
   const hasPassword = !!getSetting('auth_password_hash');
   const vaultRepo = getSetting('vault_repo');
   return { authEnabled, localBypass, hasPassword, vaultRepo };
+}, {
+  detail: {
+    tags: ['settings', 'nav:hidden'],
+    summary: 'Read oracle settings',
+  },
 });

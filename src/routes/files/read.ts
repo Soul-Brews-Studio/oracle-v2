@@ -29,5 +29,11 @@ export const readRoute = new Elysia().get(
     }
     return JSON.parse(text);
   },
-  { query: readQuery },
+  {
+    query: readQuery,
+    detail: {
+      tags: ['files', 'nav:hidden'],
+      summary: 'Read a file or doc by id',
+    },
+  },
 );

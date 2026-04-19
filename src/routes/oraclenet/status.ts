@@ -10,4 +10,9 @@ export const statusEndpoint = new Elysia().get('/status', async () => {
   } catch {
     return { online: false, url: ORACLENET_URL };
   }
+}, {
+  detail: {
+    tags: ['oraclenet', 'nav:hidden'],
+    summary: 'OracleNet upstream health',
+  },
 });

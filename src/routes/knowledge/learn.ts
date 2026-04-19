@@ -29,5 +29,11 @@ export const learnEndpoint = new Elysia()
         return { error: error instanceof Error ? error.message : 'Unknown error' };
       }
     },
-    { body: LearnBody },
+    {
+      body: LearnBody,
+      detail: {
+        tags: ['knowledge', 'nav:hidden'],
+        summary: 'Record a learning pattern',
+      },
+    },
   );

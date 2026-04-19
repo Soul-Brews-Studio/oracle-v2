@@ -48,5 +48,11 @@ export const handoffEndpoint = new Elysia().post(
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
-  { body: HandoffBody },
+  {
+    body: HandoffBody,
+    detail: {
+      tags: ['knowledge', 'nav:hidden'],
+      summary: 'Write a handoff markdown file',
+    },
+  },
 );
