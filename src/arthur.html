@@ -486,7 +486,7 @@
                     // Update RAG status
                     const ragStatus = document.getElementById('rag-status');
                     const ragDot = document.getElementById('rag-dot');
-                    if (data.oracleV2 === 'connected') {
+                    if (data.oracle === 'connected') {
                         ragStatus.textContent = 'Active (5.5K)';
                         ragStatus.style.color = '#64ff96';
                         if (ragDot) ragDot.className = 'status-dot';

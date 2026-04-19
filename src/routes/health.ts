@@ -14,7 +14,7 @@ let oracleCache: { data: any; ts: number } | null = null;
 export function registerHealthRoutes(app: Hono) {
   // Health check
   app.get('/api/health', (c) => {
-    return c.json({ status: 'ok', server: MCP_SERVER_NAME, port: PORT, oracleV2: 'connected' });
+    return c.json({ status: 'ok', server: MCP_SERVER_NAME, port: PORT, oracle: 'connected' });
   });
 
   // Stats (extended with vector metrics)

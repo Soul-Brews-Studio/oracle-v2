@@ -25,7 +25,7 @@ export interface HealthResponse {
   status: string;
   server?: string;
   port?: number;
-  oracleV2?: string;
+  oracle?: string;
 }
 
 export interface ReflectResponse {
@@ -190,7 +190,7 @@ export class MockBackend implements BackendClient {
   }
 
   async health(): Promise<HealthResponse> {
-    return { status: "ok", server: "mock", port: 0, oracleV2: "mock" };
+    return { status: "ok", server: "mock", port: 0, oracle: "mock" };
   }
 
   async reflect(): Promise<ReflectResponse> {
