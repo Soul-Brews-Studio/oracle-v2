@@ -1,22 +1,18 @@
-/**
- * Plugin Routes (Elysia) — /api/plugins, /api/plugins/:name
- *
- * Canonical scanner with two side-by-side layouts:
+/** Canonical plugin scanner shared between /api/plugins and
+ * /api/plugins/:name. Two layouts side-by-side:
  *   1. Nested: ~/.oracle/plugins/<name>/plugin.json + <wasm-from-manifest>
  *   2. Flat:   ~/.oracle/plugins/<name>.wasm
  *
- * Logic mirrors src/routes/plugins.ts (the Hono twin, scheduled for removal
- * once the Elysia migration is complete). During the transition both exist.
- */
-
-import { Elysia, t } from 'elysia';
+ * Logic is identical to src/routes/plugins.ts (the Hono twin, scheduled for
+ * removal once the Elysia migration wires up). During transition both exist. */
+import { t } from 'elysia';
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { homedir } from 'os';
 
-const PLUGIN_DIR = join(homedir(), '.oracle', 'plugins');
+export const PLUGIN_DIR = join(homedir(), '.oracle', 'plugins');
 
-type PluginEntry = {
+export type PluginEntry = {
   name: string;
   file: string;
   size: number;
@@ -25,7 +21,12 @@ type PluginEntry = {
   description?: string;
 };
 
-function readNestedPlugin(dir: string, entryName: string): PluginEntry | null {
+export const pluginNameParams = t.Object({ name: t.String() });
+
+export function readNestedPlugin(
+  dir: string,
+  entryName: string,
+): PluginEntry | null {
   const manifestPath = join(dir, 'plugin.json');
   if (!existsSync(manifestPath)) return null;
   let manifest: { name?: string; version?: string; description?: string; wasm?: string };
@@ -36,6 +37,9 @@ function readNestedPlugin(dir: string, entryName: string): PluginEntry | null {
   }
   const wasmName = manifest.wasm;
   if (!wasmName || typeof wasmName !== 'string') return null;
+
+  // Try manifest path as-is, then fall back to basename (plugins copied flat
+  // by `arra-cli plugin install` keep the source path in manifest.wasm).
   let wasmPath = join(dir, wasmName);
   let resolvedName = wasmName;
   if (!existsSync(wasmPath)) {
@@ -56,7 +60,7 @@ function readNestedPlugin(dir: string, entryName: string): PluginEntry | null {
   };
 }
 
-function readFlatPlugin(file: string): PluginEntry {
+export function readFlatPlugin(file: string): PluginEntry {
   const st = statSync(join(PLUGIN_DIR, file));
   return {
     name: file.replace(/\.wasm$/, ''),
@@ -66,7 +70,7 @@ function readFlatPlugin(file: string): PluginEntry {
   };
 }
 
-function resolveWasmPath(name: string): string | null {
+export function resolveWasmPath(name: string): string | null {
   const nestedManifest = join(PLUGIN_DIR, name, 'plugin.json');
   if (existsSync(nestedManifest)) {
     try {
@@ -86,46 +90,23 @@ function resolveWasmPath(name: string): string | null {
   return null;
 }
 
-export const pluginsRouter = new Elysia()
-  .get('/api/plugins', () => {
-    if (!existsSync(PLUGIN_DIR)) {
-      return { plugins: [], dir: PLUGIN_DIR };
+export function scanPlugins(): { plugins: PluginEntry[]; dir: string } {
+  if (!existsSync(PLUGIN_DIR)) return { plugins: [], dir: PLUGIN_DIR };
+  const plugins: PluginEntry[] = [];
+  for (const entry of readdirSync(PLUGIN_DIR)) {
+    const fullPath = join(PLUGIN_DIR, entry);
+    let st;
+    try {
+      st = statSync(fullPath);
+    } catch {
+      continue;
     }
-    const plugins: PluginEntry[] = [];
-    for (const entry of readdirSync(PLUGIN_DIR)) {
-      const fullPath = join(PLUGIN_DIR, entry);
-      let st;
-      try {
-        st = statSync(fullPath);
-      } catch {
-        continue;
-      }
-      if (st.isDirectory()) {
-        const nested = readNestedPlugin(fullPath, entry);
-        if (nested) plugins.push(nested);
-      } else if (st.isFile() && entry.endsWith('.wasm')) {
-        plugins.push(readFlatPlugin(entry));
-      }
+    if (st.isDirectory()) {
+      const nested = readNestedPlugin(fullPath, entry);
+      if (nested) plugins.push(nested);
+    } else if (st.isFile() && entry.endsWith('.wasm')) {
+      plugins.push(readFlatPlugin(entry));
     }
-    return { plugins, dir: PLUGIN_DIR };
-  })
-  .get(
-    '/api/plugins/:name',
-    ({ params, set }) => {
-      const name = params.name.replace(/[^\w.-]/g, '').replace(/\.wasm$/, '');
-      if (!name) {
-        set.status = 400;
-        return { error: 'invalid plugin name' };
-      }
-      const path = resolveWasmPath(name);
-      if (!path) {
-        set.status = 404;
-        return { error: 'plugin not found', name };
-      }
-      const bytes = readFileSync(path);
-      return new Response(bytes, {
-        headers: { 'content-type': 'application/wasm' },
-      });
-    },
-    { params: t.Object({ name: t.String() }) },
-  );
+  }
+  return { plugins, dir: PLUGIN_DIR };
+}

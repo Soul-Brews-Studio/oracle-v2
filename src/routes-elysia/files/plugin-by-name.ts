@@ -1,0 +1,26 @@
+/** Legacy flat /api/plugins/:name — serves wasm bytes from PLUGINS_DIR
+ * directly. Canonical dual-layout resolver lives in routes-elysia/plugins. */
+import { Elysia } from 'elysia';
+import fs from 'fs';
+import path from 'path';
+import { PLUGINS_DIR } from '../../config.ts';
+import { pluginParams } from './model.ts';
+
+export const pluginByNameRoute = new Elysia().get(
+  '/api/plugins/:name',
+  ({ params, set }) => {
+    const file = params.name.endsWith('.wasm')
+      ? params.name
+      : `${params.name}.wasm`;
+    const filePath = path.join(PLUGINS_DIR, file);
+    if (!fs.existsSync(filePath)) {
+      set.status = 404;
+      return { error: 'Plugin not found' };
+    }
+    const buf = fs.readFileSync(filePath);
+    return new Response(buf, {
+      headers: { 'Content-Type': 'application/wasm' },
+    });
+  },
+  { params: pluginParams },
+);
