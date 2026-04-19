@@ -7,7 +7,7 @@ Phukhao Oracle is landing here: https://phukhao.buildwithoracle.com/presentation
 | | |
 |---|---|
 | **Status** | Always Nightly |
-| **Version** | 26.4.19-alpha.3 |
+| **Version** | 26.4.19-alpha.7 |
 | **Created** | 2025-12-29 |
 | **Updated** | 2026-04-19 |
 
