@@ -1,7 +1,9 @@
 import type { MenuItem } from '../routes/menu/model.ts';
 
 const items: MenuItem[] = [
-  { path: '/canvas', label: 'Canvas', group: 'tools', order: 80, source: 'page' },
+  { path: '/feed', label: 'Feed', group: 'tools', order: 74, source: 'page', studio: 'feed.buildwithoracle.com' },
+  { path: '/schedule', label: 'Schedule', group: 'tools', order: 75, source: 'page', studio: 'schedule.buildwithoracle.com' },
+  { path: '/canvas', label: 'Canvas', group: 'tools', order: 80, source: 'page', studio: 'canvas.buildwithoracle.com' },
   { path: '/planets', label: 'Planets', group: 'tools', order: 81, source: 'page' },
   { path: '/map', label: 'Map', group: 'tools', order: 82, source: 'page' },
   { path: '/compare', label: 'Compare', group: 'tools', order: 83, source: 'page' },
