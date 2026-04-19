@@ -84,10 +84,23 @@ export function menuItemsFromRoutes(sources: HasRoutes[]): MenuItem[] {
 }
 
 /**
+ * Match a stored glob pattern (e.g. `vector.*`) against a concrete host
+ * (e.g. `vector.foo.com`). Only `*` is treated as a wildcard; other regex
+ * metacharacters are escaped.
+ */
+export function hostMatches(pattern: string | null | undefined, host: string): boolean {
+  if (pattern == null) return true;
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`).test(host);
+}
+
+/**
  * Read API-sourced menu items from the `menu_items` DB table.
  * Only enabled rows are returned. Source is always 'api' for studio consumers.
+ * When `host` is provided, rows are filtered to those with null `host` (shown
+ * everywhere) or a glob pattern matching the supplied host.
  */
-export function readApiMenuItemsFromDb(): MenuItem[] {
+export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
   const rows = db
     .select()
     .from(menuItems)
@@ -97,6 +110,7 @@ export function readApiMenuItemsFromDb(): MenuItem[] {
   const items: MenuItem[] = [];
   for (const row of rows) {
     if (row.enabled === false) continue;
+    if (host !== undefined && !hostMatches(row.host, host)) continue;
     const group = (['main', 'tools', 'admin', 'hidden'] as const).includes(
       row.groupKey as MenuItem['group'],
     )
@@ -181,17 +195,19 @@ export function createMenuEndpoint() {
   return new Elysia()
     .get(
       '/menu',
-      async () => {
+      async ({ query }) => {
         const { items, disable } = await getMenuConfig();
+        const host = typeof query.host === 'string' && query.host.length > 0 ? query.host : undefined;
         return {
           items: buildMenuItems(
-            readApiMenuItemsFromDb(),
+            readApiMenuItemsFromDb(host),
             { items, disable },
             listCustomMenuItems(),
           ),
         };
       },
       {
+        query: t.Object({ host: t.Optional(t.String()) }),
         detail: {
           tags: ['menu'],
           menu: { group: 'hidden' },

@@ -30,6 +30,7 @@ function toResponse(row: MenuRow) {
     access: row.access,
     source: row.source,
     icon: row.icon,
+    host: row.host,
     touchedAt: row.touchedAt ? row.touchedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -39,7 +40,7 @@ function toResponse(row: MenuRow) {
 type ResponseRow = ReturnType<typeof toResponse>;
 type TreeNode = ResponseRow & { children: TreeNode[] };
 
-function buildTree(rows: MenuRow[]): TreeNode[] {
+export function buildTree(rows: MenuRow[]): TreeNode[] {
   const nodes = new Map<number, TreeNode>();
   for (const row of rows) nodes.set(row.id, { ...toResponse(row), children: [] });
   const roots: TreeNode[] = [];
@@ -103,6 +104,7 @@ export function createMenuAdminRoutes() {
               access: body.access ?? 'public',
               source: 'custom',
               icon: body.icon ?? null,
+              host: body.host ?? null,
               touchedAt: now,
               createdAt: now,
               updatedAt: now,
@@ -126,6 +128,7 @@ export function createMenuAdminRoutes() {
           enabled: t.Optional(t.Boolean()),
           access: t.Optional(AccessSchema),
           icon: t.Optional(t.String()),
+          host: t.Optional(t.Nullable(t.String())),
         }),
         detail: {
           tags: ['menu'],
@@ -151,6 +154,7 @@ export function createMenuAdminRoutes() {
         if (body.enabled !== undefined) patch.enabled = body.enabled;
         if (body.access !== undefined) patch.access = body.access;
         if (body.icon !== undefined) patch.icon = body.icon;
+        if (body.host !== undefined) patch.host = body.host;
 
         const updated = db
           .update(menuItems)
@@ -174,6 +178,7 @@ export function createMenuAdminRoutes() {
           enabled: t.Optional(t.Boolean()),
           access: t.Optional(AccessSchema),
           icon: t.Optional(t.Nullable(t.String())),
+          host: t.Optional(t.Nullable(t.String())),
         }),
         detail: {
           tags: ['menu'],
