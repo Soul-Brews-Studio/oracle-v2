@@ -20,6 +20,7 @@ import {
   menuGistClear,
   menuGistReload,
 } from "./commands/menu-gist.ts";
+import { menuResetAll } from "./commands/menu-reset.ts";
 
 const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
@@ -126,6 +127,9 @@ async function main() {
     if (sub === "gist-reload") {
       process.exit(await menuGistReload(rest));
     }
+    if (sub === "reset-all") {
+      process.exit(await menuResetAll(rest));
+    }
     if (!sub || sub === "--help" || sub === "-h") {
       console.log("arra-cli menu <subcommand>\n");
       console.log("Subcommands:");
@@ -134,16 +138,17 @@ async function main() {
       console.log("                                          add or replace a custom menu item");
       console.log("  remove <path>                           remove a custom menu item");
       console.log("  gist-status                             show current gist source");
-      console.log("  gist-url <url>                          set gist URL for menu source");
+      console.log("  gist-url <url> [--override]             set gist URL (merge|override)");
       console.log("  gist-clear                              clear gist URL");
       console.log("  gist-reload                             force refetch of gist menu");
+      console.log("  reset-all [--yes]                       nuclear reset (prompts y/N)");
       console.log("\nOutput defaults to JSON; pass --yml for YAML.");
       console.log("\nEnv:");
       console.log("  ORACLE_API          API base URL (default http://localhost:47778)");
       return;
     }
     console.error(`\x1b[31m✗\x1b[0m unknown menu subcommand: ${args[1]}`);
-    console.error("  try: arra-cli menu list|add|remove|gist-status|gist-url|gist-clear|gist-reload");
+    console.error("  try: arra-cli menu list|add|remove|gist-*|reset-all");
     process.exit(1);
   }
 
