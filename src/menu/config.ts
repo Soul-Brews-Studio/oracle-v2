@@ -1,5 +1,5 @@
 import type { MenuItem } from '../routes/menu/model.ts';
-import { getSetting } from '../db/index.ts';
+import { getSetting, setSetting } from '../db/index.ts';
 import { fetchGistMenu, invalidateGistCache } from './gist.ts';
 
 export type MenuConfig = {
@@ -23,6 +23,18 @@ let sourceState: MenuSource = {
 
 export function getMenuSource(): MenuSource {
   return { ...sourceState };
+}
+
+export const MENU_GIST_SETTING_KEY = 'menu_gist_url';
+
+function resolveGistUrl(): string | null {
+  const fromDb = getSetting(MENU_GIST_SETTING_KEY);
+  if (fromDb && fromDb.trim()) return fromDb.trim();
+  const fromEnvNew = process.env.ORACLE_MENU_GIST_URL;
+  if (fromEnvNew && fromEnvNew.trim()) return fromEnvNew.trim();
+  const fromEnv = process.env.ORACLE_MENU_GIST;
+  if (fromEnv && fromEnv.trim()) return fromEnv.trim();
+  return null;
 }
 
 function readEnvDisable(): string[] {
@@ -50,7 +62,7 @@ export async function getMenuConfig(): Promise<MenuConfig> {
   for (const p of readEnvDisable()) disable.add(p);
   for (const p of readDbDisable()) disable.add(p);
 
-  const gistUrl = process.env.ORACLE_MENU_GIST;
+  const gistUrl = resolveGistUrl();
   if (!gistUrl) {
     sourceState = { url: null, hash: null, loaded_at: null, status: 'none' };
     return { items, disable };
@@ -83,9 +95,16 @@ export async function getMenuConfig(): Promise<MenuConfig> {
 }
 
 export async function reloadMenuConfig(): Promise<MenuConfig> {
-  const gistUrl = process.env.ORACLE_MENU_GIST;
+  const gistUrl = resolveGistUrl();
   if (gistUrl) invalidateGistCache(gistUrl);
+  else invalidateGistCache();
   return getMenuConfig();
+}
+
+export function setMenuGistUrl(url: string | null): void {
+  setSetting(MENU_GIST_SETTING_KEY, url);
+  invalidateGistCache();
+  sourceState = { url: null, hash: null, loaded_at: null, status: 'none' };
 }
 
 export function _resetMenuSource(): void {

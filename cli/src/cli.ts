@@ -14,6 +14,12 @@ import { sessionContext } from "./commands/session-context.ts";
 import { menuList } from "./commands/menu-list.ts";
 import { menuAdd } from "./commands/menu-add.ts";
 import { menuRemove } from "./commands/menu-remove.ts";
+import {
+  menuGistStatus,
+  menuGistUrl,
+  menuGistClear,
+  menuGistReload,
+} from "./commands/menu-gist.ts";
 
 const pkg = await Bun.file(join(import.meta.dir, "../package.json")).json();
 const VERSION: string = pkg.version;
@@ -108,6 +114,18 @@ async function main() {
     if (sub === "remove" || sub === "rm") {
       process.exit(await menuRemove(rest));
     }
+    if (sub === "gist-status") {
+      process.exit(await menuGistStatus(rest));
+    }
+    if (sub === "gist-url") {
+      process.exit(await menuGistUrl(rest));
+    }
+    if (sub === "gist-clear") {
+      process.exit(await menuGistClear(rest));
+    }
+    if (sub === "gist-reload") {
+      process.exit(await menuGistReload(rest));
+    }
     if (!sub || sub === "--help" || sub === "-h") {
       console.log("arra-cli menu <subcommand>\n");
       console.log("Subcommands:");
@@ -115,13 +133,17 @@ async function main() {
       console.log("  add --path /p --label L [--group g] [--order N] [--icon i]");
       console.log("                                          add or replace a custom menu item");
       console.log("  remove <path>                           remove a custom menu item");
+      console.log("  gist-status                             show current gist source");
+      console.log("  gist-url <url>                          set gist URL for menu source");
+      console.log("  gist-clear                              clear gist URL");
+      console.log("  gist-reload                             force refetch of gist menu");
       console.log("\nOutput defaults to JSON; pass --yml for YAML.");
       console.log("\nEnv:");
       console.log("  ORACLE_API          API base URL (default http://localhost:47778)");
       return;
     }
     console.error(`\x1b[31m✗\x1b[0m unknown menu subcommand: ${args[1]}`);
-    console.error("  try: arra-cli menu list|add|remove");
+    console.error("  try: arra-cli menu list|add|remove|gist-status|gist-url|gist-clear|gist-reload");
     process.exit(1);
   }
 
