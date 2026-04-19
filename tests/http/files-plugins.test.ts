@@ -1,4 +1,4 @@
-// HTTP contract tests — files + plugins routes. Uses Hono's app.request()
+// HTTP contract tests — files + plugins routes. Uses Elysia's app.handle()
 // for in-process testing with isolated ORACLE_DATA_DIR and a mocked os
 // module so the real user plugin dir is never touched.
 import { describe, test, expect, beforeAll, afterAll, mock } from 'bun:test';
@@ -56,17 +56,21 @@ beforeAll(async () => {
   process.env.GHQ_ROOT = join(tmp, 'ghq-fake');
   mkdirSync(process.env.GHQ_ROOT, { recursive: true });
 
-  const { Hono } = await import('hono');
-  const { registerFileRoutes } = await import('../../src/routes/files.ts');
-  const { registerPluginRoutes } = await import('../../src/routes/plugins.ts');
+  const { Elysia } = await import('elysia');
+  const { filesRouter } = await import('../../src/routes/files/index.ts');
+  const { pluginsRouter } = await import('../../src/routes/plugins/index.ts');
 
-  combined = new Hono();
-  registerFileRoutes(combined);
-  registerPluginRoutes(combined);
-
-  pluginsOnly = new Hono();
-  registerPluginRoutes(pluginsOnly);
+  // combined: filesRouter only — it already bundles the legacy flat
+  // /api/plugins + /api/plugins/:name (files/plugins.ts + files/plugin-by-name.ts),
+  // shadowing the canonical dual-layout scanner. Mixing in pluginsRouter
+  // here would not change observable behavior because Elysia's parametric
+  // route resolution is first-match on the internal tree — filesRouter
+  // alone is the source of truth for the "combined" contract.
+  combined = new Elysia().use(filesRouter);
+  pluginsOnly = new Elysia().use(pluginsRouter);
 });
+
+const req = (path: string) => new Request(`http://localhost${path}`);
 
 afterAll(() => {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
@@ -74,44 +78,44 @@ afterAll(() => {
 
 describe('GET /api/file — security', () => {
   test('rejects path traversal with ".."', async () => {
-    const res = await combined.request('/api/file?path=../etc/passwd');
-    expect([400, 403, 404]).toContain(res.status);
+    const res = await combined.handle(req('/api/file?path=../etc/passwd'));
+    expect([400, 403, 404, 422]).toContain(res.status);
     // Must not leak /etc/passwd content.
     const body = await res.text();
     expect(body).not.toMatch(/root:x:/);
   });
 
   test('rejects nested ".." segments', async () => {
-    const res = await combined.request('/api/file?path=sub/../../etc/passwd');
-    expect([400, 403, 404]).toContain(res.status);
+    const res = await combined.handle(req('/api/file?path=sub/../../etc/passwd'));
+    expect([400, 403, 404, 422]).toContain(res.status);
   });
 
   test('rejects null-byte injection', async () => {
-    const res = await combined.request('/api/file?path=hello.txt%00.png');
-    expect([400, 403, 404]).toContain(res.status);
+    const res = await combined.handle(req('/api/file?path=hello.txt%00.png'));
+    expect([400, 403, 404, 422]).toContain(res.status);
   });
 
   test('rejects missing path parameter', async () => {
-    const res = await combined.request('/api/file');
+    const res = await combined.handle(req('/api/file'));
     expect(res.status).toBe(400);
   });
 });
 
 describe('GET /api/file — happy path', () => {
   test('reads file inside REPO_ROOT', async () => {
-    const res = await combined.request('/api/file?path=hello.txt');
+    const res = await combined.handle(req('/api/file?path=hello.txt'));
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('hello from repo root');
   });
 
   test('returns 404 for missing file inside REPO_ROOT', async () => {
-    const res = await combined.request('/api/file?path=does-not-exist.txt');
+    const res = await combined.handle(req('/api/file?path=does-not-exist.txt'));
     expect(res.status).toBe(404);
   });
 
   test('accepts project param without throwing (falls through to 404)', async () => {
-    const res = await combined.request(
-      '/api/file?project=github.com/fake/repo&path=README.md',
+    const res = await combined.handle(
+      req('/api/file?project=github.com/fake/repo&path=README.md'),
     );
     expect([200, 404]).toContain(res.status);
   });
@@ -119,7 +123,7 @@ describe('GET /api/file — happy path', () => {
 
 describe('GET /api/read', () => {
   test('rejects missing file+id params', async () => {
-    const res = await combined.request('/api/read');
+    const res = await combined.handle(req('/api/read'));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBeDefined();
@@ -128,7 +132,7 @@ describe('GET /api/read', () => {
 
 describe('GET /api/doc/:id', () => {
   test('returns 404 for nonexistent document', async () => {
-    const res = await combined.request('/api/doc/does-not-exist');
+    const res = await combined.handle(req('/api/doc/does-not-exist'));
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBeDefined();
@@ -137,7 +141,7 @@ describe('GET /api/doc/:id', () => {
 
 describe('GET /api/logs', () => {
   test('returns a logs array on a fresh DB', async () => {
-    const res = await combined.request('/api/logs');
+    const res = await combined.handle(req('/api/logs'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { logs: unknown };
     expect(Array.isArray(body.logs)).toBe(true);
@@ -146,7 +150,7 @@ describe('GET /api/logs', () => {
 
 describe('GET /api/graph', () => {
   test('returns a response object', async () => {
-    const res = await combined.request('/api/graph?limit=5');
+    const res = await combined.handle(req('/api/graph?limit=5'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(typeof body).toBe('object');
@@ -155,7 +159,7 @@ describe('GET /api/graph', () => {
 
 describe('GET /api/context', () => {
   test('returns a response object', async () => {
-    const res = await combined.request('/api/context');
+    const res = await combined.handle(req('/api/context'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(typeof body).toBe('object');
@@ -164,7 +168,7 @@ describe('GET /api/context', () => {
 
 describe('GET /api/plugins (combined app — files.ts handler wins)', () => {
   test('lists flat .wasm entries from PLUGINS_DIR', async () => {
-    const res = await combined.request('/api/plugins');
+    const res = await combined.handle(req('/api/plugins'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { plugins: Array<{ name: string; file: string }> };
     expect(Array.isArray(body.plugins)).toBe(true);
@@ -175,7 +179,7 @@ describe('GET /api/plugins (combined app — files.ts handler wins)', () => {
 
 describe('GET /api/plugins/:name (combined app)', () => {
   test('serves wasm bytes with application/wasm content-type', async () => {
-    const res = await combined.request('/api/plugins/alpha');
+    const res = await combined.handle(req('/api/plugins/alpha'));
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('wasm');
     const buf = new Uint8Array(await res.arrayBuffer());
@@ -183,14 +187,14 @@ describe('GET /api/plugins/:name (combined app)', () => {
   });
 
   test('returns 404 for missing plugin', async () => {
-    const res = await combined.request('/api/plugins/no-such-plugin');
+    const res = await combined.handle(req('/api/plugins/no-such-plugin'));
     expect(res.status).toBe(404);
   });
 });
 
 describe('plugins.ts scanner (dual-layout, isolated)', () => {
   test('lists both flat and nested plugins', async () => {
-    const res = await pluginsOnly.request('/api/plugins');
+    const res = await pluginsOnly.handle(req('/api/plugins'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       dir: string;
@@ -203,7 +207,7 @@ describe('plugins.ts scanner (dual-layout, isolated)', () => {
   });
 
   test('nested plugin resolves via basename fallback', async () => {
-    const res = await pluginsOnly.request('/api/plugins');
+    const res = await pluginsOnly.handle(req('/api/plugins'));
     const body = (await res.json()) as {
       plugins: Array<{ name: string; file: string; version?: string }>;
     };
@@ -215,14 +219,14 @@ describe('plugins.ts scanner (dual-layout, isolated)', () => {
   });
 
   test('serves nested wasm bytes via basename fallback', async () => {
-    const res = await pluginsOnly.request('/api/plugins/nested-plugin');
+    const res = await pluginsOnly.handle(req('/api/plugins/nested-plugin'));
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('wasm');
   });
 
   test('strips special characters from :name before lookup', async () => {
     // `../flat` should be sanitized to `flat` (regex keeps \w.- only).
-    const res = await pluginsOnly.request('/api/plugins/..%2Fflat');
+    const res = await pluginsOnly.handle(req('/api/plugins/..%2Fflat'));
     // Either 200 (sanitized to "flat") or 404 — never serves a traversal.
     expect([200, 404]).toContain(res.status);
     if (res.status === 200) {
@@ -231,7 +235,7 @@ describe('plugins.ts scanner (dual-layout, isolated)', () => {
   });
 
   test('returns 404 for truly missing plugin', async () => {
-    const res = await pluginsOnly.request('/api/plugins/ghost');
+    const res = await pluginsOnly.handle(req('/api/plugins/ghost'));
     expect(res.status).toBe(404);
   });
 });

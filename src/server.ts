@@ -1,7 +1,7 @@
 /**
  * Arra Oracle HTTP Server — Elysia (bun-native).
  *
- * Composes 15 route modules from src/routes-elysia/. Every module is its own
+ * Composes 15 route modules from src/routes/. Every module is its own
  * Elysia sub-app, nested one file per endpoint.
  */
 
@@ -23,21 +23,21 @@ import { MCP_SERVER_NAME } from './const.ts';
 import { db, closeDb, indexingStatus } from './db/index.ts';
 
 // Elysia sub-apps — one per cluster
-import { authRoutes } from './routes-elysia/auth/index.ts';
-import { settingsRoutes } from './routes-elysia/settings/index.ts';
-import { feedRoutes } from './routes-elysia/feed/index.ts';
-import { healthRoutes } from './routes-elysia/health/index.ts';
-import { dashboardRoutes } from './routes-elysia/dashboard/index.ts';
-import { searchRoutes } from './routes-elysia/search/index.ts';
-import { knowledgeRoutes } from './routes-elysia/knowledge/index.ts';
-import { supersedeRoutes } from './routes-elysia/supersede/index.ts';
-import { forumApi } from './routes-elysia/forum/index.ts';
-import { tracesApi } from './routes-elysia/traces/index.ts';
-import { scheduleApi } from './routes-elysia/schedule/index.ts';
-import { filesRouter } from './routes-elysia/files/index.ts';
-import { pluginsRouter } from './routes-elysia/plugins/index.ts';
-import { oraclenetRoutes } from './routes-elysia/oraclenet/index.ts';
-import { sessionsRoutes } from './routes-elysia/sessions/index.ts';
+import { authRoutes } from './routes/auth/index.ts';
+import { settingsRoutes } from './routes/settings/index.ts';
+import { feedRoutes } from './routes/feed/index.ts';
+import { healthRoutes } from './routes/health/index.ts';
+import { dashboardRoutes } from './routes/dashboard/index.ts';
+import { searchRoutes } from './routes/search/index.ts';
+import { knowledgeRoutes } from './routes/knowledge/index.ts';
+import { supersedeRoutes } from './routes/supersede/index.ts';
+import { forumApi } from './routes/forum/index.ts';
+import { tracesApi } from './routes/traces/index.ts';
+import { scheduleApi } from './routes/schedule/index.ts';
+import { filesRouter } from './routes/files/index.ts';
+import { pluginsRouter } from './routes/plugins/index.ts';
+import { oraclenetRoutes } from './routes/oraclenet/index.ts';
+import { sessionsRoutes } from './routes/sessions/index.ts';
 
 import pkg from '../package.json' with { type: 'json' };
 
