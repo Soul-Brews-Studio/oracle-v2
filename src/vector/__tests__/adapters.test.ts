@@ -240,17 +240,15 @@ describe('SqliteVecAdapter + Ollama', () => {
 });
 
 // ============================================================================
-// ChromaMcpAdapter (opt-in only — set CHROMA_MCP_TESTS=1 to run)
+// ChromaMcpAdapter
 // ============================================================================
-// These tests spawn a chroma-mcp stdio subprocess and pass when run in
-// isolation (`bun test src/vector/__tests__/adapters.test.ts`), but flake
-// under the full-suite run from repo root — the subprocess handshake races
-// with other concurrent test processes and bun's default 5s test timeout
-// fires during addDocuments. Opt-in via CHROMA_MCP_TESTS=1 for targeted
-// coverage; see GH issue for a durable fix (spawn timing / retry).
-const runChromaMcpTests = process.env.CHROMA_MCP_TESTS === '1';
+// Spawns a `uvx chroma-mcp` stdio subprocess. The subprocess cold-start
+// (uv fetching/resolving the Python env) can take several seconds under
+// full-suite concurrency, so each test here needs a timeout well above
+// bun's 5s default. Tests auto-skip if uvx/chroma-mcp is unavailable.
+const CHROMA_TEST_TIMEOUT_MS = 30_000;
 
-(runChromaMcpTests ? describe : describe.skip)('ChromaMcpAdapter', () => {
+describe('ChromaMcpAdapter', () => {
   let store: VectorStoreAdapter;
   let chromaAvailable = false;
 
@@ -282,7 +280,7 @@ const runChromaMcpTests = process.env.CHROMA_MCP_TESTS === '1';
     await store.ensureCollection();
     const info = await store.getCollectionInfo();
     expect(info.name).toBe('oracle_test_adapter');
-  });
+  }, CHROMA_TEST_TIMEOUT_MS);
 
   test('addDocuments + query', async () => {
     if (!chromaAvailable) { console.log('  [SKIP] ChromaDB not available'); return; }
@@ -294,7 +292,7 @@ const runChromaMcpTests = process.env.CHROMA_MCP_TESTS === '1';
     const result = await store.query('git history', 3);
     expect(result.ids.length).toBeGreaterThan(0);
     expect(result.documents.length).toBe(result.ids.length);
-  });
+  }, CHROMA_TEST_TIMEOUT_MS);
 
   test.skip('queryById (pre-existing safeJsonParse single-quote bug)', async () => {
     if (!chromaAvailable) { console.log('  [SKIP] ChromaDB not available'); return; }
@@ -302,7 +300,7 @@ const runChromaMcpTests = process.env.CHROMA_MCP_TESTS === '1';
     const result = await store.queryById('test_1', 2);
     expect(result.ids.length).toBeGreaterThan(0);
     expect(result.ids).not.toContain('test_1');
-  });
+  }, CHROMA_TEST_TIMEOUT_MS);
 });
 
 // ============================================================================
