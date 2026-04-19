@@ -1,12 +1,5 @@
 import { sessionFetch } from "./session-api.ts";
-
-function fmtTime(v: unknown): string {
-  if (!v) return "—";
-  const s = String(v);
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toISOString().replace("T", " ").slice(0, 19);
-}
+import { emit } from "./_output.ts";
 
 function pickCount(s: any, ...keys: string[]): number {
   for (const k of keys) {
@@ -49,13 +42,18 @@ export async function sessionShow(args: string[]): Promise<number> {
   const learningsN = Array.isArray(learnings) ? learnings.length : pickCount(session, "learnings_count", "learnings");
   const tracesN = Array.isArray(traces) ? traces.length : pickCount(session, "traces_count", "traces");
 
-  console.log(`session:   ${session.id ?? session.session_id ?? id}`);
-  console.log(`oracle:    ${session.oracle ?? session.agent ?? "—"}`);
-  console.log(`started:   ${fmtTime(session.started_at ?? session.startedAt ?? session.created_at)}`);
-  console.log(`ended:     ${fmtTime(session.ended_at ?? session.endedAt ?? session.last_seen)}`);
-  console.log("");
-  console.log(`threads:   ${threadsN}`);
-  console.log(`learnings: ${learningsN}`);
-  console.log(`traces:    ${tracesN}`);
+  emit({
+    session: {
+      id: session.id ?? session.session_id ?? id,
+      oracle: session.oracle ?? session.agent ?? null,
+      started_at: session.started_at ?? session.startedAt ?? session.created_at ?? null,
+      ended_at: session.ended_at ?? session.endedAt ?? session.last_seen ?? null,
+    },
+    counts: {
+      threads: threadsN,
+      learnings: learningsN,
+      traces: tracesN,
+    },
+  }, args);
   return 0;
 }

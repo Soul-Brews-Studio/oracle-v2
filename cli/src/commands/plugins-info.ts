@@ -1,29 +1,21 @@
 import { join } from "path";
 import { homedir } from "os";
 import { existsSync, readFileSync, statSync } from "fs";
+import { emit } from "./_output.ts";
 
 const ORACLE_PLUGIN_DIR = join(homedir(), ".oracle", "plugins");
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
-
-async function printWasmExports(wasmPath: string): Promise<void> {
+async function wasmExports(wasmPath: string): Promise<
+  | { exports: Array<{ kind: string; name: string }> }
+  | { error: string }
+> {
   try {
     const bytes = await Bun.file(wasmPath).arrayBuffer();
     const mod = await WebAssembly.compile(bytes);
     const exports = WebAssembly.Module.exports(mod);
-    if (exports.length === 0) {
-      console.log("  (no exports)");
-      return;
-    }
-    for (const ex of exports) {
-      console.log(`  ${ex.kind.padEnd(10)} ${ex.name}`);
-    }
+    return { exports: exports.map(e => ({ kind: e.kind, name: e.name })) };
   } catch (err) {
-    console.log(`  (failed to compile: ${err instanceof Error ? err.message : String(err)})`);
+    return { error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -60,23 +52,21 @@ export async function pluginsInfo(args: string[]): Promise<number> {
     return 1;
   }
 
-  console.log(`plugin: ${name}`);
-
-  if (manifest) {
-    console.log("\nmanifest:");
-    console.log(JSON.stringify(manifest, null, 2));
-  }
+  const result: Record<string, unknown> = { name, manifest };
 
   if (wasmPath) {
     const stat = statSync(wasmPath);
-    console.log(`\nartifact: ${wasmPath}`);
-    console.log(`  size:     ${formatSize(stat.size)} (${stat.size} bytes)`);
-    console.log(`  modified: ${stat.mtime.toISOString()}`);
-    console.log("\nexports:");
-    await printWasmExports(wasmPath);
+    const xp = await wasmExports(wasmPath);
+    result.artifact = {
+      path: wasmPath,
+      size: stat.size,
+      modified: stat.mtime.toISOString(),
+      ...xp,
+    };
   } else {
-    console.log("\n(no .wasm artifact found)");
+    result.artifact = null;
   }
 
+  emit(result, args);
   return 0;
 }

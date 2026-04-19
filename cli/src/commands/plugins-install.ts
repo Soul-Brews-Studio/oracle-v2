@@ -8,6 +8,7 @@ import {
 } from "fs";
 import { homedir } from "os";
 import { basename, dirname, isAbsolute, join, resolve } from "path";
+import { emit } from "./_output.ts";
 
 export interface InstallManifest {
   name: string;
@@ -27,6 +28,19 @@ export interface InstallOptions {
   manifest?: string;
 }
 
+export interface InstallResult {
+  installed: boolean;
+  dryRun: boolean;
+  name: string;
+  version: string;
+  dest: string;
+  wasmDest: string;
+  manifestDest: string;
+  source: "artifact" | "git" | "path";
+  synthesizedManifest?: boolean;
+}
+
+const log = (...a: unknown[]) => console.error(...a);
 const C = {
   cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
@@ -96,7 +110,7 @@ function toCloneUrl(s: string): string {
 }
 
 async function ghqClone(url: string): Promise<string> {
-  console.log(`${C.cyan("⚡")} cloning ${url} via ghq...`);
+  log(`${C.cyan("⚡")} cloning ${url} via ghq...`);
   const clone = Bun.spawn(["ghq", "get", "-u", url], {
     stdout: "inherit",
     stderr: "inherit",
@@ -126,7 +140,7 @@ async function ghqClone(url: string): Promise<string> {
 }
 
 async function runBuild(cmd: string, cwd: string): Promise<void> {
-  console.log(`${C.cyan("⚡")} building: ${C.dim(cmd)}`);
+  log(`${C.cyan("⚡")} building: ${C.dim(cmd)}`);
   const parts = cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g);
   if (!parts || parts.length === 0) {
     throw new Error(`cannot parse build command: ${cmd}`);
@@ -162,10 +176,11 @@ function synthesizeManifest(artifactUrl: string): InstallManifest {
   return { name, version: "0.0.0", wasm: basename(artifactUrl) };
 }
 
-async function installFromArtifact(opts: InstallOptions): Promise<void> {
+async function installFromArtifact(opts: InstallOptions): Promise<InstallResult> {
   if (!opts.artifact) throw new Error("--artifact requires a URL");
 
   let manifest: InstallManifest;
+  let synthesized = false;
   if (opts.manifest) {
     const res = await fetch(opts.manifest);
     if (!res.ok) {
@@ -174,7 +189,8 @@ async function installFromArtifact(opts: InstallOptions): Promise<void> {
     manifest = parseInstallManifest(await res.text());
   } else {
     manifest = synthesizeManifest(opts.artifact);
-    console.log(
+    synthesized = true;
+    log(
       `${C.yellow("!")} synthesized manifest ${manifest.name}@${manifest.version} from filename`,
     );
   }
@@ -190,9 +206,17 @@ async function installFromArtifact(opts: InstallOptions): Promise<void> {
   const manifestDest = join(dest, "plugin.json");
 
   if (opts.dryRun) {
-    console.log(`${C.dim("[dry-run]")} would fetch ${opts.artifact} → ${wasmDest}`);
-    console.log(`${C.dim("[dry-run]")} would write plugin.json → ${manifestDest}`);
-    return;
+    return {
+      installed: false,
+      dryRun: true,
+      name: manifest.name,
+      version: manifest.version,
+      dest,
+      wasmDest,
+      manifestDest,
+      source: "artifact",
+      synthesizedManifest: synthesized,
+    };
   }
 
   if (existsSync(dest) && opts.force) {
@@ -201,20 +225,31 @@ async function installFromArtifact(opts: InstallOptions): Promise<void> {
   mkdirSync(dest, { recursive: true });
   await downloadTo(opts.artifact, wasmDest);
   writeFileSync(manifestDest, JSON.stringify(manifest, null, 2));
-  console.log(
-    `${C.green("✓")} installed ${manifest.name}@${manifest.version} → ${dest}`,
-  );
+  return {
+    installed: true,
+    dryRun: false,
+    name: manifest.name,
+    version: manifest.version,
+    dest,
+    wasmDest,
+    manifestDest,
+    source: "artifact",
+    synthesizedManifest: synthesized,
+  };
 }
 
-async function installFromSource(source: string, opts: InstallOptions): Promise<void> {
+async function installFromSource(source: string, opts: InstallOptions): Promise<InstallResult> {
   let src: string;
+  let kind: "git" | "path";
   if (isUrlLike(source)) {
     src = await ghqClone(toCloneUrl(source));
+    kind = "git";
   } else {
     src = isAbsolute(source) ? source : resolve(source);
     if (!existsSync(src)) {
       throw new Error(`path not found: ${src}`);
     }
+    kind = "path";
   }
 
   const manifestPath = join(src, "plugin.json");
@@ -248,9 +283,16 @@ async function installFromSource(source: string, opts: InstallOptions): Promise<
   const manifestDest = join(dest, "plugin.json");
 
   if (opts.dryRun) {
-    console.log(`${C.dim("[dry-run]")} would copy ${wasmPath} → ${wasmDest}`);
-    console.log(`${C.dim("[dry-run]")} would copy ${manifestPath} → ${manifestDest}`);
-    return;
+    return {
+      installed: false,
+      dryRun: true,
+      name: manifest.name,
+      version: manifest.version,
+      dest,
+      wasmDest,
+      manifestDest,
+      source: kind,
+    };
   }
 
   if (existsSync(dest) && opts.force) {
@@ -259,25 +301,31 @@ async function installFromSource(source: string, opts: InstallOptions): Promise<
   mkdirSync(dest, { recursive: true });
   copyFileSync(wasmPath, wasmDest);
   copyFileSync(manifestPath, manifestDest);
-  console.log(
-    `${C.green("✓")} installed ${manifest.name}@${manifest.version} → ${dest}`,
-  );
+  return {
+    installed: true,
+    dryRun: false,
+    name: manifest.name,
+    version: manifest.version,
+    dest,
+    wasmDest,
+    manifestDest,
+    source: kind,
+  };
 }
 
 export async function doInstall(
   source: string | undefined,
   opts: InstallOptions,
-): Promise<void> {
+): Promise<InstallResult> {
   if (opts.artifact) {
-    await installFromArtifact(opts);
-    return;
+    return await installFromArtifact(opts);
   }
   if (!source) {
     throw new Error(
       "missing <url-or-path>; see 'arra-cli plugin install --help'",
     );
   }
-  await installFromSource(source, opts);
+  return await installFromSource(source, opts);
 }
 
 export function printInstallHelp(): void {
@@ -295,6 +343,7 @@ export function printInstallHelp(): void {
   console.log("  --artifact <url>     download prebuilt .wasm directly (skip clone+build)");
   console.log("  --manifest <url>     plugin.json URL to pair with --artifact");
   console.log("                       (if omitted, manifest is synthesized from filename)");
+  console.log("  --yml, --yaml        emit YAML instead of JSON");
   console.log("  -h, --help           show this help");
 }
 
@@ -324,6 +373,8 @@ export async function runInstallCli(args: string[]): Promise<number> {
     } else if (a === "-h" || a === "--help") {
       printInstallHelp();
       return 0;
+    } else if (a === "--yml" || a === "--yaml") {
+      // consumed by emit()
     } else if (a.startsWith("--") || a.startsWith("-")) {
       console.error(`${C.red("✗")} unknown flag: ${a}`);
       return 1;
@@ -333,7 +384,8 @@ export async function runInstallCli(args: string[]): Promise<number> {
   }
 
   try {
-    await doInstall(positional[0], opts);
+    const result = await doInstall(positional[0], opts);
+    emit(result, args);
     return 0;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

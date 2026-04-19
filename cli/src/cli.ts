@@ -81,7 +81,8 @@ async function main() {
       console.log("Subcommands:");
       console.log("  list                list all sessions");
       console.log("  show <id>           show session summary");
-      console.log("  context <id>        dump full session context (--json for machine output)");
+      console.log("  context <id>        dump full session context");
+      console.log("\nOutput defaults to JSON; pass --yml for YAML.");
       console.log("\nEnv:");
       console.log("  ORACLE_API          API base URL (default http://localhost:47778)");
       return;
@@ -93,19 +94,32 @@ async function main() {
 
   if (cmd === "plugin") {
     const sub = args[1]?.toLowerCase();
+    const rest = args.slice(2);
     if (sub === "install") {
       const { runInstallCli } = await import("./commands/plugins-install.ts");
-      const code = await runInstallCli(args.slice(2));
-      process.exit(code);
+      process.exit(await runInstallCli(rest));
+    }
+    if (sub === "list" || sub === "ls") {
+      process.exit(await pluginsList(rest));
+    }
+    if (sub === "remove" || sub === "rm") {
+      process.exit(await pluginsRemove(rest));
+    }
+    if (sub === "info") {
+      process.exit(await pluginsInfo(rest));
     }
     if (!sub || sub === "--help" || sub === "-h") {
       console.log("arra-cli plugin <subcommand>\n");
       console.log("Subcommands:");
+      console.log("  list                    list installed plugins");
+      console.log("  info <name>             show plugin details");
       console.log("  install <url-or-path>   install a plugin (see --help)");
+      console.log("  remove <name>           remove an installed plugin");
+      console.log("\nOutput defaults to JSON; pass --yml for YAML.");
       return;
     }
     console.error(`\x1b[31m✗\x1b[0m unknown plugin subcommand: ${args[1]}`);
-    console.error("  try: arra-cli plugin install <url-or-path>");
+    console.error("  try: arra-cli plugin list|info|install|remove");
     process.exit(1);
   }
 
@@ -135,20 +149,6 @@ async function main() {
     }
     printCommandHelp(plugin);
     return;
-  }
-
-  if (cmd === "plugin") {
-    const sub = args[1]?.toLowerCase();
-    const rest = args.slice(2);
-    if (sub === "list" || sub === "ls") {
-      process.exit(await pluginsList(rest));
-    }
-    if (sub === "remove" || sub === "rm") {
-      process.exit(await pluginsRemove(rest));
-    }
-    if (sub === "info") {
-      process.exit(await pluginsInfo(rest));
-    }
   }
 
   await loadAll();

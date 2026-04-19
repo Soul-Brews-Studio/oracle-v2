@@ -1,11 +1,12 @@
 import { join } from "path";
 import { homedir } from "os";
 import { existsSync, rmSync, statSync } from "fs";
+import { emit } from "./_output.ts";
 
 const ORACLE_PLUGIN_DIR = join(homedir(), ".oracle", "plugins");
 
 async function confirm(prompt: string): Promise<boolean> {
-  process.stdout.write(prompt);
+  process.stderr.write(prompt);
   for await (const chunk of Bun.stdin.stream()) {
     const input = new TextDecoder().decode(chunk).trim().toLowerCase();
     return input === "y" || input === "yes";
@@ -44,12 +45,12 @@ export async function pluginsRemove(args: string[]): Promise<number> {
   if (!yes) {
     const ok = await confirm(`Remove ${kind} ${target}? [y/N] `);
     if (!ok) {
-      console.log("aborted");
+      emit({ removed: false, aborted: true, target, kind }, args);
       return 1;
     }
   }
 
   rmSync(target, { recursive: true, force: true });
-  console.log(`✓ removed ${kind}: ${target}`);
+  emit({ removed: true, target, kind }, args);
   return 0;
 }
