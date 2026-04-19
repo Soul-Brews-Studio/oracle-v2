@@ -1,0 +1,21 @@
+import { Elysia } from 'elysia';
+import { handleSessionSummary } from '../../server/handlers.ts';
+import { SummaryParams, SummaryBody, MAX_SUMMARY_CHARS } from './model.ts';
+
+export const summaryRoute = new Elysia().post(
+  '/api/session/:id/summary',
+  ({ params, body, set }) => {
+    const summary = body.summary;
+    if (summary.trim().length === 0) {
+      set.status = 400;
+      return { error: 'Missing required field: summary' };
+    }
+    if (summary.length > MAX_SUMMARY_CHARS) {
+      set.status = 400;
+      return { error: `summary exceeds max length (${MAX_SUMMARY_CHARS} chars)` };
+    }
+    set.status = 201;
+    return handleSessionSummary(params.id, summary, body.oracle);
+  },
+  { params: SummaryParams, body: SummaryBody },
+);

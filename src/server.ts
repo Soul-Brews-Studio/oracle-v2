@@ -1,12 +1,13 @@
 /**
- * Arra Oracle HTTP Server - Hono.js Version
+ * Arra Oracle HTTP Server — Elysia (bun-native).
  *
- * Modern routing with Hono.js on Bun runtime.
- * Routes split into modules under src/routes/.
+ * Composes 15 route modules from src/routes-elysia/. Every module is its own
+ * Elysia sub-app, nested one file per endpoint.
  */
 
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { Elysia } from 'elysia';
+import { cors } from '@elysiajs/cors';
+import { swagger } from '@elysiajs/swagger';
 import { eq } from 'drizzle-orm';
 
 import {
@@ -18,58 +19,52 @@ import {
 } from './process-manager/index.ts';
 
 import { PORT, ORACLE_DATA_DIR } from './config.ts';
+import { MCP_SERVER_NAME } from './const.ts';
 import { db, closeDb, indexingStatus } from './db/index.ts';
 
-// Route modules
-import { registerAuthRoutes } from './routes/auth.ts';
-import { registerSettingsRoutes } from './routes/settings.ts';
-import { registerHealthRoutes } from './routes/health.ts';
-import { registerSearchRoutes } from './routes/search.ts';
-import { registerFeedRoutes } from './routes/feed.ts';
-import { registerDashboardRoutes } from './routes/dashboard.ts';
-import { registerForumRoutes } from './routes/forum.ts';
-import { registerScheduleRoutes } from './routes/schedule.ts';
-import { registerTraceRoutes } from './routes/traces.ts';
-import { registerKnowledgeRoutes } from './routes/knowledge.ts';
-import { registerSupersedeRoutes } from './routes/supersede.ts';
-import { registerFileRoutes } from './routes/files.ts';
-import { registerOracleNetRoutes } from './routes/oraclenet.ts';
-import { registerPluginRoutes } from './routes/plugins.ts';
-import { registerSessionSummaryRoutes } from './routes/session-summary.ts';
+// Elysia sub-apps — one per cluster
+import { authRoutes } from './routes-elysia/auth/index.ts';
+import { settingsRoutes } from './routes-elysia/settings/index.ts';
+import { feedRoutes } from './routes-elysia/feed/index.ts';
+import { healthRoutes } from './routes-elysia/health/index.ts';
+import { dashboardRoutes } from './routes-elysia/dashboard/index.ts';
+import { searchRoutes } from './routes-elysia/search/index.ts';
+import { knowledgeRoutes } from './routes-elysia/knowledge/index.ts';
+import { supersedeRoutes } from './routes-elysia/supersede/index.ts';
+import { forumApi } from './routes-elysia/forum/index.ts';
+import { tracesApi } from './routes-elysia/traces/index.ts';
+import { scheduleApi } from './routes-elysia/schedule/index.ts';
+import { filesRouter } from './routes-elysia/files/index.ts';
+import { pluginsRouter } from './routes-elysia/plugins/index.ts';
+import { oraclenetRoutes } from './routes-elysia/oraclenet/index.ts';
+import { sessionsRoutes } from './routes-elysia/sessions/index.ts';
 
-// Reset stale indexing status on startup using Drizzle
+import pkg from '../package.json' with { type: 'json' };
+
 try {
-  db.update(indexingStatus)
-    .set({ isIndexing: 0 })
-    .where(eq(indexingStatus.id, 1))
-    .run();
+  db.update(indexingStatus).set({ isIndexing: 0 }).where(eq(indexingStatus.id, 1)).run();
   console.log('🔮 Reset indexing status on startup');
 } catch (e) {
-  // Table might not exist yet - that's fine
+  // table might not exist yet — fine on first boot
 }
 
-// Configure process lifecycle management
 configure({ dataDir: ORACLE_DATA_DIR, pidFileName: 'oracle-http.pid' });
+writePidFile({
+  pid: process.pid,
+  port: Number(PORT),
+  startedAt: new Date().toISOString(),
+  name: 'oracle-http',
+});
 
-// Write PID file for process tracking
-writePidFile({ pid: process.pid, port: Number(PORT), startedAt: new Date().toISOString(), name: 'oracle-http' });
-
-// Register graceful shutdown handlers
 registerSignalHandlers(async () => {
   console.log('\n🔮 Shutting down gracefully...');
   await performGracefulShutdown({
-    resources: [
-      { close: () => { closeDb(); return Promise.resolve(); } }
-    ]
+    resources: [{ close: () => { closeDb(); return Promise.resolve(); } }],
   });
   removePidFile();
   console.log('👋 Arra Oracle HTTP Server stopped.');
 });
 
-// Create Hono app
-const app = new Hono();
-
-// CORS middleware — allow studio + neo + localhost, plus ORACLE_CORS_ORIGIN override
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://studio.buildwithoracle.com',
   'https://neo.buildwithoracle.com',
@@ -85,7 +80,7 @@ const ALLOWED_ORIGINS = [
   ...(legacyOrigin ? [legacyOrigin] : []),
 ];
 
-function originAllowed(origin: string | undefined): string | null {
+function originAllowed(origin: string | undefined | null): string | null {
   if (!origin) return null;
   if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
     return origin;
@@ -94,95 +89,97 @@ function originAllowed(origin: string | undefined): string | null {
   return null;
 }
 
-// Private Network Access preflight (Chrome 117+): must run BEFORE hono/cors,
-// because hono/cors responds to OPTIONS directly and bypasses later middleware.
-// Lets studio.buildwithoracle.com fetch a user's local MCP at :47778.
-app.use('*', async (c, next) => {
+// Private Network Access preflight (Chrome 117+). Must intercept OPTIONS
+// before @elysiajs/cors, because the cors plugin answers preflights itself
+// without emitting the `Access-Control-Allow-Private-Network` header that
+// Chrome requires for https→localhost fetches.
+const pnaMiddleware = new Elysia().onRequest(({ request }) => {
   if (
-    c.req.method === 'OPTIONS' &&
-    c.req.header('access-control-request-private-network') === 'true'
+    request.method === 'OPTIONS' &&
+    request.headers.get('access-control-request-private-network') === 'true'
   ) {
-    const origin = originAllowed(c.req.header('origin'));
-    if (!origin) return next();
+    const origin = originAllowed(request.headers.get('origin'));
+    if (!origin) return;
     return new Response(null, {
       status: 204,
       headers: {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
         'Access-Control-Allow-Headers':
-          c.req.header('access-control-request-headers') ?? 'content-type',
+          request.headers.get('access-control-request-headers') ?? 'content-type',
         'Access-Control-Allow-Private-Network': 'true',
         'Access-Control-Max-Age': '86400',
         Vary: 'Origin',
       },
     });
   }
-  return next();
 });
 
-app.use('*', cors({
-  origin: (origin) => originAllowed(origin) ?? null,
-  credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-}));
+const app = new Elysia()
+  .use(pnaMiddleware)
+  .use(
+    cors({
+      origin: (request) => {
+        const origin = request.headers.get('origin');
+        return originAllowed(origin) !== null;
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    }),
+  )
+  .onAfterHandle(({ set }) => {
+    set.headers['X-Content-Type-Options'] = 'nosniff';
+    set.headers['X-Frame-Options'] = 'DENY';
+    set.headers['X-XSS-Protection'] = '1; mode=block';
+    set.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+  })
+  .use(
+    swagger({
+      path: '/swagger',
+      documentation: {
+        info: {
+          title: 'Arra Oracle API',
+          version: pkg.version,
+          description: 'HTTP API for the Arra Oracle MCP memory layer.',
+        },
+      },
+    }),
+  )
+  .get('/', () => ({
+    server: MCP_SERVER_NAME,
+    version: pkg.version,
+    status: 'ok',
+    docs: '/swagger',
+    api: '/api',
+  }));
 
-// Security headers middleware
-app.use('*', async (c, next) => {
-  await next();
-  c.header('X-Content-Type-Options', 'nosniff');
-  c.header('X-Frame-Options', 'DENY');
-  c.header('X-XSS-Protection', '1; mode=block');
-  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-});
+const modules = [
+  authRoutes,
+  settingsRoutes,
+  feedRoutes,
+  healthRoutes,
+  dashboardRoutes,
+  searchRoutes,
+  knowledgeRoutes,
+  supersedeRoutes,
+  forumApi,
+  tracesApi,
+  scheduleApi,
+  filesRouter,
+  pluginsRouter,
+  oraclenetRoutes,
+  sessionsRoutes,
+];
 
-// Register all route modules (order matters: auth middleware first)
-registerAuthRoutes(app);
-registerSettingsRoutes(app);
-registerHealthRoutes(app);
-registerSearchRoutes(app);
-registerFeedRoutes(app);
-registerDashboardRoutes(app);
-registerForumRoutes(app);
-registerScheduleRoutes(app);
-registerTraceRoutes(app);
-registerKnowledgeRoutes(app);
-registerSupersedeRoutes(app);
-registerFileRoutes(app);
-registerOracleNetRoutes(app);
-registerPluginRoutes(app);
-registerSessionSummaryRoutes(app);
+for (const mod of modules) app.use(mod as any);
 
-// Startup banner
 console.log(`
-🔮 Arra Oracle HTTP Server running! (Hono.js)
+🔮 Arra Oracle HTTP Server running! (Elysia)
 
-   URL: http://localhost:${PORT}
-
-   Endpoints:
-   - GET  /api/health          Health check
-   - GET  /api/search?q=...    Search Oracle knowledge
-   - GET  /api/list            Browse all documents
-   - GET  /api/reflect         Random wisdom
-   - GET  /api/stats           Database statistics
-   - GET  /api/graph           Knowledge graph data
-   - GET  /api/map             Knowledge map 2D (hash-based layout)
-   - GET  /api/map3d           Knowledge map 3D (real PCA from LanceDB embeddings)
-   - GET  /api/context         Project context (ghq format)
-   - POST /api/learn           Add new pattern/learning
-
-   Forum:
-   - GET  /api/threads         List threads
-   - GET  /api/thread/:id      Get thread
-   - POST /api/thread          Send message
-
-   Supersede Log:
-   - GET  /api/supersede       List supersessions
-   - GET  /api/supersede/chain/:path  Document lineage
-   - POST /api/supersede       Log supersession
-
-   Sessions:
-   - POST /api/session/:id/summary  Write session summary as learning
+   URL:     http://localhost:${PORT}
+   Swagger: http://localhost:${PORT}/swagger
+   Version: ${pkg.version}
 `);
 
 export default {
