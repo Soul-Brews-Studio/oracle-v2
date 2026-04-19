@@ -4,7 +4,7 @@ import {
   SESSION_COOKIE_NAME,
   isAuthenticated,
   isLocalNetwork,
-} from './session.ts';
+} from './index.ts';
 
 export const statusRoute = new Elysia().get('/status', ({ server, request, cookie }) => {
   const sessionValue = cookie[SESSION_COOKIE_NAME]?.value as string | undefined;

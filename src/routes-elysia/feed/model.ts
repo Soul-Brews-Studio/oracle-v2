@@ -7,7 +7,7 @@ export const FeedQuery = t.Object({
   since: t.Optional(t.String()),
 });
 
-export const AppendFeedBody = t.Object({
+export const CreateFeedBody = t.Object({
   oracle: t.Optional(t.String()),
   event: t.Optional(t.String()),
   project: t.Optional(t.String()),

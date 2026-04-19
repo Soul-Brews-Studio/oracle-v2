@@ -5,7 +5,7 @@ import {
   SESSION_DURATION_MS,
   generateSessionToken,
   isLocalNetwork,
-} from './session.ts';
+} from './index.ts';
 import { LoginBody } from './model.ts';
 
 export const loginRoute = new Elysia().post('/login', async ({ body, server, request, cookie, set }) => {

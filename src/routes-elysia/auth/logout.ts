@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia';
-import { SESSION_COOKIE_NAME } from './session.ts';
+import { SESSION_COOKIE_NAME } from './index.ts';
 
 export const logoutRoute = new Elysia().post('/logout', ({ cookie }) => {
   cookie[SESSION_COOKIE_NAME].set({
