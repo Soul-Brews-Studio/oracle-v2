@@ -17,12 +17,13 @@ import type {
   VaultStats,
 } from "./lib/types.ts";
 import { slugify, slugifyPath } from "./lib/slugify.ts";
-import { writeVault } from "./lib/vault-writer.ts";
+import { writeVault, writeStateFile } from "./lib/vault-writer.ts";
 import { fetchAllDocs } from "./lib/fetch-docs.ts";
 import { fetchSimilar } from "./lib/fetch-similar.ts";
-import { renderDocMarkdown } from "./lib/render-body.ts";
+import { renderDocMarkdown, deriveTitle } from "./lib/render-body.ts";
 import { renderIndex } from "./lib/render-index.ts";
 import { renderConceptHub } from "./lib/concept-hub.ts";
+import { hashPayload } from "./lib/state-hash.ts";
 
 export default async function handler(ctx: InvokeContext): Promise<InvokeResult> {
   let opts: ExportOptions;
@@ -89,6 +90,24 @@ export default async function handler(ctx: InvokeContext): Promise<InvokeResult>
     dryRun: opts.dryRun,
     incremental: opts.incremental,
   });
+
+  // Issue #938 — write .arra-vault-state.json so import-obsidian can diff.
+  if (!opts.dryRun && report.errors.length === 0) {
+    const stateDocs: Record<string, { relPath: string; contentHash: string }> = {};
+    for (const doc of docs) {
+      const relPath = `${slugForId(doc.id)}.md`;
+      const title = deriveTitle(doc);
+      const hash = hashPayload(title, doc.content, doc.concepts ?? []);
+      stateDocs[doc.id] = { relPath, contentHash: hash };
+    }
+    await writeStateFile(opts.out, {
+      version: 1,
+      last_export: new Date().toISOString(),
+      model: opts.model,
+      threshold: opts.threshold,
+      docs: stateDocs,
+    });
+  }
 
   const lines: string[] = [];
   lines.push(`Obsidian vault export → ${opts.out}`);

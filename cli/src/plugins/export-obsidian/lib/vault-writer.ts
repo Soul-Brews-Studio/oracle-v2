@@ -134,3 +134,10 @@ export const __testing = { contentMatches, hashContent };
 
 // Silence unused-import complaints in stripped builds.
 void stat;
+
+/** Atomic write of .arra-vault-state.json (issue #938 round-trip). */
+export async function writeStateFile(vaultDir: string, state: unknown): Promise<void> {
+  await mkdir(vaultDir, { recursive: true });
+  const abs = join(vaultDir, ".arra-vault-state.json");
+  await atomicWrite(abs, JSON.stringify(state, null, 2) + "\n");
+}
