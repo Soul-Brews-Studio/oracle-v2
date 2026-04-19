@@ -8,6 +8,7 @@
 
 import { Elysia } from 'elysia';
 import { MenuItemSchema, MenuResponseSchema, type MenuItem } from './model.ts';
+import { getFrontendMenuItems } from '../../menu/index.ts';
 
 export const API_TO_STUDIO: ReadonlyArray<readonly [string, string]> = [
   ['/api/supersede', '/superseded'],
@@ -78,6 +79,13 @@ export function buildMenuItems(sources: HasRoutes[]): MenuItem[] {
     }
   }
 
+  for (const item of getFrontendMenuItems()) {
+    const key = `${item.group}:${item.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
+  }
+
   items.sort((a, b) => GROUP_RANK[a.group] - GROUP_RANK[b.group] || a.order - b.order);
   return items;
 }
@@ -87,7 +95,6 @@ export function createMenuEndpoint(sources: HasRoutes[]) {
     '/menu',
     () => ({ items: buildMenuItems(sources) }),
     {
-      response: MenuResponseSchema,
       detail: {
         tags: ['menu', 'nav:hidden'],
         summary: 'Aggregated studio navigation from swagger nav tags',
