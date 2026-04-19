@@ -1231,6 +1231,84 @@ export async function handleVectorStats(): Promise<{
  * @param project - ghq-style project path (null = universal)
  * @param cwd - Auto-detect project from cwd if project not specified
  */
+/**
+ * Persist a learning-type document: write .md file, insert row in oracle_documents + FTS.
+ * Shared by handleLearn and handleSessionSummary so both take the same path post-#867.
+ */
+export function persistLearningDoc(opts: {
+  pattern: string;
+  subdir: string;          // e.g. 'ψ/memory/learnings' or 'ψ/memory/session-summaries'
+  filename: string;        // base filename, e.g. '2026-04-19_my-slug.md' or '<session-id>.md'
+  id: string;              // document id
+  concepts?: string[];
+  source?: string;         // display + logging
+  origin?: string | null;  // 'mother' | 'arthur' | 'volt' | 'human' | null
+  project?: string | null;
+  createdBy?: string;      // oracle_documents.created_by
+  footer?: string;         // footer line under the content, e.g. '*Added via Oracle Learn*'
+}): { file: string; id: string } {
+  const { pattern, subdir, filename, id } = opts;
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+
+  const dir = path.join(REPO_ROOT, subdir);
+  fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, filename);
+
+  if (fs.existsSync(filePath)) {
+    throw new Error(`File already exists: ${filename}`);
+  }
+
+  const title = pattern.split('\n')[0].substring(0, 80);
+  const conceptsList = coerceConcepts(opts.concepts);
+  const footer = opts.footer ?? '*Added via Oracle Learn*';
+
+  const frontmatter = [
+    '---',
+    `title: ${title}`,
+    conceptsList.length > 0 ? `tags: [${conceptsList.join(', ')}]` : 'tags: []',
+    `created: ${dateStr}`,
+    `source: ${opts.source || 'Oracle Learn'}`,
+    '---',
+    '',
+    `# ${title}`,
+    '',
+    pattern,
+    '',
+    '---',
+    footer,
+    ''
+  ].join('\n');
+
+  fs.writeFileSync(filePath, frontmatter, 'utf-8');
+
+  const sourceFile = `${subdir}/${filename}`;
+
+  db.insert(oracleDocuments).values({
+    id,
+    type: 'learning',
+    sourceFile,
+    concepts: JSON.stringify(conceptsList),
+    createdAt: now.getTime(),
+    updatedAt: now.getTime(),
+    indexedAt: now.getTime(),
+    origin: opts.origin || null,
+    project: opts.project || null,
+    createdBy: opts.createdBy || 'arra_learn',
+  }).run();
+
+  // FTS5 has no unique constraint on id — delete-then-insert to be idempotent.
+  sqlite.prepare(`DELETE FROM oracle_fts WHERE id = ?`).run(id);
+  sqlite.prepare(`
+    INSERT INTO oracle_fts (id, content, concepts)
+    VALUES (?, ?, ?)
+  `).run(id, frontmatter, conceptsList.join(' '));
+
+  logLearning(id, pattern, opts.source || 'Oracle Learn', conceptsList);
+
+  return { file: sourceFile, id };
+}
+
 export function handleLearn(
   pattern: string,
   source?: string,
@@ -1239,12 +1317,9 @@ export function handleLearn(
   project?: string,
   cwd?: string
 ) {
-  // Auto-detect project from cwd if not explicitly specified
   const resolvedProject = (project ?? detectProject(cwd))?.toLowerCase() ?? null;
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const dateStr = new Date().toISOString().split('T')[0];
 
-  // Generate slug from pattern (first 50 chars, alphanumeric + dash)
   const slug = pattern
     .substring(0, 50)
     .toLowerCase()
@@ -1253,77 +1328,50 @@ export function handleLearn(
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const filename = `${dateStr}_${slug}.md`;
-  const learningsDir = path.join(REPO_ROOT, 'ψ/memory/learnings');
-  fs.mkdirSync(learningsDir, { recursive: true });
-  const filePath = path.join(learningsDir, filename);
+  const { file, id } = persistLearningDoc({
+    pattern,
+    subdir: 'ψ/memory/learnings',
+    filename: `${dateStr}_${slug}.md`,
+    id: `learning_${dateStr}_${slug}`,
+    concepts,
+    source,
+    origin,
+    project: resolvedProject,
+    createdBy: 'arra_learn',
+  });
 
-  // Check if file already exists
-  if (fs.existsSync(filePath)) {
-    throw new Error(`File already exists: ${filename}`);
+  return { success: true, file, id };
+}
+
+/**
+ * Persist a session summary as a learning with concepts
+ * ["session-summary", "session-<id>", "oracle-<name>"].
+ * Written to ψ/memory/session-summaries/<session-id>.md so `arra_search` surfaces it.
+ */
+export function handleSessionSummary(
+  sessionId: string,
+  summary: string,
+  oracle?: string
+): { ok: true; source_file: string; learning_id: string } {
+  const safeSession = sessionId.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120);
+  if (!safeSession) throw new Error('Invalid session id');
+
+  const concepts = ['session-summary', `session-${safeSession}`];
+  if (oracle) {
+    const safeOracle = oracle.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
+    if (safeOracle) concepts.push(`oracle-${safeOracle}`);
   }
 
-  // Generate title from pattern
-  const title = pattern.split('\n')[0].substring(0, 80);
+  const { file, id } = persistLearningDoc({
+    pattern: summary,
+    subdir: 'ψ/memory/session-summaries',
+    filename: `${safeSession}.md`,
+    id: `session-summary_${safeSession}`,
+    concepts,
+    source: oracle ? `session-summary from ${oracle}` : 'session-summary',
+    createdBy: 'session_summary',
+    footer: '*Added via session auto-summary*',
+  });
 
-  // Create frontmatter
-  const frontmatter = [
-    '---',
-    `title: ${title}`,
-    concepts && concepts.length > 0 ? `tags: [${concepts.join(', ')}]` : 'tags: []',
-    `created: ${dateStr}`,
-    `source: ${source || 'Oracle Learn'}`,
-    '---',
-    '',
-    `# ${title}`,
-    '',
-    pattern,
-    '',
-    '---',
-    '*Added via Oracle Learn*',
-    ''
-  ].join('\n');
-
-  // Write file
-  fs.writeFileSync(filePath, frontmatter, 'utf-8');
-
-  // Re-index the new file
-  const content = frontmatter;
-  const id = `learning_${dateStr}_${slug}`;
-  const conceptsList = coerceConcepts(concepts);
-
-  // Insert into database with provenance using Drizzle
-  db.insert(oracleDocuments).values({
-    id,
-    type: 'learning',
-    sourceFile: `ψ/memory/learnings/${filename}`,
-    concepts: JSON.stringify(conceptsList),
-    createdAt: now.getTime(),
-    updatedAt: now.getTime(),
-    indexedAt: now.getTime(),
-    origin: origin || null,          // origin: null = universal/mother
-    project: resolvedProject || null, // project: null = universal (auto-detected from cwd)
-    createdBy: 'arra_learn'
-  }).run();
-
-  // Insert into FTS (must use raw SQL - Drizzle doesn't support virtual tables).
-  // FTS5 has no unique constraint on id — delete-then-insert to be idempotent.
-  sqlite.prepare(`DELETE FROM oracle_fts WHERE id = ?`).run(id);
-  sqlite.prepare(`
-    INSERT INTO oracle_fts (id, content, concepts)
-    VALUES (?, ?, ?)
-  `).run(
-    id,
-    content,
-    conceptsList.join(' ')
-  );
-
-  // Log the learning
-  logLearning(id, pattern, source || 'Oracle Learn', conceptsList);
-
-  return {
-    success: true,
-    file: `ψ/memory/learnings/${filename}`,
-    id
-  };
+  return { ok: true, source_file: file, learning_id: id };
 }

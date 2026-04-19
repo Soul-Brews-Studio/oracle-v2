@@ -35,6 +35,7 @@ import { registerSupersedeRoutes } from './routes/supersede.ts';
 import { registerFileRoutes } from './routes/files.ts';
 import { registerOracleNetRoutes } from './routes/oraclenet.ts';
 import { registerPluginRoutes } from './routes/plugins.ts';
+import { registerSessionSummaryRoutes } from './routes/session-summary.ts';
 
 // Reset stale indexing status on startup using Drizzle
 try {
@@ -150,6 +151,7 @@ registerSupersedeRoutes(app);
 registerFileRoutes(app);
 registerOracleNetRoutes(app);
 registerPluginRoutes(app);
+registerSessionSummaryRoutes(app);
 
 // Startup banner
 console.log(`
@@ -178,6 +180,9 @@ console.log(`
    - GET  /api/supersede       List supersessions
    - GET  /api/supersede/chain/:path  Document lineage
    - POST /api/supersede       Log supersession
+
+   Sessions:
+   - POST /api/session/:id/summary  Write session summary as learning
 `);
 
 export default {
