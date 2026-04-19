@@ -18,7 +18,7 @@ const GroupSchema = t.Union([
 ]);
 const AccessSchema = t.Union([t.Literal('public'), t.Literal('auth')]);
 
-function toResponse(row: MenuRow) {
+export function toResponse(row: MenuRow) {
   return {
     id: row.id,
     path: row.path,
@@ -31,6 +31,7 @@ function toResponse(row: MenuRow) {
     source: row.source,
     icon: row.icon,
     host: row.host,
+    hidden: row.hidden,
     touchedAt: row.touchedAt ? row.touchedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -105,6 +106,7 @@ export function createMenuAdminRoutes() {
               source: 'custom',
               icon: body.icon ?? null,
               host: body.host ?? null,
+              hidden: body.hidden ?? false,
               touchedAt: now,
               createdAt: now,
               updatedAt: now,
@@ -129,6 +131,7 @@ export function createMenuAdminRoutes() {
           access: t.Optional(AccessSchema),
           icon: t.Optional(t.String()),
           host: t.Optional(t.Nullable(t.String())),
+          hidden: t.Optional(t.Boolean()),
         }),
         detail: {
           tags: ['menu'],
@@ -155,6 +158,7 @@ export function createMenuAdminRoutes() {
         if (body.access !== undefined) patch.access = body.access;
         if (body.icon !== undefined) patch.icon = body.icon;
         if (body.host !== undefined) patch.host = body.host;
+        if (body.hidden !== undefined) patch.hidden = body.hidden;
 
         const updated = db
           .update(menuItems)
@@ -179,6 +183,7 @@ export function createMenuAdminRoutes() {
           access: t.Optional(AccessSchema),
           icon: t.Optional(t.Nullable(t.String())),
           host: t.Optional(t.Nullable(t.String())),
+          hidden: t.Optional(t.Boolean()),
         }),
         detail: {
           tags: ['menu'],

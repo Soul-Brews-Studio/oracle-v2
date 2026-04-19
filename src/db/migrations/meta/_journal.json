@@ -64,6 +64,13 @@
       "when": 1777248000000,
       "tag": "0008_menu_host",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1777852800000,
+      "tag": "0009_menu_hidden",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ const base = (over: Partial<Row>): Row => ({
   source: 'route',
   icon: null,
   host: null,
+  hidden: false,
   touchedAt: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
