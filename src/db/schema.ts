@@ -296,7 +296,7 @@ export const settings = sqliteTable('settings', {
 
 export const menuItems = sqliteTable('menu_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  path: text('path').notNull().unique(),
+  path: text('path').notNull(),
   label: text('label').notNull(),
   groupKey: text('group_key').notNull(),
   parentId: integer('parent_id').references((): AnySQLiteColumn => menuItems.id, { onDelete: 'cascade' }),

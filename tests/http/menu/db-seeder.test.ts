@@ -39,9 +39,9 @@ describe('collectRouteMenuRows', () => {
   test('maps api paths to studio paths + menu meta', () => {
     const rows = collectRouteMenuRows([sampleSource()]);
     expect(rows).toEqual([
-      { path: '/search', label: 'Search', groupKey: 'main', position: 10, access: 'public', icon: null },
-      { path: '/traces', label: 'Traces', groupKey: 'main', position: 40, access: 'public', icon: null },
-      { path: '/map', label: 'Map', groupKey: 'tools', position: 20, access: 'public', icon: null },
+      { path: '/search', label: 'Search', groupKey: 'main', position: 10, access: 'public', icon: null, studio: null },
+      { path: '/traces', label: 'Traces', groupKey: 'main', position: 40, access: 'public', icon: null, studio: null },
+      { path: '/map', label: 'Map', groupKey: 'tools', position: 20, access: 'public', icon: null, studio: null },
     ]);
   });
 

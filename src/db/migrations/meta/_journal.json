@@ -99,6 +99,13 @@
       "when": 1780000000000,
       "tag": "0013_forum_subdomain",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1780012800000,
+      "tag": "0014_menu_path_studio_composite",
+      "breakpoints": true
     }
   ]
 }
