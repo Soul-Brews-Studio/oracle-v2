@@ -27,7 +27,7 @@ export const API_TO_STUDIO: ReadonlyArray<readonly [string, string]> = [
   ['/api/search', '/search'],
   ['/api/list', '/feed'],
   ['/api/reflect', '/playground'],
-  ['/api/threads', '/forum'],
+  ['/api/threads', '/'],
   ['/api/traces', '/traces'],
   ['/api/schedule', '/schedule'],
   ['/api/plugins', '/plugins'],
