@@ -8,7 +8,7 @@
  *   - touchedAt != null        → PRESERVE (user edit wins); log drift
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import * as schema from '../schema.ts';
 import { db as defaultDb } from '../index.ts';
@@ -25,6 +25,7 @@ export interface RouteMenuRow {
   position: number;
   access: string;
   icon?: string | null;
+  studio?: string | null; // host subdomain (e.g. feed.buildwithoracle.com); null = legacy studio.*
 }
 
 function studioPathFor(apiPath: string): string | null {
@@ -63,6 +64,7 @@ export function collectRouteMenuRows(sources: HasRoutes[]): RouteMenuRow[] {
         position: order,
         access: menu.access ?? 'public',
         icon: menu.icon ?? null,
+        studio: null,
       });
     }
   }
@@ -104,7 +106,14 @@ export function seedMenuItems(
       const existing = tx
         .select()
         .from(schema.menuItems)
-        .where(eq(schema.menuItems.path, row.path))
+        .where(
+          and(
+            eq(schema.menuItems.path, row.path),
+            row.studio == null
+              ? isNull(schema.menuItems.studio)
+              : eq(schema.menuItems.studio, row.studio),
+          ),
+        )
         .get();
 
       if (!existing) {
@@ -117,6 +126,7 @@ export function seedMenuItems(
             access: row.access,
             source: 'route',
             icon: row.icon ?? null,
+            studio: row.studio ?? null,
             enabled: true,
             touchedAt: null,
             createdAt: now,
@@ -158,13 +168,13 @@ export function seedMenuItems(
       const parent = tx
         .select()
         .from(schema.menuItems)
-        .where(eq(schema.menuItems.path, parentPath))
+        .where(and(eq(schema.menuItems.path, parentPath), isNull(schema.menuItems.studio)))
         .get();
       if (!parent) continue;
       const child = tx
         .select()
         .from(schema.menuItems)
-        .where(eq(schema.menuItems.path, childPath))
+        .where(and(eq(schema.menuItems.path, childPath), isNull(schema.menuItems.studio)))
         .get();
       if (!child || child.parentId === parent.id) continue;
       tx.update(schema.menuItems)
