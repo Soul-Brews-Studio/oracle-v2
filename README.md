@@ -1,5 +1,7 @@
 # Arra Oracle - MCP Memory Layer
 
+[![CI](https://github.com/Soul-Brews-Studio/arra-oracle-v3/actions/workflows/ci.yml/badge.svg)](https://github.com/Soul-Brews-Studio/arra-oracle-v3/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-BUSL--1.1-blue)](./LICENSE) [![CalVer](https://img.shields.io/badge/calver-v26.4.20--alpha.7-blue)](https://calver.org) [![Bun](https://img.shields.io/badge/runtime-Bun%201.2%2B-f9f1e1)](https://bun.sh)
+
 > "The Oracle Keeps the Human Human" - now queryable via MCP
 
 Phukhao Oracle is landing here: https://phukhao.buildwithoracle.com/presentation/
