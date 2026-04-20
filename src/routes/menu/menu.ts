@@ -117,6 +117,8 @@ export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
       ? (row.groupKey as MenuItem['group'])
       : 'hidden';
     const item: MenuItem = {
+      id: String(row.id),
+      parentId: row.parentId == null ? null : String(row.parentId),
       path: row.path,
       label: row.label,
       group,

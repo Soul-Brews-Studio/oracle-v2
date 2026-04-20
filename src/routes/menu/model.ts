@@ -20,6 +20,8 @@ declare module 'elysia' {
 }
 
 export const MenuItemSchema = t.Object({
+  id: t.Optional(t.String()),
+  parentId: t.Optional(t.Nullable(t.String())),
   path: t.String(),
   label: t.String(),
   group: t.Union([
