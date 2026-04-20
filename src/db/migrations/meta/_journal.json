@@ -85,6 +85,13 @@
       "when": 1778803200000,
       "tag": "0011_menu_reorg",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1779321600000,
+      "tag": "0012_menu_studio",
+      "breakpoints": true
     }
   ]
 }
