@@ -77,7 +77,6 @@ export function collectRouteMenuRows(sources: HasRoutes[]): RouteMenuRow[] {
  */
 const CHILD_PARENTS: Record<string, string> = {
   '/playground': '#tools',
-  '/forum': '#tools',
   '/plugins': '#tools',
   '/evolution': '#tools',
   '/pulse': '#tools',

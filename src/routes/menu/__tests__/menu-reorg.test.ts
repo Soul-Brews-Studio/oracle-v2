@@ -11,7 +11,7 @@ import { db, menuItems } from '../../../db/index.ts';
 import { seedMenuItems } from '../../../db/seeders/menu-seeder.ts';
 import { buildTree } from '../admin.ts';
 
-const CHILD_PATHS = ['/playground', '/forum', '/plugins', '/evolution', '/pulse', '/map'] as const;
+const CHILD_PATHS = ['/playground', '/plugins', '/evolution', '/pulse', '/map'] as const;
 const ALL_PATHS = ['#tools', '#canvas', '/planets', ...CHILD_PATHS] as const;
 
 function insertParent(path: string, label: string, position: number): number {
@@ -59,8 +59,8 @@ describe('#958 submenu reorg — seeder reparent post-pass', () => {
     db.delete(menuItems).where(inArray(menuItems.path, ALL_PATHS as unknown as string[])).run();
   });
 
-  it('reparents five Tools children', () => {
-    for (const p of ['/playground', '/forum', '/plugins', '/evolution', '/pulse']) {
+  it('reparents four Tools children', () => {
+    for (const p of ['/playground', '/plugins', '/evolution', '/pulse']) {
       const row = db.select().from(menuItems).where(eq(menuItems.path, p)).get();
       expect(row?.parentId, `parent of ${p}`).toBe(toolsId);
     }
@@ -83,12 +83,12 @@ describe('#958 submenu reorg — seeder reparent post-pass', () => {
     expect(result).toEqual({ inserted: 0, updated: 0, preserved: 0 });
   });
 
-  it('buildTree surfaces Tools w/ 5 children and Canvas w/ 2', () => {
+  it('buildTree surfaces Tools w/ 4 children and Canvas w/ 2', () => {
     const rows = db.select().from(menuItems).where(inArray(menuItems.path, ALL_PATHS as unknown as string[])).all();
     const tree = buildTree(rows);
     const tools = tree.find((n) => n.path === '#tools');
     const canvas = tree.find((n) => n.path === '#canvas');
-    expect(tools?.children.length).toBe(5);
+    expect(tools?.children.length).toBe(4);
     expect(canvas?.children.length).toBe(2);
     expect(canvas?.children.map((c) => c.path).sort()).toEqual(['/map', '/planets']);
   });
