@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /**
  * Arra Oracle MCP Server
  *

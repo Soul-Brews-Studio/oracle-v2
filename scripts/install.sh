@@ -10,8 +10,8 @@
 set -e
 
 INSTALL_DIR="${ORACLE_INSTALL_DIR:-$HOME/.local/share/arra-oracle-v2}"
-REPO_URL="https://github.com/Soul-Brews-Studio/arra-oracle-v2.git"
-REPO_API="https://api.github.com/repos/Soul-Brews-Studio/arra-oracle-v2"
+REPO_URL="https://github.com/Soul-Brews-Studio/arra-oracle-v3.git"
+REPO_API="https://api.github.com/repos/Soul-Brews-Studio/arra-oracle-v3"
 
 echo "🔮 Arra Oracle Installer"
 echo "======================"
