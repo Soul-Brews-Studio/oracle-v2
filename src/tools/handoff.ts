@@ -31,7 +31,56 @@ export const handoffToolDef = {
 };
 
 export async function handleHandoff(ctx: ToolContext, input: OracleHandoffInput): Promise<ToolResponse> {
-  const { content, slug: slugInput } = input;
+  // Null-guard: MCP clients sometimes call with no args. Show usage instead of crashing.
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_handoff requires field 'content' (string). Optional: 'slug' (string).",
+          usage: "arra_handoff({ content: 'session summary markdown...', slug: 'optional-slug' })",
+          tip: "To list existing handoffs, use arra_inbox() instead."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
+  const { content, slug: slugInput } = input as { content?: unknown; slug?: unknown };
+
+  // Validate content: must be a non-empty string before any string ops.
+  if (typeof content !== 'string' || content.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_handoff requires field 'content' (non-empty string).",
+          received: content === undefined ? 'undefined' : typeof content,
+          usage: "arra_handoff({ content: 'session summary markdown...', slug: 'optional-slug' })",
+          tip: "To list existing handoffs, use arra_inbox() instead."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
+  // Validate optional slug type if supplied.
+  if (slugInput !== undefined && typeof slugInput !== 'string') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_handoff field 'slug' must be a string when provided.",
+          received: typeof slugInput
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
   const now = new Date();
 
   const dateStr = now.toISOString().split('T')[0];
