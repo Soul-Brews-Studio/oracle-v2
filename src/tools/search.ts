@@ -71,8 +71,12 @@ export const searchToolDef = {
  * Removes FTS5 special characters that cause syntax errors.
  */
 export function sanitizeFtsQuery(query: string): string {
+  // Strip FTS5 special chars + SQL-comment / statement-terminator chars that
+  // can leak as raw FTS5 parser errors (e.g. ';' or '--' in user input).
   let sanitized = query
-    .replace(/[?*+\-()^~"':.\/]/g, ' ')
+    .replace(/[?*+()^~"':.\/;,!=<>{}\[\]\\|&]/g, ' ')
+    .replace(/--+/g, ' ')   // collapse consecutive dashes (SQL comment)
+    .replace(/-+/g, ' ')    // and any remaining dashes (FTS5 prefix-NOT)
     .replace(/\s+/g, ' ')
     .trim();
 

@@ -25,6 +25,12 @@ export interface OracleThreadInput {
   title?: string;
   role?: 'human' | 'claude';
   model?: string;
+  /**
+   * When sending a message to an existing thread whose status is 'closed',
+   * the call is rejected unless reopen is explicitly true. Default false.
+   * Prevents accidentally re-opening closed threads on continuation calls.
+   */
+  reopen?: boolean;
 }
 
 export interface OracleThreadsInput {
@@ -58,6 +64,7 @@ export const threadToolDef = {
       title: { type: 'string', description: 'Title for new thread (defaults to first 50 chars of message)' },
       role: { type: 'string', enum: ['human', 'claude'], description: 'Who is sending (default: human)', default: 'human' },
       model: { type: 'string', description: 'Model name for Claude calls (e.g., "opus", "sonnet")' },
+      reopen: { type: 'boolean', description: 'When threadId points to a closed thread, must pass reopen=true to add a new message (otherwise rejected). Defaults to false.', default: false },
     },
     required: ['message']
   }
@@ -116,6 +123,60 @@ export const forumToolDefs = [
 // ============================================================================
 
 export async function handleThread(input: OracleThreadInput): Promise<ToolResponse> {
+  // Null-guard: MCP clients sometimes call with no args. Show usage instead of crashing.
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread requires field 'message' (non-empty string).",
+          usage: "arra_thread({ message: 'your question or message', threadId?: number, title?: 'optional title' })",
+          tip: "To list threads, use arra_threads(). To read a specific one, use arra_thread_read(threadId)."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
+  const message = (input as { message?: unknown }).message;
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread requires field 'message' (non-empty string).",
+          received: message === undefined ? 'undefined' : typeof message,
+          usage: "arra_thread({ message: 'your question...', threadId?: number, title?: 'optional title' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
+  // Closed-thread gate (iter2 bug #6): if threadId points to an existing thread
+  // whose status is 'closed', reject unless reopen=true is explicitly passed.
+  // Prevents handleThreadMessage's unconditional status-flip from silently
+  // re-opening closed threads on continuation calls.
+  if (typeof input.threadId === 'number') {
+    const existing = getFullThread(input.threadId);
+    if (existing && existing.thread.status === 'closed' && input.reopen !== true) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            error: `Thread ${input.threadId} is closed. Pass reopen=true to add a new message and re-open it.`,
+            received: { threadId: input.threadId, reopen: input.reopen ?? false, currentStatus: 'closed' },
+            tip: "Either pass reopen=true on this call, or arra_thread_update({threadId, status:'active'}) first."
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
+  }
+
   const result = await handleThreadMessage({
     message: input.message,
     threadId: input.threadId,
@@ -172,6 +233,21 @@ export async function handleThreads(input: OracleThreadsInput): Promise<ToolResp
 }
 
 export async function handleThreadRead(input: OracleThreadReadInput): Promise<ToolResponse> {
+  if (input == null || typeof input !== 'object' || typeof input.threadId !== 'number') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_read requires field 'threadId' (number).",
+          received: input == null ? 'undefined' : typeof (input as any).threadId,
+          usage: "arra_thread_read({ threadId: 528, limit?: 10 })",
+          tip: "List recent threads with arra_threads()."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const threadData = getFullThread(input.threadId);
   if (!threadData) throw new Error(`Thread ${input.threadId} not found`);
 
@@ -202,7 +278,36 @@ export async function handleThreadRead(input: OracleThreadReadInput): Promise<To
 }
 
 export async function handleThreadUpdate(input: OracleThreadUpdateInput): Promise<ToolResponse> {
-  if (!input.status) throw new Error('status is required');
+  if (input == null || typeof input !== 'object' || typeof input.threadId !== 'number') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_update requires field 'threadId' (number).",
+          received: input == null ? 'undefined' : typeof (input as any).threadId,
+          usage: "arra_thread_update({ threadId: 528, status: 'closed' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  const ALLOWED_STATUSES = ['active', 'closed', 'answered', 'pending'] as const;
+  if (!input.status || !ALLOWED_STATUSES.includes(input.status as any)) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_update requires field 'status' to be one of: active, closed, answered, pending.",
+          received: input.status === undefined ? 'undefined' : JSON.stringify(input.status),
+          allowed: ALLOWED_STATUSES,
+          usage: "arra_thread_update({ threadId: 528, status: 'closed' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
 
   updateThreadStatus(input.threadId, input.status);
   const threadData = getFullThread(input.threadId);

@@ -277,6 +277,19 @@ class OracleMCPServer {
           case 'arra_trace_chain':
             return await handleTraceChain(request.params.arguments as unknown as { traceId: string });
 
+          case '____IMPORTANT':
+            return {
+              content: [{
+                type: 'text',
+                text: `ORACLE WORKFLOW GUIDE (v${this.version})\n\n` +
+                  `1. SEARCH & DISCOVER\n   arra_search(query) → keyword/vector search\n   arra_read(file/id) → full document\n   arra_list() → browse all\n   arra_concepts() → topic coverage\n\n` +
+                  `2. LEARN & REMEMBER\n   arra_learn(pattern) → add a learning\n   arra_thread(message) → start/continue a thread\n   arra_supersede(oldId, newId) → mark outdated (Nothing is Deleted)\n\n` +
+                  `3. TRACE & DISTILL\n   arra_trace(query) → log a discovery session\n   arra_trace_list() / arra_trace_get(id) / arra_trace_chain(id)\n   arra_trace_link(prev, next) / arra_trace_unlink(id, dir)\n\n` +
+                  `4. HANDOFF & INBOX\n   arra_handoff(content) → save session context\n   arra_inbox() → list pending handoffs\n\n` +
+                  `Philosophy: Nothing is Deleted — supersede, don't remove.`
+              }]
+            };
+
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
         }

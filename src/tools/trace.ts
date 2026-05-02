@@ -132,6 +132,35 @@ export const traceToolDefs = [
 // ============================================================================
 
 export async function handleTrace(input: CreateTraceInput): Promise<ToolResponse> {
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_trace requires field 'query' (non-empty string).",
+          usage: "arra_trace({ query: 'what was traced', scope?: 'project'|'cross-project'|'human', queryType?: 'general'|'project'|'pattern'|'evolution' })",
+          tip: "List recent traces with arra_trace_list()."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  const q = (input as { query?: unknown }).query;
+  if (typeof q !== 'string' || q.trim().length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_trace requires field 'query' (non-empty string).",
+          received: q === undefined ? 'undefined' : typeof q,
+          usage: "arra_trace({ query: 'what was traced', ... })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const result = createTrace(input);
   console.error(`[MCP:TRACE] query="${input.query}" depth=${result.depth} digPoints=${result.summary.totalDigPoints}`);
 
@@ -182,6 +211,20 @@ export async function handleTraceList(input: ListTracesInput): Promise<ToolRespo
 }
 
 export async function handleTraceGet(input: GetTraceInput): Promise<ToolResponse> {
+  if (input == null || typeof input !== 'object' || typeof input.traceId !== 'string' || input.traceId.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_trace_get requires field 'traceId' (UUID string).",
+          received: input == null ? 'undefined' : typeof (input as any).traceId,
+          usage: "arra_trace_get({ traceId: '6b381742-...', includeChain?: false })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const trace = getTrace(input.traceId);
   if (!trace) throw new Error(`Trace ${input.traceId} not found`);
 
@@ -275,6 +318,21 @@ export async function handleTraceUnlink(input: { traceId: string; direction: 'pr
 }
 
 export async function handleTraceChain(input: { traceId: string }): Promise<ToolResponse> {
+  if (input == null || typeof input !== 'object' || typeof input.traceId !== 'string' || input.traceId.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_trace_chain requires field 'traceId' (UUID string).",
+          received: input == null ? 'undefined' : typeof (input as any).traceId,
+          usage: "arra_trace_chain({ traceId: '6b381742-...' })",
+          tip: "Pass any trace UUID in the chain to retrieve the full sequence."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const result = getTraceLinkedChain(input.traceId);
   console.error(`[MCP:TRACE_CHAIN] id=${input.traceId} chain_length=${result.chain.length} position=${result.position}`);
 
