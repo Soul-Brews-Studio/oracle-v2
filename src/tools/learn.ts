@@ -102,7 +102,42 @@ export function extractProjectFromSource(source?: string): string | null {
 // ============================================================================
 
 export async function handleLearn(ctx: ToolContext, input: OracleLearnInput): Promise<ToolResponse> {
+  // Null-guard: MCP clients sometimes call with no args. Show usage instead of crashing.
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_learn requires field 'pattern' (non-empty string).",
+          usage: "arra_learn({ pattern: 'your learning or pattern...', concepts?: ['tag1','tag2'], project?: 'github.com/owner/repo', source?: 'optional source' })",
+          tip: "Search for similar topics first with arra_search, and use arra_supersede if updating older info."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
   const { pattern, source, concepts, project: projectInput } = input;
+
+  // Validate pattern: must be a non-empty string before any string ops or filename derivation.
+  // (Cast through `unknown` so the runtime check survives even when callers pass undefined despite TS typing.)
+  if (typeof (pattern as unknown) !== 'string' || (pattern as string).trim().length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_learn requires field 'pattern' (non-empty string).",
+          received: pattern === undefined ? 'undefined' : typeof pattern,
+          usage: "arra_learn({ pattern: 'your learning or pattern...', concepts?: ['tag1','tag2'] })",
+          tip: "Empty pattern would produce a corrupt filename; reject upfront."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
 

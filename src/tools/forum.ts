@@ -116,6 +116,38 @@ export const forumToolDefs = [
 // ============================================================================
 
 export async function handleThread(input: OracleThreadInput): Promise<ToolResponse> {
+  // Null-guard: MCP clients sometimes call with no args. Show usage instead of crashing.
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread requires field 'message' (non-empty string).",
+          usage: "arra_thread({ message: 'your question or message', threadId?: number, title?: 'optional title' })",
+          tip: "To list threads, use arra_threads(). To read a specific one, use arra_thread_read(threadId)."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
+  const message = (input as { message?: unknown }).message;
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread requires field 'message' (non-empty string).",
+          received: message === undefined ? 'undefined' : typeof message,
+          usage: "arra_thread({ message: 'your question...', threadId?: number, title?: 'optional title' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+
   const result = await handleThreadMessage({
     message: input.message,
     threadId: input.threadId,
@@ -172,6 +204,21 @@ export async function handleThreads(input: OracleThreadsInput): Promise<ToolResp
 }
 
 export async function handleThreadRead(input: OracleThreadReadInput): Promise<ToolResponse> {
+  if (input == null || typeof input !== 'object' || typeof input.threadId !== 'number') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_read requires field 'threadId' (number).",
+          received: input == null ? 'undefined' : typeof (input as any).threadId,
+          usage: "arra_thread_read({ threadId: 528, limit?: 10 })",
+          tip: "List recent threads with arra_threads()."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const threadData = getFullThread(input.threadId);
   if (!threadData) throw new Error(`Thread ${input.threadId} not found`);
 
@@ -202,7 +249,21 @@ export async function handleThreadRead(input: OracleThreadReadInput): Promise<To
 }
 
 export async function handleThreadUpdate(input: OracleThreadUpdateInput): Promise<ToolResponse> {
-  if (!input.status) throw new Error('status is required');
+  if (input == null || typeof input !== 'object' || typeof input.threadId !== 'number') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_update requires field 'threadId' (number).",
+          received: input == null ? 'undefined' : typeof (input as any).threadId,
+          usage: "arra_thread_update({ threadId: 528, status: 'closed' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  if (!input.status) throw new Error("arra_thread_update requires field 'status' (active|closed|answered|pending).");
 
   updateThreadStatus(input.threadId, input.status);
   const threadData = getFullThread(input.threadId);
