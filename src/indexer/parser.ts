@@ -133,3 +133,64 @@ export function parseRetroFile(relativePath: string, content: string): OracleDoc
 
   return documents;
 }
+
+/**
+ * Parse security-corpus file (ψ/learn/security-corpus/<topic>/<source>/...).
+ * Per-file = one document by default; if file has ## headers, splits into sections
+ * (mirrors parseLearningFile). Topic + source extracted from path:
+ *   ψ/learn/security-corpus/web/hacktricks/foo.md → topic=web, source=hacktricks
+ * Concepts seeded with topic + source + extracted keywords.
+ */
+export function parseSecurityCorpusFile(relativePath: string, content: string): OracleDocument[] {
+  const documents: OracleDocument[] = [];
+  const now = Date.now();
+
+  // Path layout: ψ/learn/security-corpus/<topic>/<source>/<...>/<file>
+  const parts = relativePath.split(path.sep);
+  const corpusIdx = parts.findIndex(p => p === 'security-corpus');
+  const topic = corpusIdx >= 0 && parts.length > corpusIdx + 1 ? parts[corpusIdx + 1] : 'unknown';
+  const source = corpusIdx >= 0 && parts.length > corpusIdx + 2 ? parts[corpusIdx + 2] : 'unknown';
+
+  const filename = path.basename(relativePath, path.extname(relativePath));
+  const safeFilename = filename.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+  const pathHash = Bun.hash(relativePath).toString(36);
+
+  const baseConcepts = [topic, source].filter(c => c && c !== 'unknown');
+
+  // Section split if .md with ## headers; otherwise single doc
+  const isMarkdown = relativePath.endsWith('.md');
+  const sections = isMarkdown
+    ? content.split(/^##\s+/m).filter(s => s.trim() && s.trim().length > 50)
+    : [];
+
+  if (sections.length > 1) {
+    sections.forEach((section, index) => {
+      const lines = section.split('\n');
+      const sectionTitle = lines[0].trim();
+      const body = lines.slice(1).join('\n').trim();
+      if (!body || body.length < 50) return;
+
+      const id = `security_corpus_${topic}_${safeFilename}_${pathHash}_${index}`;
+      const extracted = extractConcepts(sectionTitle, body);
+      documents.push({
+        id, type: 'security-corpus', source_file: relativePath,
+        content: `[${topic}/${source}] ${sectionTitle}: ${body}`.slice(0, 8000),
+        concepts: mergeConceptsWithTags(extracted, baseConcepts),
+        created_at: now, updated_at: now, project: undefined,
+      });
+    });
+  }
+
+  if (documents.length === 0) {
+    const id = `security_corpus_${topic}_${safeFilename}_${pathHash}`;
+    const extracted = extractConcepts(filename, content.slice(0, 4000));
+    documents.push({
+      id, type: 'security-corpus', source_file: relativePath,
+      content: `[${topic}/${source}] ${filename}: ${content}`.slice(0, 8000),
+      concepts: mergeConceptsWithTags(extracted, baseConcepts),
+      created_at: now, updated_at: now, project: undefined,
+    });
+  }
+
+  return documents;
+}
