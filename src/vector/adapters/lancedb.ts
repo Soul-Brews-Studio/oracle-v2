@@ -73,7 +73,7 @@ export class LanceDBAdapter implements VectorStoreAdapter {
     if (!this.table) await this.ensureCollection();
 
     const texts = docs.map(d => d.document);
-    const embeddings = await this.embedder.embed(texts);
+    const embeddings = await this.embedder.embed(texts, 'passage');
 
     const rows = docs.map((doc, i) => ({
       id: doc.id,
@@ -89,11 +89,11 @@ export class LanceDBAdapter implements VectorStoreAdapter {
   async query(text: string, limit: number = 10, where?: Record<string, any>): Promise<VectorQueryResult> {
     if (!this.table) await this.ensureCollection();
 
-    const [queryEmbedding] = await this.embedder.embed([text]);
+    const [queryEmbedding] = await this.embedder.embed([text], 'query');
 
     // Fetch extra results if filtering in JS (metadata is stored as string, not binary)
     const fetchLimit = where ? limit * 3 : limit;
-    const results = await this.table.search(queryEmbedding).limit(fetchLimit).toArray();
+    const results = await this.table.search(queryEmbedding).distanceType('cosine').limit(fetchLimit).toArray();
 
     // Filter metadata in JavaScript (LanceDB json_extract requires LargeBinary, not Utf8)
     let filtered = results;
@@ -122,7 +122,7 @@ export class LanceDBAdapter implements VectorStoreAdapter {
     }
 
     const vector = Array.from(rows[0].vector);
-    const results = await this.table.search(vector).limit(nResults + 1).toArray();
+    const results = await this.table.search(vector).distanceType('cosine').limit(nResults + 1).toArray();
 
     const filtered = results.filter((r: any) => r.id !== id).slice(0, nResults);
 

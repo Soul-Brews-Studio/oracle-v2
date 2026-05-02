@@ -5,7 +5,7 @@
  * ChromaDB handles embeddings internally; other stores need these.
  */
 
-import type { EmbeddingProvider, EmbeddingProviderType } from './types.ts';
+import type { EmbeddingProvider, EmbeddingProviderType, EmbedType } from './types.ts';
 
 /**
  * Placeholder for ChromaDB's internal embeddings.
@@ -15,7 +15,7 @@ export class ChromaDBInternalEmbeddings implements EmbeddingProvider {
   readonly name = 'chromadb-internal';
   readonly dimensions = 384; // all-MiniLM-L6-v2 default
 
-  async embed(_texts: string[]): Promise<number[][]> {
+  async embed(_texts: string[], _type?: EmbedType): Promise<number[][]> {
     throw new Error('ChromaDB handles embeddings internally. Use addDocuments() directly.');
   }
 }
@@ -44,12 +44,19 @@ export class OllamaEmbeddings implements EmbeddingProvider {
     this.dimensions = KNOWN_DIMS[this.model] || 768;
   }
 
-  async embed(texts: string[]): Promise<number[][]> {
+  async embed(texts: string[], type?: EmbedType): Promise<number[][]> {
     const embeddings: number[][] = [];
 
     for (const text of texts) {
       // Truncate to ~2000 chars — Thai text uses 2-3x more tokens than English
-      const truncated = text.length > 2000 ? text.slice(0, 2000) : text;
+      let truncated = text.length > 2000 ? text.slice(0, 2000) : text;
+
+      // bge-m3 needs instruction prefixes for accurate retrieval
+      if (this.model.includes('bge') && type === 'query') {
+        truncated = `query: ${truncated}`;
+      } else if (this.model.includes('bge') && type === 'passage') {
+        truncated = `passage: ${truncated}`;
+      }
       const response = await fetch(`${this.baseUrl}/api/embeddings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +101,7 @@ export class OpenAIEmbeddings implements EmbeddingProvider {
     }
   }
 
-  async embed(texts: string[]): Promise<number[][]> {
+  async embed(texts: string[], _type?: EmbedType): Promise<number[][]> {
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {

@@ -36,6 +36,8 @@ export interface VectorStoreAdapter {
   getAllEmbeddings?(limit?: number): Promise<{ ids: string[]; embeddings: number[][]; metadatas: any[] }>;
 }
 
+export type EmbedType = 'query' | 'passage';
+
 /**
  * Embedding provider interface.
  * Separated from storage because ChromaDB handles embeddings internally,
@@ -44,7 +46,7 @@ export interface VectorStoreAdapter {
 export interface EmbeddingProvider {
   readonly name: string;
   readonly dimensions: number;
-  embed(texts: string[]): Promise<number[][]>;
+  embed(texts: string[], type?: EmbedType): Promise<number[][]>;
 }
 
 export type VectorDBType = 'chroma' | 'sqlite-vec' | 'lancedb' | 'qdrant' | 'cloudflare-vectorize';
