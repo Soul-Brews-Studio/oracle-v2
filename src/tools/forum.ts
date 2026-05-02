@@ -25,6 +25,12 @@ export interface OracleThreadInput {
   title?: string;
   role?: 'human' | 'claude';
   model?: string;
+  /**
+   * When sending a message to an existing thread whose status is 'closed',
+   * the call is rejected unless reopen is explicitly true. Default false.
+   * Prevents accidentally re-opening closed threads on continuation calls.
+   */
+  reopen?: boolean;
 }
 
 export interface OracleThreadsInput {
@@ -58,6 +64,7 @@ export const threadToolDef = {
       title: { type: 'string', description: 'Title for new thread (defaults to first 50 chars of message)' },
       role: { type: 'string', enum: ['human', 'claude'], description: 'Who is sending (default: human)', default: 'human' },
       model: { type: 'string', description: 'Model name for Claude calls (e.g., "opus", "sonnet")' },
+      reopen: { type: 'boolean', description: 'When threadId points to a closed thread, must pass reopen=true to add a new message (otherwise rejected). Defaults to false.', default: false },
     },
     required: ['message']
   }
@@ -146,6 +153,28 @@ export async function handleThread(input: OracleThreadInput): Promise<ToolRespon
       }],
       isError: true
     };
+  }
+
+  // Closed-thread gate (iter2 bug #6): if threadId points to an existing thread
+  // whose status is 'closed', reject unless reopen=true is explicitly passed.
+  // Prevents handleThreadMessage's unconditional status-flip from silently
+  // re-opening closed threads on continuation calls.
+  if (typeof input.threadId === 'number') {
+    const existing = getFullThread(input.threadId);
+    if (existing && existing.thread.status === 'closed' && input.reopen !== true) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            error: `Thread ${input.threadId} is closed. Pass reopen=true to add a new message and re-open it.`,
+            received: { threadId: input.threadId, reopen: input.reopen ?? false, currentStatus: 'closed' },
+            tip: "Either pass reopen=true on this call, or arra_thread_update({threadId, status:'active'}) first."
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 
   const result = await handleThreadMessage({
