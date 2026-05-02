@@ -33,7 +33,63 @@ export const supersedeToolDef = {
 };
 
 export async function handleSupersede(ctx: ToolContext, input: OracleSupersededInput): Promise<ToolResponse> {
-  const { oldId, newId, reason } = input;
+  if (input == null || typeof input !== 'object') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_supersede requires fields 'oldId' and 'newId' (both non-empty strings).",
+          usage: "arra_supersede({ oldId: 'learning_X', newId: 'learning_Y', reason?: 'why' })",
+          tip: "Search for the IDs with arra_search or arra_list first."
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  const { oldId, newId, reason } = input as { oldId?: unknown; newId?: unknown; reason?: unknown };
+  if (typeof oldId !== 'string' || oldId.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_supersede requires field 'oldId' (non-empty string).",
+          received: oldId === undefined ? 'undefined' : typeof oldId,
+          usage: "arra_supersede({ oldId: 'learning_X', newId: 'learning_Y' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  if (typeof newId !== 'string' || newId.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_supersede requires field 'newId' (non-empty string).",
+          received: newId === undefined ? 'undefined' : typeof newId,
+          usage: "arra_supersede({ oldId: 'learning_X', newId: 'learning_Y' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+  if (oldId === newId) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_supersede oldId and newId must be different documents.",
+          received: { oldId, newId },
+          tip: "A document cannot supersede itself. Did you intend to update content via arra_learn instead?"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
   const now = Date.now();
 
   const oldDoc = ctx.db.select({ id: oracleDocuments.id, type: oracleDocuments.type })
@@ -52,7 +108,7 @@ export async function handleSupersede(ctx: ToolContext, input: OracleSupersededI
     .set({
       supersededBy: newId,
       supersededAt: now,
-      supersededReason: reason || null,
+      supersededReason: typeof reason === 'string' ? reason : null,
     })
     .where(eq(oracleDocuments.id, oldId))
     .run();

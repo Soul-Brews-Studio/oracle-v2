@@ -263,7 +263,22 @@ export async function handleThreadUpdate(input: OracleThreadUpdateInput): Promis
       isError: true
     };
   }
-  if (!input.status) throw new Error("arra_thread_update requires field 'status' (active|closed|answered|pending).");
+  const ALLOWED_STATUSES = ['active', 'closed', 'answered', 'pending'] as const;
+  if (!input.status || !ALLOWED_STATUSES.includes(input.status as any)) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          error: "arra_thread_update requires field 'status' to be one of: active, closed, answered, pending.",
+          received: input.status === undefined ? 'undefined' : JSON.stringify(input.status),
+          allowed: ALLOWED_STATUSES,
+          usage: "arra_thread_update({ threadId: 528, status: 'closed' })"
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
 
   updateThreadStatus(input.threadId, input.status);
   const threadData = getFullThread(input.threadId);
