@@ -19,6 +19,14 @@ declare module 'elysia' {
   }
 }
 
+export const ScopeSchema = t.Union([
+  t.Literal('main'),
+  t.Literal('sub'),
+  t.Literal('both'),
+]);
+
+export type Scope = Static<typeof ScopeSchema>;
+
 export const MenuItemSchema = t.Object({
   id: t.Optional(t.String()),
   parentId: t.Optional(t.Nullable(t.String())),
@@ -41,6 +49,7 @@ export const MenuItemSchema = t.Object({
   ]),
   added: t.Optional(t.Boolean()),
   hidden: t.Optional(t.Boolean()),
+  scope: t.Optional(ScopeSchema),
   query: t.Optional(t.Record(t.String(), t.String())),
 });
 

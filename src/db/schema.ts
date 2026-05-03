@@ -307,6 +307,7 @@ export const menuItems = sqliteTable('menu_items', {
   icon: text('icon'),
   host: text('host'),
   hidden: integer('hidden', { mode: 'boolean' }).notNull().default(false),
+  scope: text('scope').notNull().default('main'),  // 'main' | 'sub' | 'both'
   query: text('query'),
   studio: text('studio'),
   touchedAt: integer('touched_at', { mode: 'timestamp' }),
