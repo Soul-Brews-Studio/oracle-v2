@@ -20,6 +20,7 @@ import { mapEndpoint } from './map.ts';
 import { map3dEndpoint } from './map3d.ts';
 import { vectorStatsEndpoint } from './stats.ts';
 import { vectorHealthEndpoint } from './health.ts';
+import { vectorConfigEndpoint } from './config.ts';
 
 export const vectorRoutes = new Elysia({ prefix: '/api' })
   .use(similarEndpoint)
@@ -27,4 +28,5 @@ export const vectorRoutes = new Elysia({ prefix: '/api' })
   .use(mapEndpoint)
   .use(map3dEndpoint)
   .use(vectorStatsEndpoint)
-  .use(vectorHealthEndpoint);
+  .use(vectorHealthEndpoint)
+  .use(vectorConfigEndpoint);
