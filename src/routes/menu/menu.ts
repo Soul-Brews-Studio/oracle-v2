@@ -11,7 +11,7 @@
 
 import { Elysia, t } from 'elysia';
 import { asc } from 'drizzle-orm';
-import { MenuItemSchema, MenuResponseSchema, type MenuItem, type MenuMeta } from './model.ts';
+import { MenuItemSchema, MenuResponseSchema, ScopeSchema, type MenuItem, type MenuMeta, type Scope } from './model.ts';
 import { getFrontendMenuItems } from '../../menu/index.ts';
 import { getMenuConfig, getMenuSource, reloadMenuConfig } from '../../menu/config.ts';
 import { listCustomMenuItems } from '../../menu/custom-store.ts';
@@ -95,12 +95,26 @@ export function hostMatches(pattern: string | null | undefined, host: string): b
 }
 
 /**
+ * Does the row's scope match the requested scope filter?
+ *
+ * - No scope filter -> everything passes (backward compat)
+ * - scope='main'   -> rows with scope='main' or scope='both'
+ * - scope='sub'    -> rows with scope='sub'  or scope='both'
+ */
+export function scopeMatches(rowScope: string, filterScope?: Scope): boolean {
+  if (filterScope == null) return true;
+  if (rowScope === 'both') return true;
+  return rowScope === filterScope;
+}
+
+/**
  * Read API-sourced menu items from the `menu_items` DB table.
  * Only enabled rows are returned. Source is always 'api' for studio consumers.
  * When `host` is provided, rows are filtered to those with null `host` (shown
  * everywhere) or a glob pattern matching the supplied host.
+ * When `scope` is provided, rows are filtered to that scope or 'both'.
  */
-export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
+export function readApiMenuItemsFromDb(host?: string, scope?: Scope): MenuItem[] {
   const rows = db
     .select()
     .from(menuItems)
@@ -111,6 +125,7 @@ export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
   for (const row of rows) {
     if (row.enabled === false) continue;
     if (host !== undefined && !hostMatches(row.host, host)) continue;
+    if (!scopeMatches(row.scope, scope)) continue;
     const group = (['main', 'tools', 'admin', 'hidden'] as const).includes(
       row.groupKey as MenuItem['group'],
     )
@@ -129,6 +144,7 @@ export function readApiMenuItemsFromDb(host?: string): MenuItem[] {
     if (row.access === 'public' || row.access === 'auth') item.access = row.access;
     if (row.hidden) item.hidden = true;
     if (row.studio) item.studio = row.studio;
+    if (row.scope !== 'main') item.scope = row.scope as Scope;
     if (row.query) {
       try {
         const parsed = JSON.parse(row.query);
@@ -214,16 +230,21 @@ export function createMenuEndpoint() {
       async ({ query }) => {
         const { items, disable } = await getMenuConfig();
         const host = typeof query.host === 'string' && query.host.length > 0 ? query.host : undefined;
+        const validScopes = ['main', 'sub', 'both'] as const;
+        const scope = validScopes.includes(query.scope as Scope) ? (query.scope as Scope) : undefined;
         return {
           items: buildMenuItems(
-            readApiMenuItemsFromDb(host),
+            readApiMenuItemsFromDb(host, scope),
             { items, disable },
             listCustomMenuItems(),
           ),
         };
       },
       {
-        query: t.Object({ host: t.Optional(t.String()) }),
+        query: t.Object({
+          host: t.Optional(t.String()),
+          scope: t.Optional(ScopeSchema),
+        }),
         detail: {
           tags: ['menu'],
           menu: { group: 'hidden' },
