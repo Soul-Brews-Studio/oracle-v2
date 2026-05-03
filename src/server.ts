@@ -30,7 +30,7 @@ import { feedRoutes } from './routes/feed/index.ts';
 import { healthRoutes } from './routes/health/index.ts';
 import { dashboardRoutes } from './routes/dashboard/index.ts';
 import { searchRoutes } from './routes/search/index.ts';
-import { compareRoutes } from './routes/compare/index.ts';
+import { vectorRoutes } from './routes/vector/index.ts';
 import { knowledgeRoutes } from './routes/knowledge/index.ts';
 import { supersedeRoutes } from './routes/supersede/index.ts';
 import { forumApi } from './routes/forum/index.ts';
@@ -188,7 +188,7 @@ const apiModules = [
   healthRoutes,
   dashboardRoutes,
   searchRoutes,
-  compareRoutes,
+  vectorRoutes,
   knowledgeRoutes,
   supersedeRoutes,
   forumApi,

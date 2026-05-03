@@ -3,7 +3,7 @@
  */
 
 import { Elysia } from 'elysia';
-import { handleSimilar } from '../../server/handlers.ts';
+import { handleSimilar } from '../../server/vector-handlers.ts';
 import { SimilarQuery } from './model.ts';
 
 export const similarEndpoint = new Elysia().get(
@@ -26,7 +26,7 @@ export const similarEndpoint = new Elysia().get(
   {
     query: SimilarQuery,
     detail: {
-      tags: ['search'],
+      tags: ['vector'],
       menu: { group: 'hidden' },
       summary: 'Vector nearest-neighbor lookup by doc id',
     },

@@ -1,7 +1,8 @@
 import { Elysia } from 'elysia';
 import { DB_PATH } from '../../config.ts';
 import { getSetting, isDbLockError } from '../../db/index.ts';
-import { handleStats, handleVectorStats } from '../../server/handlers.ts';
+import { handleStats } from '../../server/handlers.ts';
+import { handleVectorStats } from '../../server/vector-handlers.ts';
 
 export const statsEndpoint = new Elysia().get('/stats', async () => {
   try {
