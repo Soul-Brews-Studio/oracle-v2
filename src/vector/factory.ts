@@ -15,6 +15,7 @@ import { LanceDBAdapter } from './adapters/lancedb.ts';
 import { QdrantAdapter } from './adapters/qdrant.ts';
 import { CloudflareVectorizeAdapter, CloudflareAIEmbeddings } from './adapters/cloudflare-vectorize.ts';
 import { createEmbeddingProvider } from './embeddings.ts';
+import { loadVectorConfig, configToModels } from './config.ts';
 
 export interface VectorStoreConfig {
   type?: VectorDBType;
@@ -132,6 +133,11 @@ export function createVectorStore(config: VectorStoreConfig = {}): VectorStoreAd
 // ============================================================================
 
 export function getEmbeddingModels(): Record<string, { collection: string; model: string; dataPath?: string }> {
+  // If vector-server.json exists, use it as source of truth (#1071 phase 2)
+  const cfg = loadVectorConfig();
+  if (cfg) return configToModels(cfg);
+
+  // Hardcoded fallback — always works even without config file
   return {
     nomic: {
       collection: COLLECTION_NAME,
