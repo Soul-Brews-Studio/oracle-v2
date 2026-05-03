@@ -31,7 +31,8 @@ const config: IndexerConfig = {
   sourcePaths: {
     resonance: '\u03c8/memory/resonance',
     learnings: '\u03c8/memory/learnings',
-    retrospectives: '\u03c8/memory/retrospectives'
+    retrospectives: '\u03c8/memory/retrospectives',
+    distillations: '\u03c8/memory/distillations'
   }
 };
 
@@ -40,6 +41,7 @@ if (process.argv.includes('--scan')) {
     path.join(repoRoot, config.sourcePaths.resonance),
     path.join(repoRoot, config.sourcePaths.learnings),
     path.join(repoRoot, config.sourcePaths.retrospectives),
+    path.join(repoRoot, config.sourcePaths.distillations),
   ];
   const findings = scanRoots(roots);
   if (findings.length === 0) {

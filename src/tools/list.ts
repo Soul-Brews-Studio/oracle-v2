@@ -16,7 +16,7 @@ export const listToolDef = {
     properties: {
       type: {
         type: 'string',
-        enum: ['principle', 'pattern', 'learning', 'retro', 'all'],
+        enum: ['principle', 'pattern', 'learning', 'retro', 'distillation', 'all'],
         description: 'Filter by document type',
         default: 'all'
       },
@@ -45,7 +45,7 @@ export async function handleList(ctx: ToolContext, input: OracleListInput): Prom
     throw new Error('offset must be >= 0');
   }
 
-  const validTypes = ['principle', 'pattern', 'learning', 'retro', 'all'];
+  const validTypes = ['principle', 'pattern', 'learning', 'retro', 'distillation', 'all'];
   if (!validTypes.includes(type)) {
     throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
   }

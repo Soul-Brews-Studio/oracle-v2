@@ -21,7 +21,7 @@ export const verifyToolDef = {
       type: {
         type: 'string',
         description: 'Filter by document type (default: all)',
-        enum: ['principle', 'pattern', 'learning', 'retro', 'all'],
+        enum: ['principle', 'pattern', 'learning', 'retro', 'distillation', 'all'],
         default: 'all'
       }
     }

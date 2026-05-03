@@ -21,7 +21,7 @@ export const conceptsToolDef = {
       },
       type: {
         type: 'string',
-        enum: ['principle', 'pattern', 'learning', 'retro', 'all'],
+        enum: ['principle', 'pattern', 'learning', 'retro', 'distillation', 'all'],
         description: 'Filter concepts by document type',
         default: 'all'
       }

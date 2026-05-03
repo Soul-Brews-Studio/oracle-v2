@@ -301,7 +301,8 @@ export function handleReflect() {
     .from(oracleDocuments)
     .where(or(
       eq(oracleDocuments.type, 'principle'),
-      eq(oracleDocuments.type, 'learning')
+      eq(oracleDocuments.type, 'learning'),
+      eq(oracleDocuments.type, 'distillation')
     ))
     .orderBy(sql`RANDOM()`)
     .limit(1)
@@ -585,7 +586,14 @@ export function handleGraph(limitPerType = 310) {
     .limit(perType)
     .all();
 
-  const docs = [...principles, ...learnings, ...retros];
+  const distillations = db.select(selectFields)
+    .from(oracleDocuments)
+    .where(eq(oracleDocuments.type, 'distillation'))
+    .orderBy(sql`RANDOM()`)
+    .limit(perType)
+    .all();
+
+  const docs = [...principles, ...learnings, ...retros, ...distillations];
 
   // Build nodes
   const nodes = docs.map(doc => ({

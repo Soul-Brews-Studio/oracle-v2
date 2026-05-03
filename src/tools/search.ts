@@ -24,7 +24,7 @@ export const searchToolDef = {
       },
       type: {
         type: 'string',
-        enum: ['principle', 'pattern', 'learning', 'retro', 'all'],
+        enum: ['principle', 'pattern', 'learning', 'retro', 'distillation', 'all'],
         description: 'Filter by document type',
         default: 'all'
       },

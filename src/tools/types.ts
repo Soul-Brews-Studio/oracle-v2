@@ -31,7 +31,7 @@ export interface ToolResponse {
 
 export interface OracleSearchInput {
   query: string;
-  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'all';
+  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'distillation' | 'all';
   limit?: number;
   offset?: number;
   mode?: 'hybrid' | 'fts' | 'vector';
@@ -50,7 +50,7 @@ export interface OracleLearnInput {
 }
 
 export interface OracleListInput {
-  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'all';
+  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'distillation' | 'all';
   limit?: number;
   offset?: number;
 }
@@ -59,7 +59,7 @@ export interface OracleStatsInput {}
 
 export interface OracleConceptsInput {
   limit?: number;
-  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'all';
+  type?: 'principle' | 'pattern' | 'learning' | 'retro' | 'distillation' | 'all';
 }
 
 export interface OracleSupersededInput {
