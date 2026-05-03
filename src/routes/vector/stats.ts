@@ -7,10 +7,20 @@
 
 import { Elysia } from 'elysia';
 import { handleVectorStats } from '../../server/vector-handlers.ts';
+import { createVectorProxy } from '../../server/vector-proxy.ts';
+import { VECTOR_URL } from '../../config.ts';
+
+const proxy = createVectorProxy(VECTOR_URL);
 
 export const vectorStatsEndpoint = new Elysia().get(
   '/vector/stats',
   async ({ set }) => {
+    if (proxy) {
+      const remote = await proxy.stats();
+      if (remote) return remote;
+      set.status = 503;
+      return { error: 'Vector proxy unavailable' };
+    }
     try {
       return await handleVectorStats();
     } catch (e: any) {

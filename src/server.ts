@@ -18,7 +18,7 @@ import {
   performGracefulShutdown,
 } from './process-manager/index.ts';
 
-import { PORT, ORACLE_DATA_DIR } from './config.ts';
+import { PORT, ORACLE_DATA_DIR, VECTOR_URL } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 import { db, sqlite, closeDb, indexingStatus } from './db/index.ts';
 import { seedMenuItems, type HasRoutes as SeedHasRoutes } from './db/seeders/menu-seeder.ts';
@@ -52,6 +52,8 @@ try {
 } catch (e) {
   // table might not exist yet — fine on first boot
 }
+
+console.log('[Vector] mode:', VECTOR_URL ? 'proxy → ' + VECTOR_URL : 'local');
 
 try {
   const bt = sqlite.prepare('PRAGMA busy_timeout').get();

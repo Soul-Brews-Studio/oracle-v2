@@ -53,3 +53,11 @@ export const CHROMADB_DIR = path.join(HOME_DIR, C.CHROMADB_DIR_NAME);
 if (!fs.existsSync(ORACLE_DATA_DIR)) {
   fs.mkdirSync(ORACLE_DATA_DIR, { recursive: true });
 }
+
+// Vector layer routing (#1071 phase 1.2)
+//   VECTOR_URL       — if set, vector calls proxy to this base URL (e.g. http://vector.local:8080)
+//                      if empty, the local vector adapter is used (backward compat).
+//   VECTOR_FALLBACK  — what to do when proxy is unreachable. 'fts5' = serve FTS5-only
+//                      results with vectorAvailable: false. (Future: 'cache', 'fail'.)
+export const VECTOR_URL = process.env.VECTOR_URL || '';
+export const VECTOR_FALLBACK = process.env.VECTOR_FALLBACK || 'fts5';

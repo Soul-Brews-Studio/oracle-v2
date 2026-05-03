@@ -9,12 +9,19 @@ import fs from 'fs';
 import path from 'path';
 import { eq, sql, or, inArray } from 'drizzle-orm';
 import { db, sqlite, oracleDocuments, indexingStatus, isDbLockError } from '../db/index.ts';
-import { REPO_ROOT } from '../config.ts';
+import { REPO_ROOT, VECTOR_URL } from '../config.ts';
 import { logSearch, logDocumentAccess, logLearning } from './logging.ts';
 import type { SearchResult, SearchResponse } from './types.ts';
 import { ensureVectorStoreConnected, EMBEDDING_MODELS } from '../vector/factory.ts';
 import { detectProject } from './project-detect.ts';
 import { coerceConcepts } from '../tools/learn.ts';
+import { createVectorProxy } from './vector-proxy.ts';
+
+// Module-level proxy instance — bound to VECTOR_URL at boot. If VECTOR_URL is
+// unset, this is null and the local vector adapter runs in-process (legacy
+// behavior). When set, the vector leg of hybrid/vector search proxies to the
+// remote service; on remote failure we fall back to FTS5-only.
+const vectorProxy = createVectorProxy(VECTOR_URL);
 
 /**
  * Search Oracle knowledge base with hybrid search (FTS5 + Vector)
@@ -29,7 +36,7 @@ export async function handleSearch(
   project?: string,  // If set: project + universal. If null/undefined: universal only
   cwd?: string,      // Auto-detect project from cwd if project not specified
   model?: string     // Embedding model: 'bge-m3' (default, multilingual) or 'nomic' (fast)
-): Promise<SearchResponse & { mode?: string; warning?: string; model?: string }> {
+): Promise<SearchResponse & { mode?: string; warning?: string; model?: string; vectorAvailable?: boolean }> {
   // Auto-detect project from cwd if not explicitly specified
   const resolvedProject = (project ?? detectProject(cwd))?.toLowerCase() ?? null;
   const startTime = Date.now();
@@ -117,8 +124,33 @@ export async function handleSearch(
 
   // Vector search (skip if fts-only mode)
   let vectorResults: SearchResult[] = [];
+  // Tracks whether the vector leg succeeded. Stays `true` when mode === 'fts'
+  // (vector wasn't asked for), flips to `false` if the proxy is enabled and
+  // the remote call failed — clients use this to render a "vector down" hint
+  // while still getting FTS5 results.
+  let vectorAvailable = true;
 
-  if (mode !== 'fts') {
+  // VECTOR_URL set → route the vector leg through the remote service.
+  // FTS5 always runs locally above. If the proxy fails we return whatever FTS5
+  // produced and set vectorAvailable: false (per VECTOR_FALLBACK = 'fts5').
+  if (mode !== 'fts' && vectorProxy) {
+    const remote = await vectorProxy.search({
+      q: query,
+      type,
+      limit,
+      offset,
+      mode: 'vector',
+      project: resolvedProject ?? undefined,
+      cwd,
+      model,
+    });
+    if (remote) {
+      vectorResults = remote.results || [];
+    } else {
+      vectorAvailable = false;
+      warning = 'Vector proxy unavailable — FTS5-only results';
+    }
+  } else if (mode !== 'fts') {
     // Determine which models to query
     const isMulti = model === 'multi';
     const modelsToQuery = isMulti
@@ -234,6 +266,7 @@ export async function handleSearch(
     limit,
     mode,
     ...(model === 'multi' ? { model: 'multi' } : model && EMBEDDING_MODELS[model] ? { model } : {}),
+    ...(mode !== 'fts' ? { vectorAvailable } : {}),
     ...(warning && { warning })
   };
 }
