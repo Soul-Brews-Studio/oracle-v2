@@ -3,7 +3,7 @@
  */
 
 import { Elysia } from 'elysia';
-import { handleMap3d } from '../../server/handlers.ts';
+import { handleMap3d } from '../../server/vector-handlers.ts';
 import { Map3dQuery } from './model.ts';
 
 export const map3dEndpoint = new Elysia().get(
@@ -20,7 +20,7 @@ export const map3dEndpoint = new Elysia().get(
   {
     query: Map3dQuery,
     detail: {
-      tags: ['map'],
+      tags: ['vector'],
       menu: { group: 'tools', order: 30 },
       summary: '3D PCA projection of embeddings',
     },

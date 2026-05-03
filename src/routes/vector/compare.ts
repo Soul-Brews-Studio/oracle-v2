@@ -4,22 +4,18 @@
  *
  * Single round-trip from frontend instead of N parallel /api/search calls.
  * Phase 2 of ui-vector#5.
+ *
+ * Vector-only: every per-model query runs in vector mode against the requested
+ * embedding engine. Lives in src/routes/vector/ alongside the rest of the
+ * vector surface so the future VECTOR_URL proxy can forward all of it as a unit.
  */
 
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { handleSearch } from '../../server/handlers.ts';
 import { getEmbeddingModels } from '../../vector/factory.ts';
 import { computeAgreement, type ByModel } from './agreement.ts';
+import { CompareQuery } from './model.ts';
 import type { SearchResult } from '../../server/types.ts';
-
-const CompareQuery = t.Object({
-  q: t.Optional(t.String()),
-  models: t.Optional(t.String()),
-  limit: t.Optional(t.String()),
-  type: t.Optional(t.String()),
-  project: t.Optional(t.String()),
-  cwd: t.Optional(t.String()),
-});
 
 type ByModelResponse = Record<
   string,
@@ -109,7 +105,7 @@ export const compareEndpoint = new Elysia().get(
   {
     query: CompareQuery,
     detail: {
-      tags: ['search'],
+      tags: ['vector'],
       menu: { group: 'main', order: 15 },
       summary: 'Fan out search across models + pre-computed agreement metrics',
     },

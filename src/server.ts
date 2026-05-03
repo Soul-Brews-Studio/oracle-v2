@@ -18,7 +18,7 @@ import {
   performGracefulShutdown,
 } from './process-manager/index.ts';
 
-import { PORT, ORACLE_DATA_DIR } from './config.ts';
+import { PORT, ORACLE_DATA_DIR, VECTOR_URL } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
 import { db, sqlite, closeDb, indexingStatus } from './db/index.ts';
 import { seedMenuItems, type HasRoutes as SeedHasRoutes } from './db/seeders/menu-seeder.ts';
@@ -30,7 +30,7 @@ import { feedRoutes } from './routes/feed/index.ts';
 import { healthRoutes } from './routes/health/index.ts';
 import { dashboardRoutes } from './routes/dashboard/index.ts';
 import { searchRoutes } from './routes/search/index.ts';
-import { compareRoutes } from './routes/compare/index.ts';
+import { vectorRoutes } from './routes/vector/index.ts';
 import { knowledgeRoutes } from './routes/knowledge/index.ts';
 import { supersedeRoutes } from './routes/supersede/index.ts';
 import { forumApi } from './routes/forum/index.ts';
@@ -52,6 +52,8 @@ try {
 } catch (e) {
   // table might not exist yet — fine on first boot
 }
+
+console.log('[Vector] mode:', VECTOR_URL ? 'proxy → ' + VECTOR_URL : 'local');
 
 try {
   const bt = sqlite.prepare('PRAGMA busy_timeout').get();
@@ -188,7 +190,7 @@ const apiModules = [
   healthRoutes,
   dashboardRoutes,
   searchRoutes,
-  compareRoutes,
+  vectorRoutes,
   knowledgeRoutes,
   supersedeRoutes,
   forumApi,

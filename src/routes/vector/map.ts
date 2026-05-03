@@ -3,7 +3,7 @@
  */
 
 import { Elysia } from 'elysia';
-import { handleMap } from '../../server/handlers.ts';
+import { handleMap } from '../../server/vector-handlers.ts';
 
 export const mapEndpoint = new Elysia().get('/map', async ({ set }) => {
   try {
@@ -14,7 +14,7 @@ export const mapEndpoint = new Elysia().get('/map', async ({ set }) => {
   }
 }, {
   detail: {
-    tags: ['map'],
+    tags: ['vector'],
     menu: { group: 'tools', order: 20 },
     summary: '2D projection of embeddings',
   },
