@@ -153,7 +153,11 @@ const app = new Elysia()
     set.headers['X-XSS-Protection'] = '1; mode=block';
     set.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
   })
-  .onError(({ error, set }) => {
+  .onError(({ code, error, set }) => {
+    if (code === 'NOT_FOUND') {
+      set.status = 404;
+      return { error: 'Not found' };
+    }
     const msg = (error as any)?.message ?? String(error);
     const isDbLock = msg.includes('disk I/O') || msg.includes('database is locked') || msg.includes('SQLITE_BUSY');
     if (isDbLock) {

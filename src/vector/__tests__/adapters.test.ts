@@ -138,17 +138,27 @@ describe('SqliteVecAdapter + Ollama', () => {
   let tmpDb: string;
   let available = false;
 
-  // Setup
+  // Setup — needs both Ollama AND sqlite-vec extension
   const setup = async () => {
     available = await isOllamaAvailable();
     if (!available) return;
 
     tmpDb = path.join(os.tmpdir(), `oracle-vec-test-${Date.now()}.db`);
-    store = createVectorStore({
-      type: 'sqlite-vec',
-      dataPath: tmpDb,
-      embeddingProvider: 'ollama',
-    });
+    try {
+      store = createVectorStore({
+        type: 'sqlite-vec',
+        dataPath: tmpDb,
+        embeddingProvider: 'ollama',
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('vec0') || msg.includes('no such module')) {
+        console.log('  [SKIP] sqlite-vec extension not available');
+        available = false;
+        return;
+      }
+      throw err;
+    }
   };
 
   afterAll(async () => {
@@ -160,10 +170,20 @@ describe('SqliteVecAdapter + Ollama', () => {
 
   test('connect + ensureCollection', async () => {
     await setup();
-    if (!available) { console.log('  [SKIP] Ollama not available'); return; }
+    if (!available) { console.log('  [SKIP] Ollama or sqlite-vec not available'); return; }
 
-    await store.connect();
-    await store.ensureCollection();
+    try {
+      await store.connect();
+      await store.ensureCollection();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('vec0') || msg.includes('no such module')) {
+        console.log('  [SKIP] sqlite-vec extension not loaded');
+        available = false;
+        return;
+      }
+      throw err;
+    }
 
     const info = await store.getCollectionInfo();
     expect(info.name).toBe('oracle_knowledge');
