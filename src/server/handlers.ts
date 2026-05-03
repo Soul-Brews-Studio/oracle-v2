@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { eq, sql, or, inArray } from 'drizzle-orm';
-import { db, sqlite, oracleDocuments, indexingStatus } from '../db/index.ts';
+import { db, sqlite, oracleDocuments, indexingStatus, isDbLockError } from '../db/index.ts';
 import { REPO_ROOT } from '../config.ts';
 import { logSearch, logDocumentAccess, logLearning } from './logging.ts';
 import type { SearchResult, SearchResponse } from './types.ts';
@@ -291,42 +291,56 @@ function combineSearchResults(fts: SearchResult[], vector: SearchResult[]): Sear
  * Get random wisdom
  */
 export function handleReflect() {
-  // Get random document using Drizzle
-  const randomDoc = db.select({
-    id: oracleDocuments.id,
-    type: oracleDocuments.type,
-    sourceFile: oracleDocuments.sourceFile,
-    concepts: oracleDocuments.concepts
-  })
-    .from(oracleDocuments)
-    .where(or(
-      eq(oracleDocuments.type, 'principle'),
-      eq(oracleDocuments.type, 'learning')
-    ))
-    .orderBy(sql`RANDOM()`)
-    .limit(1)
-    .get();
+  try {
+    // Get random document using Drizzle
+    const randomDoc = db.select({
+      id: oracleDocuments.id,
+      type: oracleDocuments.type,
+      sourceFile: oracleDocuments.sourceFile,
+      concepts: oracleDocuments.concepts
+    })
+      .from(oracleDocuments)
+      .where(or(
+        eq(oracleDocuments.type, 'principle'),
+        eq(oracleDocuments.type, 'learning')
+      ))
+      .orderBy(sql`RANDOM()`)
+      .limit(1)
+      .get();
 
-  if (!randomDoc) {
-    return { error: 'No documents found' };
+    if (!randomDoc) {
+      return { error: 'No documents found' };
+    }
+
+    // Get content from FTS (must use raw SQL)
+    const content = sqlite.prepare(`
+      SELECT content FROM oracle_fts WHERE id = ?
+    `).get(randomDoc.id) as { content: string } | undefined;
+
+    if (!content) {
+      return { error: 'Document content not found in FTS index' };
+    }
+
+    return {
+      id: randomDoc.id,
+      type: randomDoc.type,
+      content: content.content,
+      source_file: randomDoc.sourceFile,
+      concepts: JSON.parse(randomDoc.concepts || '[]')
+    };
+  } catch (err) {
+    if (isDbLockError(err)) {
+      return {
+        id: null,
+        type: 'principle',
+        content: 'Oracle is indexing — please wait...',
+        source_file: null,
+        concepts: [],
+        indexing: true,
+      };
+    }
+    throw err;
   }
-
-  // Get content from FTS (must use raw SQL)
-  const content = sqlite.prepare(`
-    SELECT content FROM oracle_fts WHERE id = ?
-  `).get(randomDoc.id) as { content: string } | undefined;
-
-  if (!content) {
-    return { error: 'Document content not found in FTS index' };
-  }
-
-  return {
-    id: randomDoc.id,
-    type: randomDoc.type,
-    content: content.content,
-    source_file: randomDoc.sourceFile,
-    concepts: JSON.parse(randomDoc.concepts || '[]')
-  };
 }
 
 /**

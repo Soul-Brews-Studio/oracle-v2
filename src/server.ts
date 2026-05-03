@@ -20,7 +20,7 @@ import {
 
 import { PORT, ORACLE_DATA_DIR } from './config.ts';
 import { MCP_SERVER_NAME } from './const.ts';
-import { db, closeDb, indexingStatus } from './db/index.ts';
+import { db, sqlite, closeDb, indexingStatus } from './db/index.ts';
 import { seedMenuItems, type HasRoutes as SeedHasRoutes } from './db/seeders/menu-seeder.ts';
 
 // Elysia sub-apps — one per cluster
@@ -52,6 +52,11 @@ try {
 } catch (e) {
   // table might not exist yet — fine on first boot
 }
+
+try {
+  const bt = sqlite.prepare('PRAGMA busy_timeout').get();
+  console.log(`[DB] busy_timeout = ${JSON.stringify(bt)}`);
+} catch {}
 
 configure({ dataDir: ORACLE_DATA_DIR, pidFileName: 'oracle-http.pid' });
 writePidFile({
@@ -145,6 +150,16 @@ const app = new Elysia()
     set.headers['X-Frame-Options'] = 'DENY';
     set.headers['X-XSS-Protection'] = '1; mode=block';
     set.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+  })
+  .onError(({ error, set }) => {
+    const msg = (error as any)?.message ?? String(error);
+    const isDbLock = msg.includes('disk I/O') || msg.includes('database is locked') || msg.includes('SQLITE_BUSY');
+    if (isDbLock) {
+      set.status = 503;
+      return { error: 'Database temporarily unavailable (indexing in progress)', indexing: true, detail: msg };
+    }
+    set.status = 500;
+    return { error: msg };
   })
   .use(
     swagger({
