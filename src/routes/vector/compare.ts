@@ -8,6 +8,10 @@
  * Vector-only: every per-model query runs in vector mode against the requested
  * embedding engine. Lives in src/routes/vector/ alongside the rest of the
  * vector surface so the future VECTOR_URL proxy can forward all of it as a unit.
+ *
+ * When VECTOR_URL is set the request is proxied to the remote vector server;
+ * on proxy failure we return 503 rather than falling back to local (compare
+ * is a pure-vector operation — no FTS fallback makes sense).
  */
 
 import { Elysia } from 'elysia';
@@ -15,7 +19,11 @@ import { handleSearch } from '../../server/handlers.ts';
 import { getEmbeddingModels } from '../../vector/factory.ts';
 import { computeAgreement, type ByModel } from './agreement.ts';
 import { CompareQuery } from './model.ts';
+import { createVectorProxy } from '../../server/vector-proxy.ts';
+import { VECTOR_URL } from '../../config.ts';
 import type { SearchResult } from '../../server/types.ts';
+
+const proxy = createVectorProxy(VECTOR_URL);
 
 type ByModelResponse = Record<
   string,
@@ -41,6 +49,21 @@ export const compareEndpoint = new Elysia().get(
     if (!sanitizedQ) {
       set.status = 400;
       return { error: 'Invalid query: empty after sanitization' };
+    }
+
+    // VECTOR_URL set -> proxy. On failure, 503 (no FTS fallback for compare).
+    if (proxy) {
+      const remote = await proxy.compare({
+        q: sanitizedQ,
+        models: query.models,
+        limit: query.limit ? parseInt(query.limit) : undefined,
+        type: query.type,
+        project: query.project,
+        cwd: query.cwd,
+      });
+      if (remote) return remote;
+      set.status = 503;
+      return { error: 'Vector proxy unavailable', query: sanitizedQ, models: [], byModel: {}, agreement: { top1: 0, top5_jaccard: 0, avg_rank_shift: 0, shared_ids: [] } };
     }
 
     const enabledModels = Object.keys(getEmbeddingModels());
