@@ -128,11 +128,18 @@ if (!fs.existsSync(ORACLE_DATA_DIR)) {
   fs.mkdirSync(ORACLE_DATA_DIR, { recursive: true });
 }
 
-const defaultSqlite = new Database(DB_PATH);
+const isReadonly = process.env.ORACLE_VECTOR_READONLY === '1';
+const defaultSqlite = isReadonly
+  ? new Database(DB_PATH, { readonly: true })
+  : new Database(DB_PATH);
 const defaultDb = drizzle(defaultSqlite, { schema });
 
-// Run initialization on the default connection
-initializeDatabase(defaultSqlite, defaultDb);
+if (isReadonly) {
+  console.log('[DB] Opened in READONLY mode (vector sidecar)');
+} else {
+  // Run initialization on the default connection (skipped in readonly mode)
+  initializeDatabase(defaultSqlite, defaultDb);
+}
 
 export const sqlite = defaultSqlite;
 export const db = defaultDb;
