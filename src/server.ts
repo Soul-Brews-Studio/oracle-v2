@@ -43,6 +43,7 @@ import { sessionsRoutes } from './routes/sessions/index.ts';
 import { vaultRoutes } from './routes/vault/index.ts';
 import { indexerRoutes } from './routes/indexer/index.ts';
 import { createMenuRoutes } from './routes/menu/index.ts';
+import { gatewayPlugin } from './gateway/index.ts';
 
 import pkg from '../package.json' with { type: 'json' };
 
@@ -179,6 +180,7 @@ const app = new Elysia()
       },
     }),
   )
+  .use(gatewayPlugin(ORACLE_DATA_DIR, VECTOR_URL || undefined))
   .get('/', () => ({
     server: MCP_SERVER_NAME,
     version: pkg.version,
